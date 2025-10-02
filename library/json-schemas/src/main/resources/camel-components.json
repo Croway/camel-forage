@@ -1,0 +1,36 @@
+[
+  {
+    "groupId": "org.apache.camel",
+    "artifactId": "camel-fhir",
+    "version": "4.14.0",
+    "objects": [
+      {
+        "fullyQualifiedName": "org.hl7.fhir.r4.model.Patient",
+        "description": "FHIR R4 Patient resource representing demographic and administrative information about a person receiving care"
+      },
+      {
+        "fullyQualifiedName": "org.hl7.fhir.r4.model.Observation",
+        "description": "FHIR R4 Observation resource representing measurements and simple assertions about a patient"
+      },
+      {
+        "fullyQualifiedName": "org.hl7.fhir.r4.model.Practitioner",
+        "description": "FHIR R4 Practitioner resource representing a healthcare professional"
+      }
+    ]
+  },
+  {
+    "groupId": "org.apache.camel",
+    "artifactId": "camel-milvus",
+    "version": "4.14.0",
+    "objects": [
+      {
+        "fullyQualifiedName": "io.milvus.param.collection.CreateCollectionParam",
+        "description": "Milvus Create Collection"
+      },
+      {
+        "fullyQualifiedName": "io.milvus.param.dml.InsertParam",
+        "description": "Insert Parameters into Milvus"
+      }
+    ]
+  }
+]
