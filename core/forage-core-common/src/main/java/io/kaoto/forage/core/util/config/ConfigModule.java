@@ -53,6 +53,7 @@ public class ConfigModule {
     private final String type;
     private final boolean required;
     private final ConfigTag configTag;
+    private final String selectsFrom;
 
     public ConfigModule(Class<? extends Config> config, String name, String prefix) {
         this.config = config;
@@ -64,6 +65,7 @@ public class ConfigModule {
         this.type = null;
         this.required = false;
         this.configTag = null;
+        this.selectsFrom = null;
     }
 
     public ConfigModule(
@@ -85,6 +87,30 @@ public class ConfigModule {
         this.type = type;
         this.required = required;
         this.configTag = configTag;
+        this.selectsFrom = null;
+    }
+
+    public ConfigModule(
+            Class<? extends Config> config,
+            String name,
+            String prefix,
+            String description,
+            String label,
+            String defaultValue,
+            String type,
+            boolean required,
+            ConfigTag configTag,
+            String selectsFrom) {
+        this.config = config;
+        this.name = name;
+        this.prefix = prefix;
+        this.description = description;
+        this.label = label;
+        this.defaultValue = defaultValue;
+        this.type = type;
+        this.required = required;
+        this.configTag = configTag;
+        this.selectsFrom = selectsFrom;
     }
 
     /**
@@ -114,6 +140,18 @@ public class ConfigModule {
         return new ConfigModule(config, name, null, description, label, defaultValue, type, required, configTag);
     }
 
+    public static ConfigModule ofBeanName(
+            Class<? extends Config> config,
+            String name,
+            String description,
+            String label,
+            boolean required,
+            ConfigTag configTag,
+            String selectsFrom) {
+        return new ConfigModule(
+                config, name, null, description, label, null, "bean-name", required, configTag, selectsFrom);
+    }
+
     /**
      * A configuration module may be prefixed, so that there can be multiple configurations for it.
      * This is useful when dealing with multimodel setups, where you might have different configurations
@@ -131,6 +169,19 @@ public class ConfigModule {
     }
 
     /**
+     * Builds the full name with prefix inserted after "forage." if applicable.
+     */
+    private String buildPrefixedName() {
+        if (prefix == null) {
+            return name;
+        }
+        if (name.startsWith("forage.")) {
+            return "forage." + prefix + "." + name.substring(7);
+        }
+        return prefix + "." + name;
+    }
+
+    /**
      * Returns the environment variable name for this configuration entry.
      *
      * <p>This is the name that will be used when looking up values from environment variables
@@ -139,19 +190,9 @@ public class ConfigModule {
      * @return the environment variable name, never null
      */
     public String envName() {
-        String envName;
-        if (prefix == null) {
-            envName = name;
-        } else {
-            // Insert prefix after "forage." if the name starts with it
-            if (name.startsWith("forage.")) {
-                envName = "forage." + prefix + "." + name.substring(7);
-            } else {
-                envName = prefix + "." + name;
-            }
-        }
+        String envName = buildPrefixedName();
 
-        if (envName != null && !envName.isEmpty()) {
+        if (envName != null && !envName.isBlank()) {
             return envName.replace(".", "_").toUpperCase();
         }
 
@@ -168,19 +209,9 @@ public class ConfigModule {
      * @return the system property name, never null
      */
     public String propertyName() {
-        String propertyName;
-        if (prefix == null) {
-            propertyName = name;
-        } else {
-            // Insert prefix after "forage." if the name starts with it
-            if (name.startsWith("forage.")) {
-                propertyName = "forage." + prefix + "." + name.substring(7);
-            } else {
-                propertyName = prefix + "." + name;
-            }
-        }
+        String propertyName = buildPrefixedName();
 
-        if (propertyName != null && !propertyName.isEmpty()) {
+        if (propertyName != null && !propertyName.isBlank()) {
             return propertyName.replace("_", ".").toLowerCase();
         }
 
@@ -188,35 +219,11 @@ public class ConfigModule {
     }
 
     public boolean match(String value) {
-        if (prefix == null) {
-            if (value.equals(name)) {
-                return true;
-            }
-        } else {
-            // Insert prefix after "forage." if the name starts with it
-            String expectedName;
-            if (name.startsWith("forage.")) {
-                expectedName = "forage." + prefix + "." + name.substring(7);
-            } else {
-                expectedName = prefix + "." + name;
-            }
-            return value.equals(expectedName);
-        }
-
-        return false;
+        return value.equals(buildPrefixedName());
     }
 
     public String name() {
-        if (prefix == null) {
-            return name;
-        } else {
-            // Insert prefix after "forage." if the name starts with it
-            if (name.startsWith("forage.")) {
-                return "forage." + prefix + "." + name.substring(7);
-            } else {
-                return prefix + "." + name;
-            }
-        }
+        return buildPrefixedName();
     }
 
     public Class<? extends Config> config() {
@@ -245,6 +252,10 @@ public class ConfigModule {
 
     public ConfigTag configTag() {
         return configTag;
+    }
+
+    public String selectsFrom() {
+        return selectsFrom;
     }
 
     @Override
