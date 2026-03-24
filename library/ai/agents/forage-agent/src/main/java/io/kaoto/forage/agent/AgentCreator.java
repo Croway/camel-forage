@@ -13,6 +13,7 @@ import io.kaoto.forage.core.ai.EmbeddingModelAware;
 import io.kaoto.forage.core.ai.EmbeddingModelProvider;
 import io.kaoto.forage.core.ai.EmbeddingStoreAware;
 import io.kaoto.forage.core.ai.EmbeddingStoreProvider;
+import io.kaoto.forage.core.ai.MaxMessagesAware;
 import io.kaoto.forage.core.ai.ModelProvider;
 import io.kaoto.forage.core.ai.RetrievalAugmentorProvider;
 import io.kaoto.forage.core.annotations.ForageBean;
@@ -378,6 +379,9 @@ public final class AgentCreator {
             if (annotation != null && annotation.value().equals(memoryKind)) {
                 LOG.debug("Found memory provider for kind '{}': {}", memoryKind, providerClass.getName());
                 ChatMemoryBeanProvider memoryProvider = provider.get();
+                if (memoryProvider instanceof MaxMessagesAware maxMessagesAware) {
+                    maxMessagesAware.withMaxMessages(config.memoryMaxMessages());
+                }
                 return memoryProvider.create();
             }
         }

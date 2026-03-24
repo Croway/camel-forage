@@ -4,6 +4,7 @@ import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.ai.ChatMemoryBeanProvider;
+import io.kaoto.forage.core.ai.MaxMessagesAware;
 import io.kaoto.forage.core.annotations.ForageBean;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -48,9 +49,10 @@ import redis.clients.jedis.exceptions.JedisException;
         components = {"camel-langchain4j-agent"},
         feature = "Memory",
         description = "Persistent storage using Redis")
-public class RedisMemoryBeanProvider implements ChatMemoryBeanProvider {
+public class RedisMemoryBeanProvider implements ChatMemoryBeanProvider, MaxMessagesAware {
     private static final Logger LOG = LoggerFactory.getLogger(RedisMemoryBeanProvider.class);
     private static final int DEFAULT_MAX_MESSAGES = 100;
+    private volatile Integer maxMessagesOverride;
 
     private static final RedisConfig CONFIG = new RedisConfig();
     private static final JedisPool JEDIS_POOL;
@@ -136,12 +138,18 @@ public class RedisMemoryBeanProvider implements ChatMemoryBeanProvider {
      * @throws RuntimeException if Redis connection cannot be established or configured
      */
     @Override
+    public void withMaxMessages(int maxMessages) {
+        this.maxMessagesOverride = maxMessages;
+    }
+
+    @Override
     public ChatMemoryProvider create() {
+        int maxMessages = maxMessagesOverride != null ? maxMessagesOverride : DEFAULT_MAX_MESSAGES;
         return memoryId -> {
-            LOG.debug("Creating message window chat memory for ID: {}", memoryId);
+            LOG.debug("Creating message window chat memory for ID: {} with maxMessages={}", memoryId, maxMessages);
             return MessageWindowChatMemory.builder()
                     .id(memoryId)
-                    .maxMessages(DEFAULT_MAX_MESSAGES)
+                    .maxMessages(maxMessages)
                     .chatMemoryStore(REDIS_STORE)
                     .build();
         };
