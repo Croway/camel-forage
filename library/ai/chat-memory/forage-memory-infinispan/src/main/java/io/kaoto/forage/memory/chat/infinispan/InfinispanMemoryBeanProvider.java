@@ -6,6 +6,7 @@ import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.ai.ChatMemoryBeanProvider;
+import io.kaoto.forage.core.ai.MaxMessagesAware;
 import io.kaoto.forage.core.annotations.ForageBean;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -47,9 +48,10 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
         components = {"camel-langchain4j-agent"},
         feature = "Memory",
         description = "Distributed storage using Infinispan")
-public class InfinispanMemoryBeanProvider implements ChatMemoryBeanProvider {
+public class InfinispanMemoryBeanProvider implements ChatMemoryBeanProvider, MaxMessagesAware {
     private static final Logger LOG = LoggerFactory.getLogger(InfinispanMemoryBeanProvider.class);
     private static final int DEFAULT_MAX_MESSAGES = 10;
+    private volatile Integer maxMessagesOverride;
 
     private static final InfinispanConfig CONFIG = new InfinispanConfig();
     private static final RemoteCacheManager CACHE_MANAGER;
@@ -132,12 +134,18 @@ public class InfinispanMemoryBeanProvider implements ChatMemoryBeanProvider {
      * @throws RuntimeException if Infinispan connection cannot be established or configured
      */
     @Override
+    public void withMaxMessages(int maxMessages) {
+        this.maxMessagesOverride = maxMessages;
+    }
+
+    @Override
     public ChatMemoryProvider create() {
+        int maxMessages = maxMessagesOverride != null ? maxMessagesOverride : DEFAULT_MAX_MESSAGES;
         return memoryId -> {
-            LOG.debug("Creating message window chat memory for ID: {}", memoryId);
+            LOG.debug("Creating message window chat memory for ID: {} with maxMessages={}", memoryId, maxMessages);
             return MessageWindowChatMemory.builder()
                     .id(memoryId)
-                    .maxMessages(DEFAULT_MAX_MESSAGES)
+                    .maxMessages(maxMessages)
                     .chatMemoryStore(INFINISPAN_STORE)
                     .build();
         };
