@@ -1,5 +1,7 @@
 package io.kaoto.forage.core;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ServiceLoader;
 import org.apache.camel.CamelContext;
 import org.apache.camel.spi.ContextServicePlugin;
@@ -12,6 +14,8 @@ public class ForageContextServicePlugin implements ContextServicePlugin {
 
     @Override
     public void load(CamelContext camelContext) {
+        List<BeanFactory> factories = new ArrayList<>();
+
         ServiceLoader<BeanFactory> loader =
                 ServiceLoader.load(BeanFactory.class, camelContext.getApplicationContextClassLoader());
 
@@ -19,6 +23,7 @@ public class ForageContextServicePlugin implements ContextServicePlugin {
             try {
                 beanFactory.setCamelContext(camelContext);
                 beanFactory.configure();
+                factories.add(beanFactory);
                 LOG.debug(
                         "Successfully configured bean factory: {}",
                         beanFactory.getClass().getName());
@@ -29,5 +34,37 @@ public class ForageContextServicePlugin implements ContextServicePlugin {
                         e);
             }
         });
+
+        // Register file watcher for hot-reload when enabled
+        if (!factories.isEmpty() && isReloadEnabled(camelContext)) {
+            try {
+                ForageReloadWatcher watcher = new ForageReloadWatcher(factories);
+                camelContext.addService(watcher);
+                LOG.info("Forage hot-reload enabled: watching for property file changes");
+            } catch (Exception e) {
+                LOG.warn("Failed to start Forage hot-reload watcher", e);
+            }
+        }
+    }
+
+    /**
+     * Checks whether hot-reload should be enabled.
+     *
+     * <p>Reload is enabled when either:
+     * <ul>
+     *   <li>The system property {@code forage.reload.enabled} is set to {@code true}</li>
+     *   <li>The Camel property {@code camel.main.routesReloadEnabled} is {@code true}
+     *       (set by the {@code --dev} flag in Camel JBang)</li>
+     * </ul>
+     */
+    private boolean isReloadEnabled(CamelContext camelContext) {
+        if ("true".equals(System.getProperty("forage.reload.enabled"))) {
+            return true;
+        }
+        return camelContext
+                .getPropertiesComponent()
+                .resolveProperty("camel.main.routesReloadEnabled")
+                .filter("true"::equals)
+                .isPresent();
     }
 }

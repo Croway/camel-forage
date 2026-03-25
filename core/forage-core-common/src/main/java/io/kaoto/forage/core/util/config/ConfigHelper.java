@@ -314,9 +314,25 @@ public final class ConfigHelper {
 
     private static Properties getCamelMainConfig() {
         if (camelConfig == null) {
+            LOG.debug("getCamelMainConfig() - cache miss, loading application.properties from disk");
             camelConfig = loadApplicationProperties();
+            if (camelConfig != null) {
+                LOG.debug("getCamelMainConfig() - loaded {} properties", camelConfig.size());
+            }
+        } else {
+            LOG.trace("getCamelMainConfig() - returning cached properties ({} entries)", camelConfig.size());
         }
         return camelConfig;
+    }
+
+    /**
+     * Clears cached configuration sources so that properties are re-read from disk
+     * on next access. Called by {@link ConfigStore#reload()} during hot-reload.
+     */
+    static void clearCache() {
+        camelConfig = null;
+        springBootConfig = null;
+        quarkusAppProps = null;
     }
 
     /**

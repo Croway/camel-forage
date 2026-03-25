@@ -99,6 +99,52 @@ public class DataSourceBeanFactory implements BeanFactory {
     private static final String DEFAULT_DATASOURCE = "dataSource";
 
     @Override
+    public void cleanup() {
+        DataSourceFactoryConfig config = new DataSourceFactoryConfig();
+        Set<String> prefixes =
+                ConfigStore.getInstance().readPrefixes(config, ConfigHelper.getNamedPropertyRegexp("jdbc"));
+
+        for (String name : prefixes) {
+            closeAndUnbind(name);
+        }
+        closeAndUnbind(DEFAULT_DATASOURCE);
+
+        // Unbind JTA transaction policies if they were registered
+        if (config.transactionEnabled()) {
+            for (String name : List.of(
+                    "PROPAGATION_REQUIRED", "MANDATORY", "NEVER", "NOT_SUPPORTED", "REQUIRES_NEW", "SUPPORTS")) {
+                camelContext.getRegistry().unbind(name);
+            }
+        }
+
+        // Unbind aggregation and idempotent repositories (root config)
+        unbindRepositories(config);
+
+        // Unbind per-prefix aggregation and idempotent repositories
+        for (String name : prefixes) {
+            DataSourceFactoryConfig prefixConfig = new DataSourceFactoryConfig(name);
+            unbindRepositories(prefixConfig);
+        }
+    }
+
+    private void unbindRepositories(DataSourceFactoryConfig dsConfig) {
+        if (dsConfig.aggregationRepositoryName() != null) {
+            camelContext.getRegistry().unbind(dsConfig.aggregationRepositoryName());
+        }
+        if (dsConfig.enableIdempotentRepository()) {
+            camelContext.getRegistry().unbind(dsConfig.idempotentRepositoryTableName());
+        }
+    }
+
+    private void closeAndUnbind(String name) {
+        // Note: we intentionally do NOT close AutoCloseable resources here.
+        // Camel components (e.g., SqlComponent) cache DataSource references at the component level.
+        // Closing the pool before the component is reset would break in-flight requests.
+        // The old DataSource is unbound and will be GC'd after the component is reset and routes reloaded.
+        camelContext.getRegistry().unbind(name);
+    }
+
+    @Override
     public void configure() {
 
         DataSourceFactoryConfig config = new DataSourceFactoryConfig();

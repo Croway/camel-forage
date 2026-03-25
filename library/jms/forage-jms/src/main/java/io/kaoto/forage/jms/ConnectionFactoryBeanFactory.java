@@ -84,6 +84,33 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
     private static final String DEFAULT_CONNECTION_FACTORY = "connectionFactory";
 
     @Override
+    public void cleanup() {
+        ConnectionFactoryConfig config = new ConnectionFactoryConfig();
+        Set<String> prefixes =
+                ConfigStore.getInstance().readPrefixes(config, ConfigHelper.getNamedPropertyRegexp("jms"));
+
+        for (String name : prefixes) {
+            closeAndUnbind(name);
+        }
+        closeAndUnbind(DEFAULT_CONNECTION_FACTORY);
+
+        // Unbind JTA transaction policies if they were registered
+        if (config.transactionEnabled()) {
+            for (String name : List.of(
+                    "PROPAGATION_REQUIRED", "MANDATORY", "NEVER", "NOT_SUPPORTED", "REQUIRES_NEW", "SUPPORTS")) {
+                camelContext.getRegistry().unbind(name);
+            }
+        }
+    }
+
+    private void closeAndUnbind(String name) {
+        // Note: we intentionally do NOT close AutoCloseable resources here.
+        // Camel components cache references at the component level.
+        // The old resource is unbound and will be GC'd after the component is reset and routes reloaded.
+        camelContext.getRegistry().unbind(name);
+    }
+
+    @Override
     public void configure() {
 
         ConnectionFactoryConfig config = new ConnectionFactoryConfig();

@@ -432,4 +432,21 @@ public final class ConfigStore {
     public Set<Map.Entry<Object, Object>> entries() {
         return properties.entrySet();
     }
+
+    /**
+     * Clears all cached configuration values so they will be re-read from their
+     * sources (property files, environment variables, system properties) on next access.
+     *
+     * <p>This method is used during hot-reload to force a fresh read of configuration
+     * values from disk. Resolvers are not affected as they are stateless and read
+     * live values on each call.
+     *
+     * @since 1.1
+     */
+    public void reload() {
+        LOG.debug("ConfigStore.reload() - clearing {} cached properties", properties.size());
+        properties.clear();
+        ConfigHelper.clearCache();
+        LOG.debug("ConfigStore.reload() - caches cleared");
+    }
 }
