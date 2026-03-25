@@ -3,6 +3,7 @@ package io.kaoto.forage.plugin;
 import java.util.Set;
 import org.apache.camel.dsl.jbang.core.commands.CamelJBangMain;
 import org.apache.camel.dsl.jbang.core.commands.Run;
+import org.apache.camel.main.KameletMain;
 import io.kaoto.forage.core.common.ExportCustomizer;
 import io.kaoto.forage.core.common.RuntimeType;
 import picocli.CommandLine;
@@ -25,6 +26,20 @@ public class ForageRun extends Run {
         }
 
         return super.doCall();
+    }
+
+    /**
+     * Propagates the --dev flag as forage.reload.enabled system property so that
+     * ForageContextServicePlugin can detect dev mode and start the file watcher.
+     *
+     * <p>This method is called after the --dev flag has been processed (Run.java line 592)
+     * and camel.main.routesReloadEnabled has been added to initial properties.
+     */
+    @Override
+    protected void doAddInitialProperty(KameletMain main) {
+        if ("true".equals(main.getInitialProperties().getProperty("camel.main.routesReloadEnabled"))) {
+            System.setProperty("forage.reload.enabled", "true");
+        }
     }
 
     /**

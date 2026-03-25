@@ -47,6 +47,17 @@ public class AgentBeanFactory implements BeanFactory {
     private CamelContext camelContext;
 
     @Override
+    public void cleanup() {
+        ClassLoader cl = camelContext.getApplicationContextClassLoader();
+        Set<String> prefixes = AgentCreator.detectPrefixes(cl);
+
+        for (String agentName : prefixes) {
+            camelContext.getRegistry().unbind(agentName);
+        }
+        camelContext.getRegistry().unbind(AgentCreator.DEFAULT_AGENT);
+    }
+
+    @Override
     public void configure() {
         ClassLoader cl = camelContext.getApplicationContextClassLoader();
         Set<String> prefixes = AgentCreator.detectPrefixes(cl);

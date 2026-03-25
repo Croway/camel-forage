@@ -8,6 +8,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Default configuration resolver that reads from environment variables, system properties,
@@ -29,6 +31,8 @@ import java.util.stream.Collectors;
  */
 public class DefaultConfigResolver implements ConfigResolver {
 
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultConfigResolver.class);
+
     @Override
     public Optional<String> resolve(String propertyName) {
         // 1. Environment variables: convert dot notation to UPPER_SNAKE_CASE
@@ -45,11 +49,16 @@ public class DefaultConfigResolver implements ConfigResolver {
         }
 
         // 3. Runtime-specific fallback
-        return switch (ConfigHelper.getRuntime()) {
-            case springBoot -> ConfigHelper.getSpringBootProperty(propertyName);
-            case quarkus -> ConfigHelper.getQuarkusProperty(propertyName);
-            case main -> ConfigHelper.getCamelMainProperty(propertyName);
-        };
+        Optional<String> result =
+                switch (ConfigHelper.getRuntime()) {
+                    case springBoot -> ConfigHelper.getSpringBootProperty(propertyName);
+                    case quarkus -> ConfigHelper.getQuarkusProperty(propertyName);
+                    case main -> ConfigHelper.getCamelMainProperty(propertyName);
+                };
+        if (result.isPresent()) {
+            LOG.debug("Resolved '{}' from runtime config", propertyName);
+        }
+        return result;
     }
 
     @Override
