@@ -7,8 +7,8 @@ edit_uri: edit/main/website/docs/
 copyright: Copyright &copy; Forage
 
 theme:
-  logo: assets/camel-logo.svg
-  favicon: assets/camel-logo.svg
+  logo: assets/kaoto-icon.png
+  favicon: assets/kaoto-icon.png
   name: material
   palette:
     - media: "(prefers-color-scheme: light)"
