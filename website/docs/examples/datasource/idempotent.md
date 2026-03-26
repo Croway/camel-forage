@@ -112,7 +112,7 @@ cp test.txt data/inbox/test2.txt
 
 Expected output:
 
-```
+```text
 Discovered file: test.txt (size: 13 bytes)
 Processed file: test.txt with content: Test content.
 

@@ -33,7 +33,7 @@ The plugin validates your Forage properties against the catalog before running. 
 forage.myDb.jdbc.usernam=admin
 ```
 
-```
+```text
 [UNKNOWN_PROPERTY] in application.properties
   Property: forage.myDb.jdbc.usernam
   Unknown property 'usernam' for factory 'jdbc'. Did you mean 'username'?
@@ -46,7 +46,7 @@ forage.myDb.jdbc.usernam=admin
 forage.myDb.jdbc.db.kind=postgresqll
 ```
 
-```
+```text
 [INVALID_BEAN_VALUE] in application.properties
   Property: forage.myDb.jdbc.db.kind
   Unknown database 'postgresqll'. Did you mean 'postgresql'?
@@ -60,7 +60,7 @@ forage.myDb.jdbc.db.kind=postgresqll
 forage.myDb.jdbc.invalid.property=value
 ```
 
-```
+```text
 [UNKNOWN_PROPERTY] in application.properties
   Property: forage.myDb.jdbc.invalid.property
   Unknown property 'invalid.property' for factory 'jdbc'

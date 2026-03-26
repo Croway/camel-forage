@@ -6,8 +6,11 @@ Forage is built around a few simple ideas. Understanding them will help you get 
 
 In a typical Apache Camel application, you write Java code to create beans — datasources, connection factories, AI models — and register them in the Camel registry. Forage replaces that code with configuration:
 
-```
-Properties file  →  Forage discovers the right provider  →  Bean registered in Camel registry  →  Route uses it by name
+``` mermaid
+graph LR
+  A[Properties file] --> B[Forage discovers<br>the right provider]
+  B --> C[Bean registered<br>in Camel registry]
+  C --> D[Route uses it<br>by name]
 ```
 
 You choose a name, configure it with properties, and reference it in your routes. That's it.

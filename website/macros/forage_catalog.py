@@ -92,7 +92,7 @@ def _append_table(lines, entries, indent=""):
 def _forage_properties(factory_name, tag=None):
     catalog = _load_catalog()
     if not catalog:
-        return f"*Catalog not found. Run `mvn install -DskipTests` to generate it.*"
+        return "*Catalog not found. Run `mvn install -DskipTests` to generate it.*"
 
     factory = _find_factory(catalog, factory_name)
     if not factory:
@@ -105,7 +105,7 @@ def _forage_properties(factory_name, tag=None):
 def _forage_bean_properties(factory_name, feature, bean_name):
     catalog = _load_catalog()
     if not catalog:
-        return f"*Catalog not found. Run `mvn install -DskipTests` to generate it.*"
+        return "*Catalog not found. Run `mvn install -DskipTests` to generate it.*"
 
     factory = _find_factory(catalog, factory_name)
     if not factory:
@@ -126,7 +126,7 @@ def _forage_bean_properties(factory_name, feature, bean_name):
 def _forage_beans_table(factory_name, feature):
     catalog = _load_catalog()
     if not catalog:
-        return f"*Catalog not found. Run `mvn install -DskipTests` to generate it.*"
+        return "*Catalog not found. Run `mvn install -DskipTests` to generate it.*"
 
     factory = _find_factory(catalog, factory_name)
     if not factory:

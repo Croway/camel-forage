@@ -6,7 +6,7 @@ Forage modules are configured through properties. You can set them in properties
 
 All Forage properties follow the pattern:
 
-```
+```text
 forage.<beanName>.<module>.<parameter>=<value>
 ```
 
@@ -89,7 +89,7 @@ forage.myAgent.agent.base.url=http://localhost:11434
 
 Or split them into separate files for clarity:
 
-```
+```text
 forage-datasource-factory.properties   # JDBC configuration
 forage-connectionfactory.properties    # JMS configuration
 forage-agent-factory.properties        # AI agent configuration
@@ -101,7 +101,7 @@ Each module has required properties (the connection must know _where_ to connect
 
 Required properties throw a clear error at startup if missing:
 
-```
+```text
 MissingConfigException: Missing required configuration: forage.myDb.jdbc.url
 ```
 

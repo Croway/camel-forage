@@ -82,7 +82,7 @@ camel forage run *
 
 You should see the query results logged every 5 seconds:
 
-```
+```text
 Users: [{id=1, name=Alice}, {id=2, name=Bob}]
 ```
 

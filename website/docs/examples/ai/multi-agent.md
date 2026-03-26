@@ -57,7 +57,7 @@ Two routes send different questions to different agents. A shared tool is scoped
 ```yaml title="multi-agent.camel.yaml"
 - route:
     id: google
-    description: This route uses an Agent that leverages Google Vertex
+    description: This route uses an Agent that leverages Google Gemini
     from:
       uri: timer
       parameters:
