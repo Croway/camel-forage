@@ -41,3 +41,7 @@ build/
 ObjectStore/
 PutObjectStore/
 .citrus-jbang
+
+### MkDocs ###
+website/site/
+__pycache__/

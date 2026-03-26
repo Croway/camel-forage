@@ -1,0 +1,125 @@
+site_name: Forage
+site_description: Opinionated bean factories for Apache Camel
+site_url: https://kaotoio.github.io/forage/
+repo_url: https://github.com/KaotoIO/forage
+repo_name: KaotoIO/forage
+edit_uri: edit/main/website/docs/
+copyright: Copyright &copy; Forage
+
+theme:
+  logo: assets/camel-logo.svg
+  favicon: assets/camel-logo.svg
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: IBM Plex Sans
+    code: IBM Plex Mono
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - toc.follow
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets
+  - attr_list
+  - md_in_html
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - search
+  - macros:
+      module_name: macros/forage_catalog
+  - minify:
+      minify_html: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started/index.md
+  - Core Concepts:
+      - concepts/index.md
+      - Bean Providers: concepts/bean-providers.md
+      - Configuration System: concepts/configuration.md
+      - Architecture: concepts/architecture.md
+      - Runtime Support: concepts/runtimes.md
+  - Examples:
+      - examples/index.md
+      - Datasource:
+          - Single Database: examples/datasource/single.md
+          - Multiple Databases: examples/datasource/multi.md
+          - Event Booking: examples/datasource/event-booking.md
+          - Aggregation Repository: examples/datasource/aggregation.md
+          - Idempotent Consumer: examples/datasource/idempotent.md
+      - JMS:
+          - Basic Messaging: examples/jms/single.md
+          - Transactional JMS: examples/jms/transactional.md
+      - Transactions:
+          - Distributed XA: examples/transactions/distributed-xa.md
+      - AI:
+          - Single Agent: examples/ai/single-agent.md
+          - Multi-Agent: examples/ai/multi-agent.md
+          - RAG: examples/ai/rag.md
+  - Modules:
+      - modules/index.md
+      - AI:
+          - modules/ai/index.md
+          - Agents: modules/ai/agents.md
+          - Chat Models: modules/ai/chat-models.md
+          - Embeddings: modules/ai/embeddings.md
+          - Vector Databases: modules/ai/vector-databases.md
+          - Chat Memory: modules/ai/chat-memory.md
+      - JDBC: modules/jdbc.md
+      - JMS: modules/jms.md
+  - Guides:
+      - guides/index.md
+      - Camel JBang: guides/camel-jbang.md
+  - Developer Guide:
+      - developer/index.md
+      - Adding Modules: developer/adding-modules.md
+      - Contributing Beans: developer/contributing-beans.md
+      - Integration Testing: developer/testing.md
+      - Release Process: developer/release.md
