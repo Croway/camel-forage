@@ -9,10 +9,16 @@ Usage in Markdown:
     {{ forage_properties("DataSource") }}
     {{ forage_bean_properties("Agent", "Chat Model", "ollama") }}
     {{ forage_beans_table("Agent", "Chat Model") }}
+
+Version variables (automatically extracted from pom.xml):
+
+    {{ forage_version }}    -> e.g. "1.1-SNAPSHOT"
+    {{ camel_version }}     -> e.g. "4.18.0"
 """
 
 import json
 import os
+import xml.etree.ElementTree as ET
 
 CATALOG_PATH = os.path.join(
     os.path.dirname(__file__),
@@ -23,6 +29,28 @@ CATALOG_PATH = os.path.join(
     "generated-catalog",
     "forage-catalog.json",
 )
+
+POM_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "pom.xml")
+
+POM_NS = {"m": "http://maven.apache.org/POM/4.0.0"}
+
+
+def _load_versions():
+    path = os.path.normpath(POM_PATH)
+    if not os.path.exists(path):
+        return {}
+    tree = ET.parse(path)
+    root = tree.getroot()
+    versions = {}
+    ver = root.find("m:version", POM_NS)
+    if ver is not None:
+        versions["forage_version"] = ver.text
+    props = root.find("m:properties", POM_NS)
+    if props is not None:
+        camel_ver = props.find("m:camel.version", POM_NS)
+        if camel_ver is not None:
+            versions["camel_version"] = camel_ver.text
+    return versions
 
 
 def _load_catalog():
@@ -147,7 +175,10 @@ def _forage_beans_table(factory_name, feature):
 
 
 def define_env(env):
-    """Hook for mkdocs-macros-plugin: register macros."""
+    """Hook for mkdocs-macros-plugin: register macros and version variables."""
     env.macro(_forage_properties, "forage_properties")
     env.macro(_forage_bean_properties, "forage_bean_properties")
     env.macro(_forage_beans_table, "forage_beans_table")
+
+    versions = _load_versions()
+    env.variables.update(versions)

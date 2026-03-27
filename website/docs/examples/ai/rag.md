@@ -127,9 +127,7 @@ The route fires once and asks about the cancellation policy. Because RAG is enab
 To see the difference RAG makes, run the same route without the RAG dependencies:
 
 ```bash
-camel run main-route.camel.yaml forage-agent-factory.properties \
-    --dep=mvn:io.kaoto.forage:forage-agent:1.1-SNAPSHOT \
-    --dep=mvn:io.kaoto.forage:forage-model-ollama:1.1-SNAPSHOT
+camel forage run main-route.camel.yaml forage-agent-factory.properties
 ```
 
 Without access to the knowledge base, the agent cannot confirm the refund amount and responds with a generic disclaimer that terms may vary.
