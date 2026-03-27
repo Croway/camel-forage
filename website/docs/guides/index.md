@@ -3,3 +3,4 @@
 In-depth guides for advanced Forage use cases.
 
 - [Camel JBang](camel-jbang.md) — Plugin installation, property validation, hot reload, and export
+- [Forage Catalog](forage-catalog.md) — Catalog structure, UI wizard integration, and programmatic access

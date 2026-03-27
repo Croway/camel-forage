@@ -117,6 +117,7 @@ nav:
   - Guides:
       - guides/index.md
       - Camel JBang: guides/camel-jbang.md
+      - Forage Catalog: guides/forage-catalog.md
   - Developer Guide:
       - developer/index.md
       - Adding Modules: developer/adding-modules.md
