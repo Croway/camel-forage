@@ -5,7 +5,7 @@ The Forage plugin for [Camel JBang](https://camel.apache.org/manual/camel-jbang.
 ## Installation
 
 ```bash
-camel plugin add forage
+camel plugin add forage --gav io.kaoto.forage:camel-jbang-plugin-forage:{{ forage_version }}
 ```
 
 ## Running Routes

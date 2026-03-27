@@ -5,14 +5,14 @@ Get up and running with Forage in minutes.
 ## Prerequisites
 
 - Java 17 or later
-- [Apache Camel 4.18+](https://camel.apache.org/) with [Camel JBang](https://camel.apache.org/manual/camel-jbang.html) installed
+- [Apache Camel {{ camel_version }}+](https://camel.apache.org/) with [Camel JBang](https://camel.apache.org/manual/camel-jbang.html) installed
 
 ## Install the Forage Plugin
 
 Forage extends Camel JBang with the `forage` plugin. Install it once:
 
 ```bash
-camel plugin add forage
+camel plugin add forage --gav io.kaoto.forage:camel-jbang-plugin-forage:{{ forage_version }}
 ```
 
 Verify the installation:
