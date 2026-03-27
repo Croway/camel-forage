@@ -82,7 +82,8 @@ public class ForageReloadWatcher extends ServiceSupport implements CamelContextA
     protected void doStart() throws Exception {
         super.doStart();
 
-        File dir = new File(".").getAbsoluteFile();
+        String configDir = System.getProperty("forage.config.dir");
+        File dir = (configDir != null ? new File(configDir) : new File(".")).getAbsoluteFile();
         if (!dir.exists() || !dir.isDirectory()) {
             LOG.warn("Working directory does not exist, Forage hot-reload disabled");
             return;
