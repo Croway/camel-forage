@@ -265,6 +265,27 @@ public final class ConfigHelper {
             LOG.debug("Failed to load application.properties from working directory", ex);
         }
 
+        // Fallback to forage.config.dir / FORAGE_CONFIG_DIR
+        if (input == null) {
+            String configDir = System.getProperty("forage.config.dir");
+            if (configDir == null) {
+                configDir = System.getenv("FORAGE_CONFIG_DIR");
+            }
+            if (configDir != null) {
+                try {
+                    java.io.File file = java.nio.file.Path.of(configDir, "application.properties")
+                            .toAbsolutePath()
+                            .toFile();
+                    if (file.exists()) {
+                        LOG.debug("Loading application.properties from config dir: {}", file.getAbsolutePath());
+                        input = new java.io.FileInputStream(file);
+                    }
+                } catch (IOException ex) {
+                    LOG.debug("Failed to load application.properties from config dir", ex);
+                }
+            }
+        }
+
         // Fallback to classpath — try multiple classloaders since in Quarkus
         // augmentation the deployment classloader may not see the application's resources
         if (input == null) {

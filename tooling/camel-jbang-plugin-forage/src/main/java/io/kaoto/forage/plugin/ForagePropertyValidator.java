@@ -49,7 +49,8 @@ public final class ForagePropertyValidator {
         }
 
         try {
-            File workingDir = new File(System.getProperty("user.dir"));
+            String configDir = System.getProperty("forage.config.dir");
+            File workingDir = configDir != null ? new File(configDir) : new File(System.getProperty("user.dir"));
             ForageCatalogReader catalog = ForageCatalogReader.getInstance();
 
             ValidationResult validation = validate(workingDir, catalog);

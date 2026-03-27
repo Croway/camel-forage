@@ -111,7 +111,8 @@ public class CatalogDrivenExportCustomizer implements ExportCustomizer {
     private Map<String, Map<String, List<String>>> getScannedProperties() {
         if (scannedProperties == null) {
             try {
-                File workingDir = new File(System.getProperty("user.dir"));
+                String configDir = System.getProperty("forage.config.dir");
+                File workingDir = configDir != null ? new File(configDir) : new File(System.getProperty("user.dir"));
                 ForageCatalogReader catalog = ForageCatalogReader.getInstance();
                 scannedProperties = ForagePropertyScanner.scanProperties(workingDir, catalog);
             } catch (IOException e) {
