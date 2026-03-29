@@ -11,19 +11,19 @@
     <description>A plugin extension for Apache Camel that provides opinionated bean factories</description>
 
     <properties>
-        <camel.version>4.18.0</camel.version>
+        <camel.version>4.18.1</camel.version>
         <langchain4j.version>1.11.0</langchain4j.version>
         <langchain4j-beta.version>1.11.0-beta19</langchain4j-beta.version>
         <langchain4j-community.version>1.11.0-beta19</langchain4j-community.version>
 
         <agroal.version>2.8</agroal.version>
-        <assertj-core.version>3.27.6</assertj-core.version>
+        <assertj-core.version>3.27.7</assertj-core.version>
         <aws-sdk.version>2.42.10</aws-sdk.version>
         <azure.identity.version>1.18.2</azure.identity.version>
         <azure.messaging.eventhubs.version>5.21.2</azure.messaging.eventhubs.version>
         <camel-quarkus.version>3.32.0</camel-quarkus.version>
         <citrus.version>4.10.0</citrus.version>
-        <groovy.version>4.0.28</groovy.version>
+        <groovy.version>4.0.30</groovy.version>
         <ibmmq-client.version>9.4.4.1</ibmmq-client.version>
 
         <javaparser.version>3.28.0</javaparser.version>
@@ -60,11 +60,11 @@
         <smallrye.version>3.16.0</smallrye.version>
         <spotless.version>3.2.1</spotless.version>
         <palantir-format.version>2.71.0</palantir-format.version>
-        <spring-boot.version>3.5.11</spring-boot.version>
-        <spring.version>6.2.16</spring.version>
+        <spring-boot.version>3.5.12</spring-boot.version>
+        <spring.version>6.2.17</spring.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
-        <testcontainers.version>1.21.4</testcontainers.version>
-        <vertx.version>4.5.20</vertx.version>
+        <testcontainers.version>2.0.3</testcontainers.version>
+        <vertx.version>4.5.25</vertx.version>
 
         <!-- Test container image properties -->
         <postgres.container.image>mirror.gcr.io/postgres:17.5-alpine</postgres.container.image>
