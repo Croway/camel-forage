@@ -6,7 +6,7 @@ Forage supports hot-reloading of configuration properties when running in dev mo
 
 Hot-reload is enabled when **either** condition is true:
 
-- **Camel JBang dev mode:** `camel forage run --dev myroute.yaml`
+- **Camel JBang dev mode:** `camel run --dev myroute.yaml`
 - **System property:** `-Dforage.reload.enabled=true`
 
 ## What can be hot-reloaded

@@ -154,7 +154,7 @@ Three routes demonstrate the same query through different Camel components:
 ## Running
 
 ```bash
-camel forage run route.camel.yaml application.properties
+camel run route.camel.yaml application.properties
 ```
 
 You should see repeated log lines with the two rows from the `bar` table.

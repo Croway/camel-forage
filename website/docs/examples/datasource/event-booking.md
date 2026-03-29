@@ -158,7 +158,7 @@ forage.jdbc.transaction.timeout.seconds=30
 ## Running
 
 ```bash
-camel forage run book.camel.yaml application.properties
+camel run book.camel.yaml application.properties
 ```
 
 ### Testing the scenarios

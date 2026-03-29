@@ -194,7 +194,7 @@ Key points in the transactional consumer:
 ## Running
 
 ```bash
-camel forage run *
+camel run *
 ```
 
 Watch the logs -- you will see successful commits, simulated rollbacks, and eventually messages arriving in the DLQ after repeated failures.

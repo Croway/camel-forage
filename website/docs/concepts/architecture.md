@@ -94,4 +94,4 @@ You don't need to understand the internal architecture to use Forage. Just add t
 - Need Ollama? Add `forage-model-ollama`
 - Need Redis memory? Add `forage-memory-redis`
 
-When using `camel forage run`, dependencies are resolved automatically based on your configuration. When exporting with `camel forage export`, the correct runtime-specific dependencies are included.
+When using `camel run`, dependencies are resolved automatically based on your configuration. When exporting with `camel export`, the correct runtime-specific dependencies are included.

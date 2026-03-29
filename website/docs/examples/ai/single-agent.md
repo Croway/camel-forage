@@ -101,7 +101,7 @@ The route sends a natural-language question to the agent, which decides whether 
 ## Running
 
 ```bash
-camel forage run *
+camel run *
 ```
 
 The route fires once, sends the prompt "give the details of user 123" to the agent. The agent recognizes it needs user data, calls the `userDb` tool, receives the JSON response, and formulates a natural-language answer containing the user's name and ID.

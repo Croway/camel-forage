@@ -37,7 +37,7 @@ This makes it easy to override configuration per environment without changing fi
 export FORAGE_MYDB_JDBC_URL=jdbc:postgresql://prod-db:5432/orders
 
 # Everything else comes from the properties file
-camel forage run *
+camel run *
 ```
 
 ### Environment Variable Naming

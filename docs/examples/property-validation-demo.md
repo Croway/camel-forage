@@ -23,9 +23,9 @@ forage.jdbc.passwod=secret
 Run validation:
 
 ```bash
-camel forage run *
+camel run *
 # or for export
-camel forage export *
+camel export *
 ```
 
 **Output:**
@@ -66,9 +66,9 @@ forage.jms.kind=activemqs
 Run validation:
 
 ```bash
-camel forage run *
+camel run *
 # or for export
-camel forage export *
+camel export *
 ```
 
 **Output:**
@@ -114,9 +114,9 @@ forage.agent.temperature=0.7
 Run validation:
 
 ```bash
-camel forage run *
+camel run *
 # or for export
-camel forage export *
+camel export *
 ```
 
 **Output:**
@@ -147,9 +147,9 @@ Starting Camel JBang...
 Run with strict mode to fail on warnings:
 
 ```bash
-camel forage run * --strict
+camel run * --strict
 # or for export
-camel forage export * --strict
+camel export * --strict
 ```
 
 **Output:**
@@ -191,9 +191,9 @@ forage.ds3.jdbc.db.kind=mariadbb
 Run validation:
 
 ```bash
-camel forage run *
+camel run *
 # or for export
-camel forage export *
+camel export *
 ```
 
 **Output:**
@@ -219,9 +219,9 @@ Starting Camel JBang...
 Skip validation entirely:
 
 ```bash
-camel forage run * --skip-validation
+camel run * --skip-validation
 # or for export
-camel forage export * --skip-validation
+camel export * --skip-validation
 ```
 
 **Output:**
@@ -239,10 +239,10 @@ Always validate during development to catch errors early:
 ```bash
 # Development workflow
 vi application.properties
-camel forage run * --strict  # Catches errors immediately
+camel run * --strict  # Catches errors immediately
 
 # Before exporting
-camel forage export * --strict  # Validate before export
+camel export * --strict  # Validate before export
 ```
 
 ### 2. Use in CI/CD Pipelines
@@ -262,7 +262,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Validate Forage properties
         run: |
-          camel forage run --strict *
+          camel run --strict *
 ```
 
 ### 3. Fix Warnings Immediately

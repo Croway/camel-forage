@@ -21,7 +21,7 @@ Verify the installation:
 camel forage --help
 ```
 
-The plugin adds `camel forage run`, `camel forage export`, and configuration commands that handle dependency resolution automatically — no need to specify `--dep` flags manually.
+Once installed, the standard `camel run` and `camel export` commands automatically discover Forage dependencies from your properties files — no `--dep` flags needed. The plugin also adds `camel forage config` and `camel forage datasource` subcommands for configuration management.
 
 ## Your First Route
 
@@ -77,7 +77,7 @@ The `myDatabase` prefix becomes the bean name — Forage registers a pooled data
 ### 4. Run it
 
 ```bash
-camel forage run *
+camel run *
 ```
 
 You should see the query results logged every 5 seconds:
@@ -93,13 +93,13 @@ When you're ready to deploy, export to Spring Boot or Quarkus:
 === "Spring Boot"
 
     ```bash
-    camel forage export --runtime=spring-boot --directory=./my-app
+    camel export --runtime=spring-boot --directory=./my-app
     ```
 
 === "Quarkus"
 
     ```bash
-    camel forage export --runtime=quarkus --directory=./my-app
+    camel export --runtime=quarkus --directory=./my-app
     ```
 
 ## What's Next?

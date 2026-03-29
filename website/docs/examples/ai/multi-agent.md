@@ -122,7 +122,7 @@ Two routes send different questions to different agents. A shared tool is scoped
 ## Running
 
 ```bash
-camel forage run *
+camel run *
 ```
 
 Both routes fire once. The Gemini agent receives "give the details of user 123", calls the `userDb` tool, and returns user details. The Ollama agent receives "What is the timezone in Brasilia?" and answers from its training data -- it has no tools available.

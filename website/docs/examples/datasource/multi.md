@@ -214,7 +214,7 @@ Each route queries both databases in a single flow. The only difference from the
 ## Running
 
 ```bash
-camel forage run route.camel.yaml application.properties
+camel run route.camel.yaml application.properties
 ```
 
 The logs alternate between PostgreSQL and MySQL results on each timer tick.
