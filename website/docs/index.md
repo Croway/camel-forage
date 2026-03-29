@@ -39,7 +39,7 @@ Forage works with all major Camel runtimes:
 
 | Runtime | Support |
 |---|---|
-| **Camel JBang** | Run directly with `camel forage run` |
+| **Camel JBang** | Run directly with `camel run` (Forage plugin auto-discovers dependencies) |
 | **Camel Spring Boot** | Auto-configuration via starters |
 | **Camel Quarkus** | Native compilation ready |
 

@@ -187,7 +187,7 @@ When the exception is thrown, all three operations are undone atomically: the da
 ## Running
 
 ```bash
-camel forage run *
+camel run *
 ```
 
 Watch the logs to observe the two flows:

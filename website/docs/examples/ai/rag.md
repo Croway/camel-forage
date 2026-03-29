@@ -117,7 +117,7 @@ The route sends a question about the company's cancellation policy. The agent re
 ## Running
 
 ```bash
-camel forage run *
+camel run *
 ```
 
 The route fires once and asks about the cancellation policy. Because RAG is enabled, the agent retrieves the relevant chunk from the knowledge base and correctly answers that a **full refund** is given when cancelling 24 hours before pickup.
@@ -127,7 +127,7 @@ The route fires once and asks about the cancellation policy. Because RAG is enab
 To see the difference RAG makes, run the same route without the RAG dependencies:
 
 ```bash
-camel forage run main-route.camel.yaml forage-agent-factory.properties
+camel run main-route.camel.yaml forage-agent-factory.properties
 ```
 
 Without access to the knowledge base, the agent cannot confirm the refund amount and responds with a generic disclaimer that terms may vary.

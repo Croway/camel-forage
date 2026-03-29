@@ -140,7 +140,7 @@ public class MyAggregationStrategy implements AggregationStrategy {
 ## Running
 
 ```bash
-camel forage run event-batching.camel.yaml application.properties \
+camel run event-batching.camel.yaml application.properties \
   org/forage/MyAggregationStrategy.java
 ```
 

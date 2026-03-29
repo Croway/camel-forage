@@ -94,7 +94,7 @@ forage.jdbc.idempotent.repository.table.name=camel_idempotent     # (4)!
 ## Running
 
 ```bash
-camel forage run jdbc-idempotent.camel.yaml application.properties
+camel run jdbc-idempotent.camel.yaml application.properties
 ```
 
 ### Testing idempotency

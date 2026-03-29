@@ -63,9 +63,9 @@ Validation is available for both `run` and `export` commands.
 By default, validation runs automatically and prints warnings but doesn't fail:
 
 ```bash
-camel forage run *
+camel run *
 # or
-camel forage export *
+camel export *
 
 ⚠️  Forage Property Validation Warnings:
 ══════════════════════════════════════════════════════════════════════
@@ -83,9 +83,9 @@ Starting Camel JBang...
 Fail on validation warnings:
 
 ```bash
-camel forage run * --strict
+camel run * --strict
 # or
-camel forage export * --strict
+camel export * --strict
 
 ⚠️  Forage Property Validation Warnings:
 ══════════════════════════════════════════════════════════════════════
@@ -103,9 +103,9 @@ Total warnings: 1
 Disable validation entirely:
 
 ```bash
-camel forage run * --skip-validation
+camel run * --skip-validation
 # or
-camel forage export * --skip-validation
+camel export * --skip-validation
 ```
 
 ### Programmatic Usage

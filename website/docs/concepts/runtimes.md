@@ -9,17 +9,17 @@ Forage works with all major Apache Camel runtimes. The same properties and route
 The fastest way to develop. Run routes directly from the command line:
 
 ```bash
-camel forage run *
+camel run *
 ```
 
-The Forage JBang plugin automatically resolves dependencies, validates properties, and starts your routes. No build step needed — ideal for prototyping and development.
+With the Forage plugin installed, the standard `camel run` command automatically resolves Forage dependencies, validates properties, and starts your routes. No build step needed — ideal for prototyping and development.
 
 ### Spring Boot
 
 For production deployments with the Spring ecosystem. Export your project:
 
 ```bash
-camel forage export --runtime=spring-boot --directory=./my-app
+camel export --runtime=spring-boot --directory=./my-app
 ```
 
 Forage provides Spring Boot starters that integrate with Spring's auto-configuration. Your Forage beans are registered as Spring beans and participate in Spring's dependency injection, health checks, and lifecycle management.
@@ -29,7 +29,7 @@ Forage provides Spring Boot starters that integrate with Spring's auto-configura
 For cloud-native deployments with fast startup and low memory. Export your project:
 
 ```bash
-camel forage export --runtime=quarkus --directory=./my-app
+camel export --runtime=quarkus --directory=./my-app
 ```
 
 Forage provides Quarkus deployment extensions that process configuration at build time. This enables GraalVM native compilation for minimal container images.
@@ -70,13 +70,13 @@ A typical workflow uses all three stages:
 1. **Develop** with Camel JBang — fast iteration, no build step
 
     ```bash
-    camel forage run *
+    camel run *
     ```
 
 2. **Export** to your target runtime when ready
 
     ```bash
-    camel forage export --runtime=spring-boot --directory=./my-app
+    camel export --runtime=spring-boot --directory=./my-app
     ```
 
 3. **Deploy** using standard tooling for that runtime
@@ -97,7 +97,7 @@ While the configuration is the same, there are a few runtime-specific behaviors 
 | Native compilation | No | No | Yes (GraalVM) |
 | Configuration sources | Properties files, env vars | Spring Environment + Forage properties | SmallRye Config + Forage properties |
 | Bean registration | Camel registry | Spring beans + Camel registry | CDI beans + Camel registry |
-| Hot reload | `camel forage run --dev` | Spring DevTools | Quarkus dev mode |
+| Hot reload | `camel run --dev` | Spring DevTools | Quarkus dev mode |
 
 In Spring Boot, Forage properties are available through Spring's `@Value` and `@ConditionalOnProperty` annotations. In Quarkus, Forage properties are translated to Quarkus-native configuration at build time.
 

@@ -109,7 +109,7 @@ The first route fires every 5 seconds, sets a message body, and sends it to `tes
 ## Running
 
 ```bash
-camel forage run *
+camel run *
 ```
 
 You should see alternating log lines every 5 seconds:

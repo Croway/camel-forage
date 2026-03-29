@@ -11,16 +11,16 @@ camel plugin add forage --gav io.kaoto.forage:camel-jbang-plugin-forage:{{ forag
 ## Running Routes
 
 ```bash
-camel forage run *
+camel run *
 ```
 
 The `*` glob picks up all route files and properties in the current directory. You can also specify files explicitly:
 
 ```bash
-camel forage run route.camel.yaml application.properties
+camel run route.camel.yaml application.properties
 ```
 
-Unlike plain `camel run`, the Forage plugin automatically resolves all required dependencies based on your configuration — no `--dep` flags needed.
+With the Forage plugin installed, the standard `camel run` command automatically resolves all required Forage dependencies based on your configuration — no `--dep` flags needed.
 
 ## Property Validation
 
@@ -71,7 +71,7 @@ forage.myDb.jdbc.invalid.property=value
 In dev mode, Forage watches `.properties` files for changes and automatically recreates beans without restarting:
 
 ```bash
-camel forage run --dev *
+camel run --dev *
 ```
 
 When you edit a properties file, Forage:
@@ -100,13 +100,13 @@ Export your project to Spring Boot or Quarkus with all Forage dependencies inclu
 === "Spring Boot"
 
     ```bash
-    camel forage export --runtime=spring-boot --directory=./my-app
+    camel export --runtime=spring-boot --directory=./my-app
     ```
 
 === "Quarkus"
 
     ```bash
-    camel forage export --runtime=quarkus --directory=./my-app
+    camel export --runtime=quarkus --directory=./my-app
     ```
 
 ## Testing Connections
