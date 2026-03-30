@@ -113,6 +113,12 @@ public class InfinispanMemoryBeanProvider implements ChatMemoryBeanProvider, Max
         // Cache manager and store are initialized statically
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void withMaxMessages(int maxMessages) {
+        this.maxMessagesOverride = maxMessages;
+    }
+
     /**
      * Creates a new chat memory provider that uses Infinispan for persistent storage.
      *
@@ -133,11 +139,6 @@ public class InfinispanMemoryBeanProvider implements ChatMemoryBeanProvider, Max
      * @return a new chat memory provider backed by Infinispan storage, never {@code null}
      * @throws RuntimeException if Infinispan connection cannot be established or configured
      */
-    @Override
-    public void withMaxMessages(int maxMessages) {
-        this.maxMessagesOverride = maxMessages;
-    }
-
     @Override
     public ChatMemoryProvider create() {
         int maxMessages = maxMessagesOverride != null ? maxMessagesOverride : DEFAULT_MAX_MESSAGES;
