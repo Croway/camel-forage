@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 import org.apache.camel.CamelContext;
+import org.apache.camel.spi.CamelEvent;
 import org.apache.camel.spi.ContextServicePlugin;
+import org.apache.camel.support.EventNotifierSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.common.BeanFactory;
@@ -35,15 +37,28 @@ public class ForageContextServicePlugin implements ContextServicePlugin {
             }
         });
 
-        // Register file watcher for hot-reload when enabled
-        if (!factories.isEmpty() && isReloadEnabled(camelContext)) {
-            try {
-                ForageReloadWatcher watcher = new ForageReloadWatcher(factories);
-                camelContext.addService(watcher);
-                LOG.info("Forage hot-reload enabled: watching for property file changes");
-            } catch (Exception e) {
-                LOG.warn("Failed to start Forage hot-reload watcher", e);
-            }
+        // Defer hot-reload watcher startup to after the CamelContext is fully started.
+        // At load() time, camel.main.routesReloadEnabled is not yet set on the
+        // PropertiesComponent (the dev profile is configured after build()), so
+        // isReloadEnabled() would return false. By waiting for CamelContextStartedEvent,
+        // all initial properties are guaranteed to be available.
+        if (!factories.isEmpty()) {
+            camelContext.getManagementStrategy().addEventNotifier(new EventNotifierSupport() {
+                @Override
+                public void notify(CamelEvent event) throws Exception {
+                    if (event instanceof CamelEvent.CamelContextStartedEvent) {
+                        if (isReloadEnabled(camelContext)) {
+                            try {
+                                ForageReloadWatcher watcher = new ForageReloadWatcher(factories);
+                                camelContext.addService(watcher);
+                                LOG.info("Forage hot-reload enabled: watching for property file changes");
+                            } catch (Exception e) {
+                                LOG.warn("Failed to start Forage hot-reload watcher", e);
+                            }
+                        }
+                    }
+                }
+            });
         }
     }
 
