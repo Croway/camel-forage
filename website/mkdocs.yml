@@ -7,7 +7,7 @@ edit_uri: edit/main/website/docs/
 copyright: Copyright &copy; Forage
 
 theme:
-  logo: assets/forage-logo.png
+  logo: assets/forage-icon.png
   favicon: assets/forage-icon.png
   name: material
   palette:
