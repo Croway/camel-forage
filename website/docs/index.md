@@ -1,5 +1,9 @@
 # Forage
 
+<p align="center">
+  <img src="assets/forage-logo.png" alt="Forage Logo" width="400">
+</p>
+
 **Opinionated bean factories for Apache Camel.**
 
 Forage eliminates manual Java bean instantiation by providing factory classes configurable through properties files, environment variables, or system properties. Write your Camel routes — Forage handles the wiring.
