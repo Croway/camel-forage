@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/forage-logo-full-transparent.png" alt="Forage Logo" width="400">
+</p>
+
 # Forage
 
 A plugin extension for Apache Camel that provides opinionated bean factories for simplified component configuration across various domains including AI, JDBC, and other bean-based components.
