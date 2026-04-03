@@ -184,26 +184,6 @@ ClassNotFoundException: io.kaoto.forage.jdbc.postgresql.PostgresqlJdbc
 2. Run from directory containing properties files
 3. Check plugin is installed: `camel plugin list`
 
-#### Hot-Reload Not Working
-
-**Cause:**
-- Not running in dev mode
-- System property not set
-
-**Solution:**
-
-Enable hot-reload:
-
-```bash
-# Option 1: Dev mode (recommended)
-camel run --dev *
-
-# Option 2: System property
-camel run * -Dforage.reload.enabled=true
-```
-
-See [Hot Reload](camel-jbang.md#hot-reload) for details.
-
 ### Spring Boot
 
 #### Beans Not Auto-Configured
@@ -757,19 +737,6 @@ ServiceLoader<DataSourceProvider> providers =
     ServiceLoader.load(DataSourceProvider.class);
 providers.forEach(provider -> 
     System.out.println("Provider: " + provider.getClass().getName()));
-```
-
-### Test Hot-Reload
-
-```bash
-# Start in dev mode
-camel run --dev *
-
-# In another terminal, modify properties
-echo "forage.myDb.jdbc.pool.max.size=50" >> application.properties
-
-# Watch logs for reload message
-# [ForageReloadWatcher] Configuration changed, reloading beans...
 ```
 
 ---

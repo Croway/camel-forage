@@ -768,7 +768,6 @@ forage.ollamaAgent.agent.features=memoryless
 - [ ] Update route references to use `#beanName`
 - [ ] Test with `camel run --dev` for validation
 - [ ] Run property validation: `camel run * --strict`
-- [ ] Verify hot-reload works (if using dev mode)
 - [ ] Export to target runtime and test
 
 ### JDBC Migration
