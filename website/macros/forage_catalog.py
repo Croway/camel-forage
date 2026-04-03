@@ -181,4 +181,6 @@ def define_env(env):
     env.macro(_forage_beans_table, "forage_beans_table")
 
     versions = _load_versions()
-    env.variables.update(versions)
+    for k, v in versions.items():
+        if k not in env.variables:
+            env.variables[k] = v
