@@ -202,7 +202,7 @@ camel run --dev *
 camel run * -Dforage.reload.enabled=true
 ```
 
-See the hot-reload documentation for details.
+See [Hot Reload](camel-jbang.md#hot-reload) for details.
 
 ### Spring Boot
 
