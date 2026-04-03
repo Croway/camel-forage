@@ -756,51 +756,6 @@ forage.ollamaAgent.agent.features=memoryless
 
 ---
 
-## Migration Checklist
-
-### General Migration
-
-- [ ] Identify all manually configured beans
-- [ ] Map existing properties to Forage equivalents
-- [ ] Add Forage dependencies for each bean type
-- [ ] Create or update `application.properties`
-- [ ] Remove manual bean configuration code
-- [ ] Update route references to use `#beanName`
-- [ ] Test with `camel run --dev` for validation
-- [ ] Run property validation: `camel run * --strict`
-- [ ] Export to target runtime and test
-
-### JDBC Migration
-
-- [ ] Document current connection pool settings
-- [ ] Map pool configuration to Forage properties
-- [ ] Add transaction configuration if needed
-- [ ] Configure aggregation repositories (if used)
-- [ ] Configure idempotent repositories (if used)
-- [ ] Test connection pooling under load
-- [ ] Verify transaction behavior
-
-### JMS Migration
-
-- [ ] Document current broker configuration
-- [ ] Map connection factory settings to Forage
-- [ ] Add transaction configuration if needed
-- [ ] Test message sending and receiving
-- [ ] Verify connection pooling
-- [ ] Test failover scenarios (if multiple brokers)
-
-### AI Agent Migration
-
-- [ ] Identify all AI model configurations
-- [ ] Map API keys to environment variables
-- [ ] Configure memory providers (if stateful)
-- [ ] Set up tool routes with correct tags
-- [ ] Configure guardrails (if needed)
-- [ ] Test multi-agent scenarios
-- [ ] Verify memory persistence
-
----
-
 ## Real-World Example: Multi-Database Application
 
 ### Scenario
@@ -917,20 +872,12 @@ export ORDERS_PASS=prod_pass
 ```
 
 **Benefits:**
-- ✅ Same configuration file across all environments
-- ✅ Environment-specific values via environment variables
-- ✅ No code changes when switching runtimes
-- ✅ Consistent pool behavior across dev/staging/prod
-- ✅ Easy to add new databases without code changes
 
----
-
-## Version Compatibility
-
-| Forage Version | Camel Version | Spring Boot | Quarkus | LangChain4j |
-|----------------|---------------|-------------|---------|-------------|
-| 1.1.x | 4.14.0+ | 3.2.x | 3.15.x | 1.2.0+ |
-| 1.0.x | 4.10.0+ | 3.1.x | 3.10.x | 1.0.0+ |
+- Same configuration file across all environments
+- Environment-specific values via environment variables
+- No code changes when switching runtimes
+- Consistent pool behavior across dev/staging/prod
+- Easy to add new databases without code changes
 
 ---
 
