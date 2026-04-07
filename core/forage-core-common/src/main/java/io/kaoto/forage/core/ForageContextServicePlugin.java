@@ -4,20 +4,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 import org.apache.camel.CamelContext;
-import org.apache.camel.spi.CamelEvent;
 import org.apache.camel.spi.ContextServicePlugin;
-import org.apache.camel.support.EventNotifierSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.common.BeanFactory;
+import io.kaoto.forage.core.util.config.ConfigStore;
 
 public class ForageContextServicePlugin implements ContextServicePlugin {
     private static final Logger LOG = LoggerFactory.getLogger(ForageContextServicePlugin.class);
 
+    private final List<BeanFactory> factories = new ArrayList<>();
+
     @Override
     public void load(CamelContext camelContext) {
-        List<BeanFactory> factories = new ArrayList<>();
-
         ServiceLoader<BeanFactory> loader =
                 ServiceLoader.load(BeanFactory.class, camelContext.getApplicationContextClassLoader());
 
@@ -36,50 +35,49 @@ public class ForageContextServicePlugin implements ContextServicePlugin {
                         e);
             }
         });
-
-        // Defer hot-reload watcher startup to after the CamelContext is fully started.
-        // At load() time, camel.main.routesReloadEnabled is not yet set on the
-        // PropertiesComponent (the dev profile is configured after build()), so
-        // isReloadEnabled() would return false. By waiting for CamelContextStartedEvent,
-        // all initial properties are guaranteed to be available.
-        if (!factories.isEmpty()) {
-            camelContext.getManagementStrategy().addEventNotifier(new EventNotifierSupport() {
-                @Override
-                public void notify(CamelEvent event) throws Exception {
-                    if (event instanceof CamelEvent.CamelContextStartedEvent) {
-                        if (isReloadEnabled(camelContext)) {
-                            try {
-                                ForageReloadWatcher watcher = new ForageReloadWatcher(factories);
-                                camelContext.addService(watcher);
-                                LOG.info("Forage hot-reload enabled: watching for property file changes");
-                            } catch (Exception e) {
-                                LOG.warn("Failed to start Forage hot-reload watcher", e);
-                            }
-                        }
-                    }
-                }
-            });
-        }
     }
 
     /**
-     * Checks whether hot-reload should be enabled.
+     * Called by Camel's route watcher reload strategy before routes are reloaded in dev mode.
+     * Refreshes Forage beans so they pick up updated property values from disk.
      *
-     * <p>Reload is enabled when either:
-     * <ul>
-     *   <li>The system property {@code forage.reload.enabled} is set to {@code true}</li>
-     *   <li>The Camel property {@code camel.main.routesReloadEnabled} is {@code true}
-     *       (set by the {@code --dev} flag in Camel JBang)</li>
-     * </ul>
+     * <p>The reload cycle is:
+     * <ol>
+     *   <li><strong>Cleanup</strong> — call {@link BeanFactory#cleanup()} on all factories</li>
+     *   <li><strong>Clear config</strong> — call {@link ConfigStore#reload()} to clear cached values</li>
+     *   <li><strong>Reconfigure</strong> — call {@link BeanFactory#configure()} on all factories</li>
+     * </ol>
      */
-    private boolean isReloadEnabled(CamelContext camelContext) {
-        if ("true".equals(System.getProperty("forage.reload.enabled"))) {
-            return true;
+    @Override
+    public void onReload(CamelContext camelContext) {
+        if (factories.isEmpty()) {
+            return;
         }
-        return camelContext
-                .getPropertiesComponent()
-                .resolveProperty("camel.main.routesReloadEnabled")
-                .filter("true"::equals)
-                .isPresent();
+
+        LOG.info("Forage property change detected, reloading beans...");
+
+        // Phase 1: cleanup
+        for (BeanFactory factory : factories) {
+            try {
+                factory.cleanup();
+            } catch (Exception e) {
+                LOG.warn(
+                        "Failed to cleanup bean factory: {}", factory.getClass().getName(), e);
+            }
+        }
+
+        // Phase 2: clear config cache
+        LOG.debug("Clearing ConfigStore and ConfigHelper caches");
+        ConfigStore.getInstance().reload();
+
+        // Phase 3: reconfigure with fresh values from disk
+        for (BeanFactory factory : factories) {
+            try {
+                factory.configure();
+                LOG.info("Reloaded bean factory: {}", factory.getClass().getName());
+            } catch (Exception e) {
+                LOG.warn("Failed to reload bean factory: {}", factory.getClass().getName(), e);
+            }
+        }
     }
 }
