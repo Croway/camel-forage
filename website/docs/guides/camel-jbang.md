@@ -68,18 +68,21 @@ forage.myDb.jdbc.invalid.property=value
 
 ## Hot Reload
 
-In dev mode, Forage watches `.properties` files for changes and automatically recreates beans without restarting:
+In dev mode, Forage automatically recreates beans when `.properties` files change — without restarting the application:
 
 ```bash
 camel run --dev *
 ```
 
-When you edit a properties file, Forage:
+Forage hooks into Camel's route watcher reload strategy via the `ContextServicePlugin.onReload()` SPI. When Camel detects a file change, Forage refreshes beans **before** routes are reloaded, ensuring deterministic ordering in a single thread.
 
-1. Clears the configuration cache
-2. Destroys old beans
-3. Creates new beans with updated configuration
-4. Resets Camel components so routes pick up the new beans
+The reload cycle is:
+
+1. **Cleanup** — each `BeanFactory` unbinds old beans from the registry
+2. **Clear config** — the `ConfigStore` cache is cleared so values are re-read from disk
+3. **Reconfigure** — each `BeanFactory` re-reads configuration and binds new beans
+
+After the plugin reload completes, Camel proceeds to reload routes, which pick up the new beans automatically.
 
 ### What Can Be Hot-Reloaded
 
@@ -91,7 +94,7 @@ When you edit a properties file, Forage:
 
 - **Provider type changes** — e.g., changing `db.kind` from `postgresql` to `mysql` (requires different JARs)
 - **Adding new factory types** — e.g., adding JDBC when only AI was configured
-- **Environment variable changes** — the file watcher monitors `.properties` files only
+- **Environment variable changes** — only `.properties` file changes are detected
 
 ## Exporting to Production
 
