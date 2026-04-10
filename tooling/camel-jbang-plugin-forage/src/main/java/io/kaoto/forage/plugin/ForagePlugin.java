@@ -38,6 +38,7 @@ public class ForagePlugin implements Plugin {
                                 new CommandLine(new ConfigCommand(main))
                                         .addSubcommand("read", new CommandLine(new ConfigReadCommand(main)))
                                         .addSubcommand("write", new CommandLine(new ConfigWriteCommand(main))))
+                        .addSubcommand("run", new CommandLine(new ForageRun(main)))
                         .addSubcommand("export", new ForageExport(main)));
     }
 
@@ -73,6 +74,10 @@ public class ForagePlugin implements Plugin {
         });
     }
 
+    private void beforeRun(KameletMain main, List<String> files) {
+        resolveConfigDir(files);
+    }
+
     /**
      * Derives the configuration directory from the file arguments, mirroring
      * how Camel's {@code Run} resolves its base directory.
@@ -87,8 +92,11 @@ public class ForagePlugin implements Plugin {
      * <p>Sets {@code forage.config.dir} system property so that {@code ConfigStore},
      * {@code ConfigHelper}, and {@code ForagePropertyValidator}
      * all resolve properties from the correct location.
+     *
+     * <p>Called from both the {@link PluginRunCustomizer} SPI ({@code camel run})
+     * and {@link ForageRun} ({@code camel forage run}).
      */
-    private void beforeRun(KameletMain main, List<String> files) {
+    static void resolveConfigDir(List<String> files) {
         if (files == null || files.isEmpty()) {
             return;
         }
