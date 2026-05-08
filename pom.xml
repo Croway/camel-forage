@@ -270,6 +270,19 @@
                 <enabled>true</enabled>
             </snapshots>
         </repository>
+        <!-- OpenSAML 5.x is not on Maven Central; required transitively by
+             camel-cxf-soap → cxf-rt-ws-security → wss4j → opensaml -->
+        <repository>
+            <id>shibboleth</id>
+            <name>Shibboleth Repository</name>
+            <url>https://build.shibboleth.net/maven/releases/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
     </repositories>
 
     <profiles>

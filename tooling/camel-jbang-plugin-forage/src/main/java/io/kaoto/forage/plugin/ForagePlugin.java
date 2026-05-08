@@ -74,8 +74,22 @@ public class ForagePlugin implements Plugin {
         });
     }
 
+    private static final String SHIBBOLETH_REPO = "https://build.shibboleth.net/maven/releases/";
+
     private void beforeRun(KameletMain main, List<String> files) {
         resolveConfigDir(files);
+        addShibbolethRepo(main);
+    }
+
+    private static void addShibbolethRepo(KameletMain main) {
+        String existing = main.getRepositories();
+        if (existing != null && existing.contains(SHIBBOLETH_REPO)) {
+            return;
+        }
+        String repos = existing == null || existing.isBlank()
+                ? SHIBBOLETH_REPO
+                : existing + "," + SHIBBOLETH_REPO;
+        main.setRepositories(repos);
     }
 
     /**
