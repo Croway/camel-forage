@@ -59,9 +59,10 @@ Reference each by name in routes:
 !!! note "SSL/TLS"
     Set `forage.cxf.ssl.context.parameters` to the name of a Camel `SSLContextParameters` bean for HTTPS transport security. See the [Secured SOAP Client](../examples/cxf/soap-client-secured.md) example.
 
-!!! info "Quarkus: Automatic Address Adaptation"
-    When running on Quarkus, if a CXF endpoint is used as a **server** (route `from:`), Forage automatically converts its absolute localhost address (e.g., `http://localhost:8080/services/hello`) to a relative path (`/hello`) suitable for the Quarkus CXF servlet. The servlet root path is read from `quarkus.cxf.path` (default: `/services`).
+!!! info "Quarkus & Spring Boot: Automatic Address Adaptation"
+    When running on **Quarkus** or **Spring Boot**, if a CXF endpoint is used as a **server** (route `from:`), Forage automatically converts its absolute localhost address (e.g., `http://localhost:8080/services/hello`) to a relative path (`/hello`) suitable for the runtime's servlet container. The CXF endpoint is served through the existing web server -- no standalone HTTP server is started.
+
+    - **Quarkus**: the servlet root path is read from `quarkus.cxf.path` (default: `/services`).
+    - **Spring Boot**: the servlet root path is read from `cxf.path` (default: `/services`), and the CXF servlet is auto-registered by `cxf-spring-boot-starter-jaxws`.
 
     Client endpoints (route `to:`) are never adapted -- their absolute URL is preserved so they can reach external services. This means the same configuration works across JBang, Spring Boot, and Quarkus without changes.
-
-    If you use a non-default CXF servlet root, set `quarkus.cxf.path` accordingly.

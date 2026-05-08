@@ -22,10 +22,17 @@ public class ForageCxfEndpoint extends CxfEndpoint {
     private static final Set<String> LOCAL_HOSTS = Set.of("localhost", "127.0.0.1", "0.0.0.0");
     private String sslContextParametersBeanName;
     private final AtomicBoolean sslConfigured = new AtomicBoolean(false);
-    private String quarkusCxfServletPath;
+    private String cxfServletPath;
+    private String runtimeName;
 
     public void setQuarkusCxfServletPath(String path) {
-        this.quarkusCxfServletPath = path;
+        this.cxfServletPath = path;
+        this.runtimeName = "Quarkus";
+    }
+
+    public void setSpringBootCxfServletPath(String path) {
+        this.cxfServletPath = path;
+        this.runtimeName = "Spring Boot";
     }
 
     public void setSslContextParametersBeanName(String beanName) {
@@ -38,12 +45,12 @@ public class ForageCxfEndpoint extends CxfEndpoint {
 
     @Override
     public Consumer createConsumer(Processor processor) throws Exception {
-        adaptAddressForQuarkusServer();
+        adaptAddressForServletContainer();
         return super.createConsumer(processor);
     }
 
-    private void adaptAddressForQuarkusServer() {
-        if (quarkusCxfServletPath == null) {
+    private void adaptAddressForServletContainer() {
+        if (cxfServletPath == null) {
             return;
         }
 
@@ -64,7 +71,7 @@ public class ForageCxfEndpoint extends CxfEndpoint {
             return;
         }
 
-        String servletPath = quarkusCxfServletPath;
+        String servletPath = cxfServletPath;
         if (!servletPath.startsWith("/")) {
             servletPath = "/" + servletPath;
         }
@@ -84,9 +91,10 @@ public class ForageCxfEndpoint extends CxfEndpoint {
         }
 
         LOG.warn(
-                "Absolute CXF address '{}' detected on Quarkus server endpoint; "
+                "Absolute CXF address '{}' detected on {} server endpoint; "
                         + "adapting to relative path '{}' (CXF servlet root: '{}')",
                 address,
+                runtimeName,
                 relativePath,
                 servletPath);
 
