@@ -5,6 +5,7 @@ import javax.net.ssl.SSLContext;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.camel.Consumer;
 import org.apache.camel.Processor;
 import org.apache.camel.component.cxf.jaxws.CxfEndpoint;
@@ -20,7 +21,7 @@ public class ForageCxfEndpoint extends CxfEndpoint {
     private static final Logger LOG = LoggerFactory.getLogger(ForageCxfEndpoint.class);
     private static final Set<String> LOCAL_HOSTS = Set.of("localhost", "127.0.0.1", "0.0.0.0");
     private String sslContextParametersBeanName;
-    private boolean sslConfigured;
+    private final AtomicBoolean sslConfigured = new AtomicBoolean(false);
     private String quarkusCxfServletPath;
 
     public void setQuarkusCxfServletPath(String path) {
@@ -73,7 +74,7 @@ public class ForageCxfEndpoint extends CxfEndpoint {
 
         String path = uri.getPath();
         String relativePath;
-        if (path != null && path.startsWith(servletPath)) {
+        if (path != null && (path.equals(servletPath) || path.startsWith(servletPath + "/"))) {
             relativePath = path.substring(servletPath.length());
             if (relativePath.isEmpty()) {
                 relativePath = "/";
@@ -96,8 +97,7 @@ public class ForageCxfEndpoint extends CxfEndpoint {
     public Bus getBus() {
         Bus bus = super.getBus();
 
-        if (sslContextParametersBeanName != null && !sslConfigured) {
-            sslConfigured = true;
+        if (sslContextParametersBeanName != null && sslConfigured.compareAndSet(false, true)) {
             applySsl(bus);
         }
 
@@ -113,20 +113,24 @@ public class ForageCxfEndpoint extends CxfEndpoint {
             return;
         }
 
-        setSslContextParameters(sslCtx);
-
         try {
             SSLContext sslContext = sslCtx.createSSLContext(getCamelContext());
             TLSClientParameters tlsParams = new TLSClientParameters();
             tlsParams.setSSLSocketFactory(sslContext.getSocketFactory());
 
-            bus.setExtension(
-                    (HTTPConduitConfigurer) (name, address, conduit) -> {
-                        conduit.setTlsClientParameters(tlsParams);
-                    },
-                    HTTPConduitConfigurer.class);
+            setSslContextParameters(sslCtx);
+
+            HTTPConduitConfigurer existing = bus.getExtension(HTTPConduitConfigurer.class);
+            HTTPConduitConfigurer tlsConfigurer = (name, address, conduit) -> conduit.setTlsClientParameters(tlsParams);
+            HTTPConduitConfigurer chained = existing == null
+                    ? tlsConfigurer
+                    : (name, address, conduit) -> {
+                        existing.configure(name, address, conduit);
+                        tlsConfigurer.configure(name, address, conduit);
+                    };
+            bus.setExtension(chained, HTTPConduitConfigurer.class);
         } catch (Exception e) {
-            LOG.warn("Could not configure CXF Bus with SSL context for WSDL fetching: {}", e.getMessage(), e);
+            LOG.warn("Could not configure CXF Bus with SSL context: {}", e.getMessage(), e);
         }
     }
 }

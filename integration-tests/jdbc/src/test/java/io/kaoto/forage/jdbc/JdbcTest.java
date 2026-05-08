@@ -154,7 +154,7 @@ public class JdbcTest implements ForageIntegrationTest {
                     .verify()
                     .integration(INTEGRATION_NAME)
                     .maxAttempts(3)
-                    .delayBetweenAttempts(5000)
+                    .delayBetweenAttempts(2000)
                     .waitForLogMessage("Processed file: test.txt with content: B"));
         } catch (Exception e) {
             error = e.getMessage();

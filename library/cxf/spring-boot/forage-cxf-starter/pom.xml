@@ -16,6 +16,13 @@
             <artifactId>forage-cxf-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- SOAP is currently the only CXF kind; if JAX-RS or other kinds are added,
+             replace this direct dependency with bean-name resolution via the catalog -->
+        <dependency>
+            <groupId>io.kaoto.forage</groupId>
+            <artifactId>forage-cxf-soap</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.kaoto.forage</groupId>
             <artifactId>forage-spring-boot-common</artifactId>

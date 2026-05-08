@@ -62,6 +62,7 @@
                     </includes>
                     <systemPropertyVariables>
                         <citrus.camel.jbang.work.dir>${project.build.directory}/.run</citrus.camel.jbang.work.dir>
+                        <citrus.camel.delay.between.attempts>1000</citrus.camel.delay.between.attempts>
                         <!-- todo remove workaround for docker 29.0.0, see https://github.com/testcontainers/testcontainers-java/issues/11212-->
                         <api.version>1.44</api.version>
                     </systemPropertyVariables>
