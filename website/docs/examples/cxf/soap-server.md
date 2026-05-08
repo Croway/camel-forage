@@ -172,8 +172,8 @@ The WSDL is also served automatically:
 curl http://localhost:8080/services/hello?wsdl
 ```
 
-!!! note "Quarkus export"
-    When exporting to Quarkus, Forage automatically adapts the server address (e.g., `http://localhost:8080/services/hello`) to a relative path (`/hello`) for the Quarkus CXF servlet. This only happens for server endpoints (used as route `from:`); client endpoints keep their absolute URL. See the [CXF module docs](../../modules/cxf.md) for details.
+!!! note "Quarkus & Spring Boot export"
+    When exporting to **Quarkus** or **Spring Boot**, Forage automatically adapts the server address (e.g., `http://localhost:8080/services/hello`) to a relative path (`/hello`) so the CXF endpoint is served through the runtime's embedded web server. This only happens for server endpoints (used as route `from:`); client endpoints keep their absolute URL. See the [CXF module docs](../../modules/cxf.md) for details.
 
 ## Key Takeaways
 

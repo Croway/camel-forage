@@ -39,6 +39,15 @@
             <artifactId>forage-cxf-soap</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- Standalone HTTP transport for CXF server endpoints when no servlet
+             container is available (plain Camel runtime). Spring Boot and Quarkus
+             provide their own servlet containers and must not use this. -->
+        <dependency>
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-rt-transports-http-undertow</artifactId>
+            <version>${cxf.version}</version>
+        </dependency>
     </dependencies>
 
 </project>

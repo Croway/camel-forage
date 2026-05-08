@@ -16,6 +16,7 @@ import io.kaoto.forage.core.cxf.CxfEndpointProvider;
 import io.kaoto.forage.cxf.common.CxfCommonExportHelper;
 import io.kaoto.forage.cxf.common.CxfConfig;
 import io.kaoto.forage.cxf.common.CxfModuleDescriptor;
+import io.kaoto.forage.cxf.soap.ForageCxfEndpoint;
 import io.kaoto.forage.springboot.common.ForageSpringBootModuleAdapter;
 
 @ForageFactory(
@@ -40,10 +41,12 @@ public class ForageCxfAutoConfiguration {
     @Bean("cxfEndpoint")
     @ConditionalOnMissingBean(name = "cxfEndpoint")
     @ConditionalOnProperty(prefix = "forage.cxf", name = "address")
-    public Object forageDefaultCxfEndpoint() {
+    public Object forageDefaultCxfEndpoint(Environment environment) {
         CxfConfig config = new CxfConfig();
         String kind = config.cxfKind();
         String providerClassName = CxfCommonExportHelper.transformCxfKindIntoProviderClass(kind);
+
+        String cxfServletPath = environment.getProperty("cxf.path", "/services");
 
         List<ServiceLoader.Provider<CxfEndpointProvider>> providers =
                 ServiceLoader.load(CxfEndpointProvider.class).stream().toList();
@@ -52,6 +55,9 @@ public class ForageCxfAutoConfiguration {
             if (provider.type().getName().equals(providerClassName)) {
                 log.info("Creating default CXF endpoint using provider: {}", providerClassName);
                 Object endpoint = provider.get().create(null);
+                if (endpoint instanceof ForageCxfEndpoint forageCxfEndpoint) {
+                    forageCxfEndpoint.setSpringBootCxfServletPath(cxfServletPath);
+                }
                 log.info("Registered default CXF endpoint bean");
                 return endpoint;
             }
