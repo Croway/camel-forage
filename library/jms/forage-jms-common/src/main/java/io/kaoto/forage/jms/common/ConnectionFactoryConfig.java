@@ -14,6 +14,15 @@ import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.MAX_CONN
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.MAX_SESSIONS_PER_CONNECTION;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.PASSWORD;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.POOL_ENABLED;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.SSL_CIPHER_SUITES;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.SSL_ENABLED;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.SSL_KEYSTORE_PASSWORD;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.SSL_KEYSTORE_PATH;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.SSL_KEYSTORE_TYPE;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.SSL_PROTOCOL;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.SSL_TRUSTSTORE_PASSWORD;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.SSL_TRUSTSTORE_PATH;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.SSL_TRUSTSTORE_TYPE;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_ENABLED;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_ENABLE_RECOVERY;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_EXPIRY_SCANNERS;
@@ -63,6 +72,51 @@ public class ConnectionFactoryConfig extends AbstractConfig {
 
     public String clientId() {
         return get(CLIENT_ID).orElse(null);
+    }
+
+    public String brokerUrlOrNull() {
+        return get(BROKER_URL).orElse(null);
+    }
+
+    public String configPrefix() {
+        return prefix();
+    }
+
+    // SSL/TLS configuration methods
+    public boolean sslEnabled() {
+        return get(SSL_ENABLED).map(Boolean::parseBoolean).orElse(Boolean.parseBoolean(SSL_ENABLED.defaultValue()));
+    }
+
+    public String sslTruststorePath() {
+        return get(SSL_TRUSTSTORE_PATH).orElse(null);
+    }
+
+    public String sslTruststorePassword() {
+        return get(SSL_TRUSTSTORE_PASSWORD).orElse(null);
+    }
+
+    public String sslTruststoreType() {
+        return get(SSL_TRUSTSTORE_TYPE).orElse(SSL_TRUSTSTORE_TYPE.defaultValue());
+    }
+
+    public String sslKeystorePath() {
+        return get(SSL_KEYSTORE_PATH).orElse(null);
+    }
+
+    public String sslKeystorePassword() {
+        return get(SSL_KEYSTORE_PASSWORD).orElse(null);
+    }
+
+    public String sslKeystoreType() {
+        return get(SSL_KEYSTORE_TYPE).orElse(SSL_KEYSTORE_TYPE.defaultValue());
+    }
+
+    public String sslCipherSuites() {
+        return get(SSL_CIPHER_SUITES).orElse(null);
+    }
+
+    public String sslProtocol() {
+        return get(SSL_PROTOCOL).orElse(SSL_PROTOCOL.defaultValue());
     }
 
     // Connection pool configuration methods

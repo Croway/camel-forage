@@ -23,7 +23,7 @@ public final class ConnectionFactoryConfigEntries extends ConfigEntries {
             "Broker URL",
             null,
             "string",
-            true,
+            false,
             ConfigTag.COMMON);
 
     public static final ConfigModule USERNAME = ConfigModule.of(
@@ -55,6 +55,97 @@ public final class ConnectionFactoryConfigEntries extends ConfigEntries {
             "string",
             false,
             ConfigTag.COMMON);
+
+    // SSL/TLS configuration
+    public static final ConfigModule SSL_ENABLED = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.ssl.enabled",
+            "Enable SSL/TLS for the JMS connection",
+            "SSL Enabled",
+            "false",
+            "boolean",
+            false,
+            ConfigTag.SECURITY);
+
+    public static final ConfigModule SSL_TRUSTSTORE_PATH = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.ssl.truststore.path",
+            "Path to the SSL truststore file",
+            "Truststore Path",
+            null,
+            "string",
+            false,
+            ConfigTag.SECURITY);
+
+    public static final ConfigModule SSL_TRUSTSTORE_PASSWORD = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.ssl.truststore.password",
+            "Password for the SSL truststore",
+            "Truststore Password",
+            null,
+            "password",
+            false,
+            ConfigTag.SECURITY);
+
+    public static final ConfigModule SSL_TRUSTSTORE_TYPE = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.ssl.truststore.type",
+            "Type of the SSL truststore (JKS, PKCS12)",
+            "Truststore Type",
+            "JKS",
+            "string",
+            false,
+            ConfigTag.SECURITY);
+
+    public static final ConfigModule SSL_KEYSTORE_PATH = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.ssl.keystore.path",
+            "Path to the SSL keystore file for mutual TLS",
+            "Keystore Path",
+            null,
+            "string",
+            false,
+            ConfigTag.SECURITY);
+
+    public static final ConfigModule SSL_KEYSTORE_PASSWORD = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.ssl.keystore.password",
+            "Password for the SSL keystore",
+            "Keystore Password",
+            null,
+            "password",
+            false,
+            ConfigTag.SECURITY);
+
+    public static final ConfigModule SSL_KEYSTORE_TYPE = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.ssl.keystore.type",
+            "Type of the SSL keystore (JKS, PKCS12)",
+            "Keystore Type",
+            "JKS",
+            "string",
+            false,
+            ConfigTag.SECURITY);
+
+    public static final ConfigModule SSL_CIPHER_SUITES = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.ssl.cipher.suites",
+            "Comma-separated list of enabled SSL cipher suites",
+            "Cipher Suites",
+            null,
+            "string",
+            false,
+            ConfigTag.SECURITY);
+
+    public static final ConfigModule SSL_PROTOCOL = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.ssl.protocol",
+            "SSL/TLS protocol version (TLSv1.2, TLSv1.3)",
+            "SSL Protocol",
+            "TLSv1.2",
+            "string",
+            false,
+            ConfigTag.SECURITY);
 
     // Connection pool configuration
     public static final ConfigModule POOL_ENABLED = ConfigModule.of(
@@ -249,6 +340,15 @@ public final class ConnectionFactoryConfigEntries extends ConfigEntries {
                 USERNAME,
                 PASSWORD,
                 CLIENT_ID,
+                SSL_ENABLED,
+                SSL_TRUSTSTORE_PATH,
+                SSL_TRUSTSTORE_PASSWORD,
+                SSL_TRUSTSTORE_TYPE,
+                SSL_KEYSTORE_PATH,
+                SSL_KEYSTORE_PASSWORD,
+                SSL_KEYSTORE_TYPE,
+                SSL_CIPHER_SUITES,
+                SSL_PROTOCOL,
                 POOL_ENABLED,
                 MAX_CONNECTIONS,
                 MAX_SESSIONS_PER_CONNECTION,

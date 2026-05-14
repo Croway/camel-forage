@@ -51,10 +51,10 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
         config = new ConnectionFactoryConfig(id);
 
         LOG.info(
-                "ConnectionFactory configuration - Broker URL: {}, Username: {}, Pool Enabled: {}, Max Connections: {}, "
+                "ConnectionFactory configuration - Broker URL: {}, SSL Enabled: {}, Pool Enabled: {}, Max Connections: {}, "
                         + "Max Sessions Per Connection: {}, Idle Timeout: {}ms, Connection Timeout: {}ms, Transaction Enabled: {}",
-                config.brokerUrl(),
-                config.username(),
+                config.brokerUrlOrNull(),
+                config.sslEnabled(),
                 config.poolEnabled(),
                 config.maxConnections(),
                 config.maxSessionsPerConnection(),
