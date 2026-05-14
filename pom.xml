@@ -25,6 +25,7 @@
         <cxf.version>4.1.5</cxf.version>
         <quarkiverse-cxf.version>3.33.0</quarkiverse-cxf.version>
         <wiremock.version>3.13.0</wiremock.version>
+        <commons-io.version>2.18.0</commons-io.version>
         <citrus.version>4.10.1</citrus.version>
         <groovy.version>5.0.5</groovy.version>
         <ibmmq-client.version>9.4.5.0</ibmmq-client.version>
@@ -156,6 +157,11 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-text</artifactId>
                 <version>${commons-text.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
             </dependency>
 
             <!-- Test dependencies -->
