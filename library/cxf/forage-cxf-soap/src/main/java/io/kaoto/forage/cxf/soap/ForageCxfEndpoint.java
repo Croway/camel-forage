@@ -15,6 +15,7 @@ import org.apache.cxf.configuration.jsse.TLSClientParameters;
 import org.apache.cxf.transport.http.HTTPConduitConfigurer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.kaoto.forage.core.common.RuntimeType;
 
 public class ForageCxfEndpoint extends CxfEndpoint {
 
@@ -23,16 +24,11 @@ public class ForageCxfEndpoint extends CxfEndpoint {
     private String sslContextParametersBeanName;
     private final AtomicBoolean sslConfigured = new AtomicBoolean(false);
     private String cxfServletPath;
-    private String runtimeName;
+    private RuntimeType runtimeType;
 
-    public void setQuarkusCxfServletPath(String path) {
+    public void setServletContainerCxfPath(String path, RuntimeType runtimeType) {
         this.cxfServletPath = path;
-        this.runtimeName = "Quarkus";
-    }
-
-    public void setSpringBootCxfServletPath(String path) {
-        this.cxfServletPath = path;
-        this.runtimeName = "Spring Boot";
+        this.runtimeType = runtimeType;
     }
 
     public void setSslContextParametersBeanName(String beanName) {
@@ -94,7 +90,7 @@ public class ForageCxfEndpoint extends CxfEndpoint {
                 "Absolute CXF address '{}' detected on {} server endpoint; "
                         + "adapting to relative path '{}' (CXF servlet root: '{}')",
                 address,
-                runtimeName,
+                runtimeType.displayName(),
                 relativePath,
                 servletPath);
 

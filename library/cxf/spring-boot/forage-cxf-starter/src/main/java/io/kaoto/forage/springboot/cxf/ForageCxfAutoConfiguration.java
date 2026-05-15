@@ -12,6 +12,7 @@ import org.springframework.core.env.Environment;
 import io.kaoto.forage.core.annotations.FactoryType;
 import io.kaoto.forage.core.annotations.FactoryVariant;
 import io.kaoto.forage.core.annotations.ForageFactory;
+import io.kaoto.forage.core.common.RuntimeType;
 import io.kaoto.forage.core.cxf.CxfEndpointProvider;
 import io.kaoto.forage.cxf.common.CxfCommonExportHelper;
 import io.kaoto.forage.cxf.common.CxfConfig;
@@ -32,10 +33,18 @@ public class ForageCxfAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(ForageCxfAutoConfiguration.class);
 
+    private static final String DEFAULT_CXF_SERVLET_PATH = "/services";
+
     @Bean
     static ForageSpringBootModuleAdapter<CxfConfig, CxfEndpointProvider> forageCxfModuleAdapter(
             Environment environment) {
-        return new ForageSpringBootModuleAdapter<>(new CxfModuleDescriptor(), environment);
+        String cxfPath = environment.getProperty("cxf.path", DEFAULT_CXF_SERVLET_PATH);
+        return new ForageSpringBootModuleAdapter<>(new CxfModuleDescriptor(), environment).withBeanCustomizer(bean -> {
+            if (bean instanceof ForageCxfEndpoint endpoint) {
+                endpoint.setServletContainerCxfPath(cxfPath, RuntimeType.springBoot);
+            }
+            return bean;
+        });
     }
 
     @Bean("cxfEndpoint")
@@ -46,7 +55,7 @@ public class ForageCxfAutoConfiguration {
         String kind = config.cxfKind();
         String providerClassName = CxfCommonExportHelper.transformCxfKindIntoProviderClass(kind);
 
-        String cxfServletPath = environment.getProperty("cxf.path", "/services");
+        String cxfPath = environment.getProperty("cxf.path", DEFAULT_CXF_SERVLET_PATH);
 
         List<ServiceLoader.Provider<CxfEndpointProvider>> providers =
                 ServiceLoader.load(CxfEndpointProvider.class).stream().toList();
@@ -56,7 +65,7 @@ public class ForageCxfAutoConfiguration {
                 log.info("Creating default CXF endpoint using provider: {}", providerClassName);
                 Object endpoint = provider.get().create(null);
                 if (endpoint instanceof ForageCxfEndpoint forageCxfEndpoint) {
-                    forageCxfEndpoint.setSpringBootCxfServletPath(cxfServletPath);
+                    forageCxfEndpoint.setServletContainerCxfPath(cxfPath, RuntimeType.springBoot);
                 }
                 log.info("Registered default CXF endpoint bean");
                 return endpoint;

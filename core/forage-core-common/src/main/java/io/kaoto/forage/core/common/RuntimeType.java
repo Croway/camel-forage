@@ -29,6 +29,14 @@ public enum RuntimeType {
         };
     }
 
+    public String displayName() {
+        return switch (this) {
+            case springBoot -> "Spring Boot";
+            case quarkus -> "Quarkus";
+            case main -> "Camel Main";
+        };
+    }
+
     @Override
     public String toString() {
         return runtime();
