@@ -3,6 +3,7 @@ package io.kaoto.forage.springboot.common;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -38,10 +39,21 @@ public class ForageSpringBootModuleAdapter<C extends Config, P extends BeanProvi
 
     private final ForageModuleDescriptor<C, P> descriptor;
     private final Environment environment;
+    private UnaryOperator<Object> beanCustomizer;
 
     public ForageSpringBootModuleAdapter(ForageModuleDescriptor<C, P> descriptor, Environment environment) {
         this.descriptor = descriptor;
         this.environment = environment;
+    }
+
+    /**
+     * Sets an optional customizer applied to every primary bean after creation.
+     * Use this to apply runtime-specific configuration that the generic provider
+     * cannot set (e.g., servlet container paths for CXF endpoints).
+     */
+    public ForageSpringBootModuleAdapter<C, P> withBeanCustomizer(UnaryOperator<Object> customizer) {
+        this.beanCustomizer = customizer;
+        return this;
     }
 
     @Override
@@ -191,6 +203,10 @@ public class ForageSpringBootModuleAdapter<C extends Config, P extends BeanProvi
                     "No " + descriptor.modulePrefix() + " provider found for class: " + providerClassName);
         }
 
-        return provider.get().create(name);
+        Object bean = provider.get().create(name);
+        if (beanCustomizer != null) {
+            bean = beanCustomizer.apply(bean);
+        }
+        return bean;
     }
 }

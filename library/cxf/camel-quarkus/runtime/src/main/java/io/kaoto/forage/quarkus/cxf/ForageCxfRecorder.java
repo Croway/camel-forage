@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.ServiceLoader;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.jboss.logging.Logger;
+import io.kaoto.forage.core.common.RuntimeType;
 import io.kaoto.forage.core.common.ServiceLoaderHelper;
 import io.kaoto.forage.core.cxf.CxfEndpointProvider;
 import io.kaoto.forage.core.util.config.ConfigStore;
@@ -41,7 +42,7 @@ public class ForageCxfRecorder {
             String cxfServletPath = ConfigProvider.getConfig()
                     .getOptionalValue("quarkus.cxf.path", String.class)
                     .orElse(DEFAULT_CXF_SERVLET_PATH);
-            forageCxfEndpoint.setQuarkusCxfServletPath(cxfServletPath);
+            forageCxfEndpoint.setServletContainerCxfPath(cxfServletPath, RuntimeType.quarkus);
         }
         if (endpoint != null) {
             return new RuntimeValue<>(endpoint);
