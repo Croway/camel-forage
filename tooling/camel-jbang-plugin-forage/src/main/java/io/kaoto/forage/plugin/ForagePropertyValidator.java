@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import io.kaoto.forage.catalog.model.ConfigEntry;
 import io.kaoto.forage.catalog.model.ForageBean;
 import io.kaoto.forage.catalog.reader.ForageCatalogReader;
+import io.kaoto.forage.core.util.config.PlaceholderResolver;
 import io.kaoto.forage.plugin.ForagePropertyScanner.PropertyOccurrence;
 
 /**
@@ -295,6 +296,9 @@ public final class ForagePropertyValidator {
 
         String beanName = occurrence.value();
         if (beanName == null || beanName.trim().isEmpty()) {
+            return;
+        }
+        if (PlaceholderResolver.containsPlaceholders(beanName)) {
             return;
         }
 

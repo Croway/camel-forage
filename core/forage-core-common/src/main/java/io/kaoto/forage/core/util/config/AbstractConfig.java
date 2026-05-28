@@ -36,7 +36,7 @@ public abstract class AbstractConfig implements Config {
     @Override
     public void register(String name, String value) {
         ConfigEntries.find(ConfigEntries.getModules(entriesClass), prefix, name)
-                .ifPresent(module -> ConfigStore.getInstance().set(module, value));
+                .ifPresent(module -> ConfigStore.getInstance().set(module, PlaceholderResolver.resolve(value)));
     }
 
     protected Optional<String> get(ConfigModule module) {
