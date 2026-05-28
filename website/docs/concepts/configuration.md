@@ -53,6 +53,7 @@ Forage converts property names to environment variable names by:
 | `forage.myAgent.agent.base.url` | `FORAGE_MYAGENT_AGENT_BASE_URL` |
 | `forage.myBroker.jms.port` | `FORAGE_MYBROKER_JMS_PORT` |
 
+{% raw %}
 ## Property Placeholders
 
 You can reference environment variables and system properties directly in property values using Camel-style placeholders:
@@ -91,6 +92,7 @@ forage.myDb.jdbc.url=jdbc:postgresql://{{env:DB_HOST:localhost}}:{{env:DB_PORT:5
 ### Runtime-Specific Alternatives
 
 Spring Boot and Quarkus have their own placeholder syntax (`${KEY}`). Both syntaxes work in Forage property files — see the [Runtime Support](runtimes.md) page for details.
+{% endraw %}
 
 !!! note "Bean-name properties"
     Properties that select a provider (e.g., `db.kind`, `jms.kind`) should use literal values, not placeholders. The Camel JBang plugin reads these at scan time to auto-resolve dependencies, and placeholders cannot be resolved at that stage.

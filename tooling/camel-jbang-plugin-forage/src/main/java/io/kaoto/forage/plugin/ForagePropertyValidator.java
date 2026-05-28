@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import io.kaoto.forage.catalog.model.ConfigEntry;
 import io.kaoto.forage.catalog.model.ForageBean;
 import io.kaoto.forage.catalog.reader.ForageCatalogReader;
+import io.kaoto.forage.core.util.config.PlaceholderResolver;
 import io.kaoto.forage.plugin.ForagePropertyScanner.PropertyOccurrence;
 
 /**
@@ -297,7 +298,7 @@ public final class ForagePropertyValidator {
         if (beanName == null || beanName.trim().isEmpty()) {
             return;
         }
-        if (beanName.contains("{{")) {
+        if (PlaceholderResolver.containsPlaceholders(beanName)) {
             return;
         }
 

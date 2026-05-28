@@ -9,8 +9,10 @@ class PlaceholderResolverTest {
 
     @Test
     void resolveEnvAndSysPlaceholders() {
+        String home = System.getenv("HOME");
+        org.junit.jupiter.api.Assumptions.assumeTrue(home != null, "HOME env var must be set");
         String input = "user={{sys:user.name}},home={{env:HOME}}";
-        String expected = "user=" + System.getProperty("user.name") + ",home=" + System.getenv("HOME");
+        String expected = "user=" + System.getProperty("user.name") + ",home=" + home;
         assertThat(PlaceholderResolver.resolve(input)).isEqualTo(expected);
     }
 
