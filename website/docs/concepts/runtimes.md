@@ -98,7 +98,29 @@ While the configuration is the same, there are a few runtime-specific behaviors 
 | Configuration sources | Properties files, env vars | Spring Environment + Forage properties | SmallRye Config + Forage properties |
 | Bean registration | Camel registry | Spring beans + Camel registry | CDI beans + Camel registry |
 | Hot reload | `camel run --dev` | Spring DevTools | Quarkus dev mode |
+| Property placeholders | `{{env:KEY}}` | `{{env:KEY}}` + `${KEY}` | `{{env:KEY}}` + `${KEY}` |
 
 In Spring Boot, Forage properties are available through Spring's `@Value` and `@ConditionalOnProperty` annotations. In Quarkus, Forage properties are translated to Quarkus-native configuration at build time.
 
 For most use cases, you don't need to think about these differences — Forage handles the integration transparently.
+
+### Property Placeholders Across Runtimes
+
+Forage resolves `{{env:KEY}}` and `{{sys:KEY}}` placeholders in all runtimes at property-loading time — before values reach any runtime-specific code.
+
+Spring Boot and Quarkus also support their own placeholder syntax (`${KEY}`), which is resolved by the respective framework. Both approaches work in Forage property files:
+
+```properties
+# Camel/Forage syntax — works in all runtimes
+forage.myDb.jdbc.username={{env:DB_USER}}
+
+# Spring Boot syntax — works in Spring Boot only
+forage.myDb.jdbc.username=${DB_USER}
+
+# MicroProfile/SmallRye syntax — works in Quarkus only
+forage.myDb.jdbc.username=${DB_USER}
+```
+
+When using `{{env:KEY}}`, Forage resolves the placeholder first. The resolved value is what Spring Boot or Quarkus sees. If you use `${KEY}` instead, Forage passes it through unchanged and the framework handles resolution.
+
+Pick one syntax consistently per property file. `{{env:KEY}}` is recommended for configurations that need to work across all runtimes.

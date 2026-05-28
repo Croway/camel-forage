@@ -53,6 +53,48 @@ Forage converts property names to environment variable names by:
 | `forage.myAgent.agent.base.url` | `FORAGE_MYAGENT_AGENT_BASE_URL` |
 | `forage.myBroker.jms.port` | `FORAGE_MYBROKER_JMS_PORT` |
 
+## Property Placeholders
+
+You can reference environment variables and system properties directly in property values using Camel-style placeholders:
+
+```properties
+forage.myDb.jdbc.url={{env:DATABASE_URL}}
+forage.myDb.jdbc.username={{env:DB_USER}}
+forage.myDb.jdbc.password={{env:DB_PASSWORD}}
+```
+
+### Syntax
+
+| Placeholder | Resolves to |
+|---|---|
+| `{{env:KEY}}` | Environment variable `KEY` |
+| `{{env:KEY:default}}` | Environment variable `KEY`, or `default` if not set |
+| `{{sys:KEY}}` | System property `KEY` |
+| `{{sys:KEY:default}}` | System property `KEY`, or `default` if not set |
+
+Placeholders are resolved at property-loading time, before values are used by Forage modules. If a variable is not set and no default is provided, the placeholder is left unchanged and a warning is logged.
+
+### Placeholders vs Overrides
+
+Property placeholders and [environment variable overrides](#property-precedence) are two different mechanisms:
+
+- **Overrides** replace the entire property: setting `FORAGE_MYDB_JDBC_URL` overrides the value from files entirely
+- **Placeholders** are embedded inside values: `{{env:DB_HOST}}` resolves to the variable's value within a larger string
+
+When both are present, overrides take priority — they are checked before file-based values.
+
+```properties
+# Placeholders let you compose values from multiple variables
+forage.myDb.jdbc.url=jdbc:postgresql://{{env:DB_HOST:localhost}}:{{env:DB_PORT:5432}}/{{env:DB_NAME:orders}}
+```
+
+### Runtime-Specific Alternatives
+
+Spring Boot and Quarkus have their own placeholder syntax (`${KEY}`). Both syntaxes work in Forage property files — see the [Runtime Support](runtimes.md) page for details.
+
+!!! note "Bean-name properties"
+    Properties that select a provider (e.g., `db.kind`, `jms.kind`) should use literal values, not placeholders. The Camel JBang plugin reads these at scan time to auto-resolve dependencies, and placeholders cannot be resolved at that stage.
+
 ## Properties Files
 
 Forage loads properties from files matching the module name. For example, the JDBC module looks for:

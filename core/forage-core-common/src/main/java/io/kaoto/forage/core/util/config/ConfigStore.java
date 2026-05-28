@@ -124,7 +124,7 @@ public final class ConfigStore {
     public void load(ConfigModule module) {
         final Optional<String> read = tryRead(module);
 
-        read.ifPresent(s -> properties.put(module, s));
+        read.ifPresent(s -> properties.put(module, PlaceholderResolver.resolve(s)));
     }
 
     /**

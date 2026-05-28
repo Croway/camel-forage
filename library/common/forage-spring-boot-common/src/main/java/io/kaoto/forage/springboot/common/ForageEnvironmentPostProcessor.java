@@ -15,6 +15,7 @@ import org.springframework.core.env.PropertiesPropertySource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import io.kaoto.forage.core.util.config.ConfigStore;
+import io.kaoto.forage.core.util.config.PlaceholderResolver;
 import io.kaoto.forage.core.util.config.PropertyFileLocator;
 
 /**
@@ -114,6 +115,7 @@ public class ForageEnvironmentPostProcessor implements EnvironmentPostProcessor 
                 try (InputStream is = Files.newInputStream(path)) {
                     props.load(is);
                 }
+                PlaceholderResolver.resolveAll(props);
                 if (!props.isEmpty()) {
                     String sourceName =
                             FILE_SOURCE_PREFIX + path.toAbsolutePath().normalize();
@@ -133,6 +135,7 @@ public class ForageEnvironmentPostProcessor implements EnvironmentPostProcessor 
             try (InputStream is = resource.getInputStream()) {
                 props.load(is);
             }
+            PlaceholderResolver.resolveAll(props);
             if (!props.isEmpty()) {
                 String sourceName = sourcePrefix + resource.getDescription();
                 if (!environment.getPropertySources().contains(sourceName)) {

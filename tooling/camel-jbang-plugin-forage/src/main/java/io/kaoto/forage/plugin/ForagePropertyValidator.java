@@ -297,6 +297,9 @@ public final class ForagePropertyValidator {
         if (beanName == null || beanName.trim().isEmpty()) {
             return;
         }
+        if (beanName.contains("{{")) {
+            return;
+        }
 
         String feature = configEntry.getSelectsFrom();
 
