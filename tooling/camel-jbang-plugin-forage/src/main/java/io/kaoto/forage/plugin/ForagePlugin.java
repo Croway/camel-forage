@@ -78,7 +78,22 @@ public class ForagePlugin implements Plugin {
 
     private void beforeRun(KameletMain main, List<String> files) {
         resolveConfigDir(files);
+        propagateProfile(main);
         addShibbolethRepo(main);
+    }
+
+    // JVM-global side effect: sets camel.main.profile so ForagePropertyScanner can resolve the
+    // active profile. Safe because camel run/export each run in their own JVM process — no cleanup
+    // needed. Consistent with how forage.config.dir is handled in resolveConfigDir.
+    private static void propagateProfile(KameletMain main) {
+        if (System.getProperty("camel.main.profile") != null) {
+            return;
+        }
+        String profile = main.getProfile();
+        if (profile != null) {
+            LOG.debug("Propagating camel.main.profile={} from KameletMain", profile);
+            System.setProperty("camel.main.profile", profile);
+        }
     }
 
     private static void addShibbolethRepo(KameletMain main) {
