@@ -12,8 +12,9 @@ Usage in Markdown:
 
 Version variables (automatically extracted from pom.xml):
 
-    {{ forage_version }}    -> e.g. "1.1-SNAPSHOT"
-    {{ camel_version }}     -> e.g. "4.18.0"
+    {{ forage_version }}          -> e.g. "1.3" (overridden by mkdocs.yml for stable docs)
+    {{ forage_snapshot_version }} -> e.g. "1.4-SNAPSHOT" (always from pom.xml)
+    {{ camel_version }}           -> e.g. "4.18.0"
 """
 
 import json
@@ -45,6 +46,7 @@ def _load_versions():
     ver = root.find("m:version", POM_NS)
     if ver is not None:
         versions["forage_version"] = ver.text
+        versions["forage_snapshot_version"] = ver.text
     props = root.find("m:properties", POM_NS)
     if props is not None:
         camel_ver = props.find("m:camel.version", POM_NS)
