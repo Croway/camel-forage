@@ -511,6 +511,36 @@ public final class ForageCatalogReader {
     }
 
     /**
+     * Gets additional Maven repository URLs declared by a bean.
+     *
+     * @param beanName the bean name (e.g., "soap")
+     * @return list of repository URLs, or empty list if none
+     */
+    public List<String> getBeanRepositories(String beanName) {
+        if (beanName == null) {
+            return List.of();
+        }
+
+        for (ForageFactory factory : catalog.getFactories()) {
+            List<FeatureBeans> beansByFeature = factory.getBeansByFeature();
+            if (beansByFeature == null) {
+                continue;
+            }
+            for (FeatureBeans featureBeans : beansByFeature) {
+                if (featureBeans.getBeans() == null) {
+                    continue;
+                }
+                for (ForageBean bean : featureBeans.getBeans()) {
+                    if (beanName.equalsIgnoreCase(bean.getName()) && bean.getRepositories() != null) {
+                        return bean.getRepositories();
+                    }
+                }
+            }
+        }
+        return List.of();
+    }
+
+    /**
      * Gets runtime dependencies for a bean in a specific variant.
      *
      * @param beanName the bean name (e.g., "postgresql", "artemis")

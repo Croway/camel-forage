@@ -9,7 +9,8 @@ import io.kaoto.forage.cxf.common.CxfConfig;
         value = "soap",
         components = {"camel-cxf"},
         description = "Apache CXF SOAP (JAX-WS) endpoint",
-        feature = "org.apache.camel.component.cxf.jaxws.CxfEndpoint")
+        feature = "org.apache.camel.component.cxf.jaxws.CxfEndpoint",
+        repositories = {"https://build.shibboleth.net/maven/releases/"})
 public class SoapEndpointProvider implements CxfEndpointProvider {
 
     @Override

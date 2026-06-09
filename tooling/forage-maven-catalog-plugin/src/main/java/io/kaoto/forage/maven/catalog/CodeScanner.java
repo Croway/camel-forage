@@ -548,6 +548,7 @@ public class CodeScanner {
         String feature = "";
         String configClassName = null;
         List<String> runtimeDeps = null;
+        List<String> repositories = null;
 
         // Extract annotation values
         if (annotation instanceof SingleMemberAnnotationExpr singleMember) {
@@ -578,6 +579,7 @@ public class CodeScanner {
                     }
                     case "configClass" -> configClassName = extractClassValue(value, cu);
                     case "runtimeDependencies" -> runtimeDeps = extractStringArrayValue(value);
+                    case "repositories" -> repositories = extractStringArrayValue(value);
                     default -> {}
                 }
             }
@@ -590,6 +592,9 @@ public class CodeScanner {
         bean.setConfigClassName(configClassName);
         if (runtimeDeps != null && !runtimeDeps.isEmpty()) {
             bean.setRuntimeDependencies(ScannedBean.parseVariantDependencies(runtimeDeps));
+        }
+        if (repositories != null && !repositories.isEmpty()) {
+            bean.setRepositories(repositories);
         }
         return bean;
     }

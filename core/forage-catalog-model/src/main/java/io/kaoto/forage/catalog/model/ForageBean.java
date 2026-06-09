@@ -33,6 +33,9 @@ public class ForageBean {
     @JsonProperty("runtimeDependencies")
     private Map<String, List<String>> runtimeDependencies;
 
+    @JsonProperty("repositories")
+    private List<String> repositories;
+
     public ForageBean() {}
 
     public ForageBean(String name, String description, String className, String gav) {
@@ -96,6 +99,14 @@ public class ForageBean {
 
     public void setRuntimeDependencies(Map<String, List<String>> runtimeDependencies) {
         this.runtimeDependencies = runtimeDependencies;
+    }
+
+    public List<String> getRepositories() {
+        return repositories;
+    }
+
+    public void setRepositories(List<String> repositories) {
+        this.repositories = repositories;
     }
 
     @Override

@@ -113,6 +113,43 @@ public class CatalogDrivenExportCustomizer implements ExportCustomizer {
         return dependencies;
     }
 
+    /**
+     * Resolves additional Maven repository URLs from the catalog for active beans.
+     * Used by {@link ForagePlugin} to conditionally add repos during {@code camel run}.
+     */
+    public Set<String> resolveRepositories() {
+        Set<String> repositories = new LinkedHashSet<>();
+        ForageCatalogReader catalog = ForageCatalogReader.getInstance();
+        Map<String, Map<String, List<String>>> properties = getScannedProperties();
+
+        for (String factoryTypeKey : properties.keySet()) {
+            Map<String, List<String>> factoryProperties = properties.get(factoryTypeKey);
+
+            catalog.getFactoryMetadata(factoryTypeKey).ifPresent(metadata -> {
+                if (metadata.configEntries() != null) {
+                    for (ConfigEntry entry : metadata.configEntries()) {
+                        if ("bean-name".equals(entry.getType())) {
+                            String propSuffix = extractPropertySuffix(entry.getName(), factoryTypeKey);
+                            if (propSuffix != null) {
+                                Set<String> beanKinds = findAllValues(factoryProperties, propSuffix);
+                                if (beanKinds.isEmpty()
+                                        && entry.getDefaultValue() != null
+                                        && !entry.getDefaultValue().isEmpty()) {
+                                    beanKinds = Set.of(entry.getDefaultValue());
+                                }
+                                for (String kind : beanKinds) {
+                                    repositories.addAll(catalog.getBeanRepositories(kind));
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        return repositories;
+    }
+
     private Map<String, Map<String, List<String>>> getScannedProperties() {
         if (scannedProperties == null) {
             try {
