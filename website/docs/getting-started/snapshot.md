@@ -3,14 +3,14 @@
 !!! warning "Development Builds"
     Snapshot builds are published from the `main` branch every two days. They may contain breaking changes, incomplete features, or bugs. Use the [stable release](index.md) for production.
 
-The latest snapshot version is **1.4-SNAPSHOT**, published to the Maven Central Portal Snapshots repository.
+The latest snapshot version is **{{ forage_snapshot_version }}**, published to the Maven Central Portal Snapshots repository.
 
 ## Install the Snapshot Plugin
 
 ```bash
 camel plugin add forage \
   --repos=https://central.sonatype.com/repository/maven-snapshots/ \
-  --gav io.kaoto.forage:camel-jbang-plugin-forage:1.4-SNAPSHOT
+  --gav io.kaoto.forage:camel-jbang-plugin-forage:{{ forage_snapshot_version }}
 ```
 
 Verify it installed correctly:
@@ -85,6 +85,6 @@ Then use the snapshot version in your dependencies:
 <dependency>
     <groupId>io.kaoto.forage</groupId>
     <artifactId>forage-jdbc-postgresql</artifactId>
-    <version>1.4-SNAPSHOT</version>
+    <version>{{ forage_snapshot_version }}</version>
 </dependency>
 ```
