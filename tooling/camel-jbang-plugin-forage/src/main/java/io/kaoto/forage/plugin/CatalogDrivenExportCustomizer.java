@@ -123,28 +123,9 @@ public class CatalogDrivenExportCustomizer implements ExportCustomizer {
         Map<String, Map<String, List<String>>> properties = getScannedProperties();
 
         for (String factoryTypeKey : properties.keySet()) {
-            Map<String, List<String>> factoryProperties = properties.get(factoryTypeKey);
-
-            catalog.getFactoryMetadata(factoryTypeKey).ifPresent(metadata -> {
-                if (metadata.configEntries() != null) {
-                    for (ConfigEntry entry : metadata.configEntries()) {
-                        if ("bean-name".equals(entry.getType())) {
-                            String propSuffix = extractPropertySuffix(entry.getName(), factoryTypeKey);
-                            if (propSuffix != null) {
-                                Set<String> beanKinds = findAllValues(factoryProperties, propSuffix);
-                                if (beanKinds.isEmpty()
-                                        && entry.getDefaultValue() != null
-                                        && !entry.getDefaultValue().isEmpty()) {
-                                    beanKinds = Set.of(entry.getDefaultValue());
-                                }
-                                for (String kind : beanKinds) {
-                                    repositories.addAll(catalog.getBeanRepositories(kind));
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            for (io.kaoto.forage.catalog.model.ForageBean bean : catalog.getAllBeansForFactory(factoryTypeKey)) {
+                repositories.addAll(catalog.getBeanRepositories(bean.getName()));
+            }
         }
 
         return repositories;
