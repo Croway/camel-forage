@@ -1,6 +1,7 @@
 package io.kaoto.forage.agent.simple;
 
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.camel.component.langchain4j.agent.api.Agent;
 import org.apache.camel.component.langchain4j.agent.api.AgentConfiguration;
 import org.apache.camel.component.langchain4j.agent.api.AiAgentBody;
@@ -13,19 +14,32 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.service.tool.ToolProviderResult;
 
 /**
- * Simple implementation of an AI agent that provides basic chat functionality
+ * Simple implementation of an AI agent that provides basic chat functionality.
+ *
+ * <p>This class is a singleton shared across threads — it is created once by {@link AgentCreator}
+ * and registered in the Camel registry. The {@link #configure(AgentConfiguration)} method is called
+ * exactly once during creation; the configuration is immutable for the agent's lifetime.
+ *
+ * <p>The {@link AiServices} proxy is built once and cached. A {@link DelegatingToolProvider} decouples
+ * the cached proxy from the per-exchange {@link ToolProvider} that Camel creates on every exchange.
+ * This relies on LangChain4j calling {@code provideTools()} synchronously on the same thread that
+ * calls {@code chat()} (verified in {@code ToolService.java} lines 370-379, LangChain4j 1.11.0).
  */
 public class SimpleAgent implements Agent, ConfigurationAware {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleAgent.class);
 
+    // Set once by configure() during agent creation — immutable after startup
     private AgentConfiguration configuration;
 
-    // Cached AI service instances to avoid recreating proxies on every request
-    private ForageAgentWithMemory cachedMemoryService;
-    private ForageAgentWithoutMemory cachedNoMemoryService;
-    private ToolProvider lastToolProvider;
+    private final DelegatingToolProvider delegatingToolProvider = new DelegatingToolProvider();
+    private final ReentrantLock buildLock = new ReentrantLock();
+
+    private volatile ForageAgentWithMemory cachedMemoryService;
+    private volatile ForageAgentWithoutMemory cachedNoMemoryService;
 
     public SimpleAgent() {}
 
@@ -44,95 +58,153 @@ public class SimpleAgent implements Agent, ConfigurationAware {
 
         if (hasMemory()) {
             LOG.debug("Chatting with memory");
-            ForageAgentWithMemory agentService = createAiAgentService(toolProvider, ForageAgentWithMemory.class);
+            ForageAgentWithMemory agentService = getOrCreateService(toolProvider, ForageAgentWithMemory.class);
 
-            return aiAgentBody.getSystemMessage() != null
-                    ? agentService.chat(
-                            aiAgentBody.getMemoryId(), aiAgentBody.getUserMessage(), aiAgentBody.getSystemMessage())
-                    : agentService.chat(aiAgentBody.getMemoryId(), aiAgentBody.getUserMessage());
+            ToolProvider previous = delegatingToolProvider.swapDelegate(toolProvider);
+            try {
+                return aiAgentBody.getSystemMessage() != null
+                        ? agentService.chat(
+                                aiAgentBody.getMemoryId(), aiAgentBody.getUserMessage(), aiAgentBody.getSystemMessage())
+                        : agentService.chat(aiAgentBody.getMemoryId(), aiAgentBody.getUserMessage());
+            } finally {
+                delegatingToolProvider.restoreDelegate(previous);
+            }
         } else {
             LOG.debug("Chatting without memory");
-            ForageAgentWithoutMemory agentService = createAiAgentService(toolProvider, ForageAgentWithoutMemory.class);
+            ForageAgentWithoutMemory agentService = getOrCreateService(toolProvider, ForageAgentWithoutMemory.class);
 
-            if (aiAgentBody.getContent() != null) {
-                Content content = aiAgentBody.getContent();
-                return agentService.chat(aiAgentBody.getUserMessage(), List.of(content));
+            ToolProvider previous = delegatingToolProvider.swapDelegate(toolProvider);
+            try {
+                if (aiAgentBody.getContent() != null) {
+                    Content content = aiAgentBody.getContent();
+                    return agentService.chat(aiAgentBody.getUserMessage(), List.of(content));
+                }
+
+                return aiAgentBody.getSystemMessage() != null
+                        ? agentService.chat(aiAgentBody.getUserMessage(), aiAgentBody.getSystemMessage())
+                        : agentService.chat(aiAgentBody.getUserMessage());
+            } finally {
+                delegatingToolProvider.restoreDelegate(previous);
             }
-
-            return aiAgentBody.getSystemMessage() != null
-                    ? agentService.chat(aiAgentBody.getUserMessage(), aiAgentBody.getSystemMessage())
-                    : agentService.chat(aiAgentBody.getUserMessage());
         }
     }
 
     /**
-     * Create AI service with a single universal tool that handles multiple Camel routes and Memory Provider.
-     * Services are cached to avoid recreating proxies on every request when the toolProvider is unchanged.
+     * Returns a cached AI service or builds one on first call.
      */
     @SuppressWarnings("unchecked")
-    private <T> T createAiAgentService(ToolProvider toolProvider, Class<T> clazz) {
-        // Check if we can return a cached instance
-        if (toolProvider == lastToolProvider) {
+    private <T> T getOrCreateService(ToolProvider toolProvider, Class<T> clazz) {
+        // Fast path: volatile read — visible across threads without locking
+        if (clazz == ForageAgentWithMemory.class && cachedMemoryService != null) {
+            LOG.debug("Reusing cached ForageAgentWithMemory service");
+            return (T) cachedMemoryService;
+        } else if (clazz == ForageAgentWithoutMemory.class && cachedNoMemoryService != null) {
+            LOG.debug("Reusing cached ForageAgentWithoutMemory service");
+            return (T) cachedNoMemoryService;
+        }
+
+        return buildAiAgentService(clazz);
+    }
+
+    /**
+     * Builds the {@link AiServices} proxy. Uses {@link ReentrantLock} instead of {@code synchronized}
+     * to avoid pinning virtual threads to their carrier thread (Java 21-23).
+     */
+    @SuppressWarnings("unchecked")
+    private <T> T buildAiAgentService(Class<T> clazz) {
+        buildLock.lock();
+        try {
+            // Double-check: another thread may have built it while we waited for the lock
             if (clazz == ForageAgentWithMemory.class && cachedMemoryService != null) {
-                LOG.debug("Reusing cached ForageAgentWithMemory service");
                 return (T) cachedMemoryService;
             } else if (clazz == ForageAgentWithoutMemory.class && cachedNoMemoryService != null) {
-                LOG.debug("Reusing cached ForageAgentWithoutMemory service");
                 return (T) cachedNoMemoryService;
             }
-        } else {
-            // Tool provider changed, invalidate cache
-            cachedMemoryService = null;
-            cachedNoMemoryService = null;
-            lastToolProvider = toolProvider;
+
+            LOG.info("Creating new {} service", clazz.getSimpleName());
+            AiServices<T> builder = AiServices.builder(clazz).chatModel(configuration.getChatModel());
+
+            if (hasMemory()) {
+                builder = builder.chatMemoryProvider(configuration.getChatMemoryProvider());
+            }
+
+            builder.toolProvider(delegatingToolProvider);
+
+            if (configuration.getRetrievalAugmentor() != null) {
+                builder.retrievalAugmentor(configuration.getRetrievalAugmentor());
+            }
+
+            // Input Guardrails - prefer instances over classes
+            if (configuration instanceof ForageAgentConfiguration forageConfig && forageConfig.hasInputGuardrails()) {
+                List<InputGuardrail> inputGuardrails = forageConfig.getInputGuardrails();
+                builder.inputGuardrails(inputGuardrails.toArray(new InputGuardrail[0]));
+                LOG.debug("Using {} input guardrail instances", inputGuardrails.size());
+            } else if (configuration.getInputGuardrailClasses() != null
+                    && !configuration.getInputGuardrailClasses().isEmpty()) {
+                builder.inputGuardrailClasses((List) configuration.getInputGuardrailClasses());
+            }
+
+            // Output Guardrails - prefer instances over classes
+            if (configuration instanceof ForageAgentConfiguration forageConfig && forageConfig.hasOutputGuardrails()) {
+                List<OutputGuardrail> outputGuardrails = forageConfig.getOutputGuardrails();
+                builder.outputGuardrails(outputGuardrails.toArray(new OutputGuardrail[0]));
+                LOG.debug("Using {} output guardrail instances", outputGuardrails.size());
+            } else if (configuration.getOutputGuardrailClasses() != null
+                    && !configuration.getOutputGuardrailClasses().isEmpty()) {
+                builder.outputGuardrailClasses((List) configuration.getOutputGuardrailClasses());
+            }
+
+            T service = builder.build();
+
+            // volatile write — visible to all threads on next read
+            if (clazz == ForageAgentWithMemory.class) {
+                cachedMemoryService = (ForageAgentWithMemory) service;
+            } else if (clazz == ForageAgentWithoutMemory.class) {
+                cachedNoMemoryService = (ForageAgentWithoutMemory) service;
+            }
+
+            return service;
+        } finally {
+            buildLock.unlock();
+        }
+    }
+
+    /**
+     * Wraps a {@link ThreadLocal} {@link ToolProvider} delegate so the {@link AiServices} proxy can be built once
+     * and reused across exchanges while the underlying tool provider is bound per-thread on each call.
+     *
+     * <p>This relies on LangChain4j's {@code ToolService} calling {@code provideTools()} synchronously
+     * on the same thread that calls {@code chat()} — verified in {@code ToolService.java} lines 370-379
+     * (LangChain4j 1.11.0). No async executors or thread pools are involved in tool provider resolution.
+     *
+     * <p>The delegate is swapped before each {@code chat()} call and restored in a {@code finally} block
+     * to support nested calls (e.g. a tool route that itself invokes the agent) and to prevent stale
+     * references on reused platform threads.
+     */
+    private static class DelegatingToolProvider implements ToolProvider {
+        private final ThreadLocal<ToolProvider> delegate = new ThreadLocal<>();
+
+        ToolProvider swapDelegate(ToolProvider toolProvider) {
+            ToolProvider previous = delegate.get();
+            delegate.set(toolProvider);
+            return previous;
         }
 
-        LOG.info("Creating new {} service", clazz.getSimpleName());
-        AiServices<T> builder = AiServices.builder(clazz).chatModel(configuration.getChatModel());
-
-        if (hasMemory()) {
-            builder = builder.chatMemoryProvider(configuration.getChatMemoryProvider());
+        void restoreDelegate(ToolProvider previous) {
+            if (previous == null) {
+                delegate.remove();
+            } else {
+                delegate.set(previous);
+            }
         }
 
-        // Apache Camel Tool Provider
-        if (toolProvider != null) {
-            builder.toolProvider(toolProvider);
+        @Override
+        public ToolProviderResult provideTools(ToolProviderRequest request) {
+            ToolProvider current = delegate.get();
+            if (current == null) {
+                return ToolProviderResult.builder().build();
+            }
+            return current.provideTools(request);
         }
-
-        // RAG
-        if (configuration.getRetrievalAugmentor() != null) {
-            builder.retrievalAugmentor(configuration.getRetrievalAugmentor());
-        }
-
-        // Input Guardrails - prefer instances over classes
-        if (configuration instanceof ForageAgentConfiguration forageConfig && forageConfig.hasInputGuardrails()) {
-            List<InputGuardrail> inputGuardrails = forageConfig.getInputGuardrails();
-            builder.inputGuardrails(inputGuardrails.toArray(new InputGuardrail[0]));
-            LOG.debug("Using {} input guardrail instances", inputGuardrails.size());
-        } else if (configuration.getInputGuardrailClasses() != null
-                && !configuration.getInputGuardrailClasses().isEmpty()) {
-            builder.inputGuardrailClasses((List) configuration.getInputGuardrailClasses());
-        }
-
-        // Output Guardrails - prefer instances over classes
-        if (configuration instanceof ForageAgentConfiguration forageConfig && forageConfig.hasOutputGuardrails()) {
-            List<OutputGuardrail> outputGuardrails = forageConfig.getOutputGuardrails();
-            builder.outputGuardrails(outputGuardrails.toArray(new OutputGuardrail[0]));
-            LOG.debug("Using {} output guardrail instances", outputGuardrails.size());
-        } else if (configuration.getOutputGuardrailClasses() != null
-                && !configuration.getOutputGuardrailClasses().isEmpty()) {
-            builder.outputGuardrailClasses((List) configuration.getOutputGuardrailClasses());
-        }
-
-        T service = builder.build();
-
-        // Cache the service
-        if (clazz == ForageAgentWithMemory.class) {
-            cachedMemoryService = (ForageAgentWithMemory) service;
-        } else if (clazz == ForageAgentWithoutMemory.class) {
-            cachedNoMemoryService = (ForageAgentWithoutMemory) service;
-        }
-
-        return service;
     }
 }
