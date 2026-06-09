@@ -65,4 +65,12 @@ public @interface ForageBean {
      * @return array of variant-prefixed GAV strings
      */
     String[] runtimeDependencies() default {};
+
+    /**
+     * Additional Maven repository URLs required to resolve this bean's transitive dependencies.
+     * Only applied during {@code camel run} to configure KameletMain repositories.
+     *
+     * @return array of Maven repository URLs
+     */
+    String[] repositories() default {};
 }

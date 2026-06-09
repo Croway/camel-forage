@@ -74,12 +74,10 @@ public class ForagePlugin implements Plugin {
         });
     }
 
-    private static final String SHIBBOLETH_REPO = "https://build.shibboleth.net/maven/releases/";
-
     private void beforeRun(KameletMain main, List<String> files) {
         resolveConfigDir(files);
         propagateProfile(main);
-        addShibbolethRepo(main);
+        addCatalogDrivenRepos(main);
     }
 
     // JVM-global side effect: sets camel.main.profile so ForagePropertyScanner can resolve the
@@ -96,12 +94,24 @@ public class ForagePlugin implements Plugin {
         }
     }
 
-    private static void addShibbolethRepo(KameletMain main) {
+    private static void addCatalogDrivenRepos(KameletMain main) {
+        try {
+            CatalogDrivenExportCustomizer customizer = new CatalogDrivenExportCustomizer();
+            Set<String> repos = customizer.resolveRepositories();
+            for (String repoUrl : repos) {
+                addRepository(main, repoUrl);
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to resolve catalog-driven repositories: {}", e.getMessage());
+        }
+    }
+
+    private static void addRepository(KameletMain main, String repoUrl) {
         String existing = main.getRepositories();
-        if (existing != null && existing.contains(SHIBBOLETH_REPO)) {
+        if (existing != null && existing.contains(repoUrl)) {
             return;
         }
-        String repos = existing == null || existing.isBlank() ? SHIBBOLETH_REPO : existing + "," + SHIBBOLETH_REPO;
+        String repos = existing == null || existing.isBlank() ? repoUrl : existing + "," + repoUrl;
         main.setRepositories(repos);
     }
 

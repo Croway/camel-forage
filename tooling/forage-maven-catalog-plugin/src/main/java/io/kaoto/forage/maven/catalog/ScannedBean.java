@@ -23,6 +23,7 @@ public class ScannedBean {
     private String feature;
     private String configClassName;
     private Map<String, List<String>> runtimeDependencies;
+    private List<String> repositories;
 
     public ScannedBean() {
         this.bean = new ForageBean();
@@ -117,6 +118,14 @@ public class ScannedBean {
         this.runtimeDependencies = runtimeDependencies;
     }
 
+    public List<String> getRepositories() {
+        return repositories;
+    }
+
+    public void setRepositories(List<String> repositories) {
+        this.repositories = repositories;
+    }
+
     /**
      * Parses "variant:gav" format strings into a variant->gavs map.
      */
@@ -148,6 +157,7 @@ public class ScannedBean {
         catalogBean.setClassName(bean.getClassName());
         catalogBean.setGav(gav);
         catalogBean.setRuntimeDependencies(runtimeDependencies);
+        catalogBean.setRepositories(repositories);
         return catalogBean;
     }
 
