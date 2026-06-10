@@ -12,6 +12,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - LangChain4j 1.x
 - Maven, Spotless (Palantir Java Format), JUnit 5, AssertJ, Testcontainers, Citrus Test Framework
 
+## Branching and Versioning Strategy
+
+Forage uses **major.minor.micro** versioning (`1.4.0`, `1.4.1`, `1.5.0`, etc.).
+
+| Branch | Tracks | Version | Description |
+|--------|--------|---------|-------------|
+| `main` | Apache Camel LTS | `1.4.x` | Follows the latest Camel LTS release (currently 4.18.x). Micro bumps (`1.4.0` → `1.4.1` → ...) for each release. |
+| `camel-latest` | Latest Apache Camel | `1.5.x` | Follows the latest Camel release (currently 4.20.x) with corresponding Spring Boot and Quarkus versions. |
+
+### Backporting
+
+When making changes (features, bug fixes, etc.), **always investigate whether the change needs backporting** to the other branch:
+- A fix on `main` may also apply to `camel-latest` and vice versa.
+- After completing work on one branch, check if the same change is relevant to the other branch and create a backport PR if needed.
+- Use `/oss-backport-pr` to automate backporting when applicable.
+
 ## Build Commands
 
 ```bash
@@ -211,10 +227,3 @@ See **[docs/adding-modules.md](docs/adding-modules.md)** for the complete guide 
 - Properties files named `<module-name>.properties` in resources
 - **Special cases:** `FlipRoutePolicyConfig` and `ScheduleRoutePolicyConfig` extend `AbstractConfig` and follow the standard configuration pattern. Their ConfigEntries classes (`FlipRoutePolicyConfigEntries`, `ScheduleRoutePolicyConfigEntries`) use a dynamic ConfigModule pattern with factory methods (e.g., `pairedRoute(prefix)`) instead of static fields + `initModules()`, because property names are route-ID-dependent.
 
-## Active Technologies
-- Java 17+ + Apache Camel 4.16+, camel-api (RoutePolicyFactory, RoutePolicy) (001-route-policies)
-- N/A (stateless policy configuration) (001-route-policies)
-- Java 17+ + Apache Camel 4.16+ (camel-api: RoutePolicyFactory, RoutePolicy, RoutePolicySupport) (001-route-policies)
-
-## Recent Changes
-- 001-route-policies: Added Java 17+ + Apache Camel 4.16+, camel-api (RoutePolicyFactory, RoutePolicy)
