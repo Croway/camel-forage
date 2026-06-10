@@ -12,9 +12,9 @@
 
     <properties>
         <camel.version>4.20.0</camel.version>
-        <langchain4j.version>1.11.0</langchain4j.version>
-        <langchain4j-beta.version>1.11.0-beta19</langchain4j-beta.version>
-        <langchain4j-community.version>1.11.0-beta19</langchain4j-community.version>
+        <langchain4j.version>1.13.0</langchain4j.version>
+        <langchain4j-beta.version>1.13.0-beta23</langchain4j-beta.version>
+        <langchain4j-community.version>1.13.0-beta23</langchain4j-community.version>
 
         <agroal.version>3.2</agroal.version>
         <assertj-core.version>3.27.7</assertj-core.version>
@@ -25,7 +25,7 @@
         <cxf.version>4.2.0</cxf.version>
         <quarkiverse-cxf.version>3.35.1</quarkiverse-cxf.version>
         <wiremock.version>3.13.0</wiremock.version>
-        <commons-io.version>2.18.0</commons-io.version>
+        <commons-io.version>2.21.0</commons-io.version>
         <citrus.version>4.10.1</citrus.version>
         <groovy.version>5.0.5</groovy.version>
         <ibmmq-client.version>9.4.5.0</ibmmq-client.version>
