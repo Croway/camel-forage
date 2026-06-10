@@ -21,9 +21,9 @@
         <aws-sdk.version>2.44.4</aws-sdk.version>
         <azure.identity.version>1.18.2</azure.identity.version>
         <azure.messaging.eventhubs.version>5.21.4</azure.messaging.eventhubs.version>
-        <camel-quarkus.version>3.35.0</camel-quarkus.version>
+        <camel-quarkus.version>3.36.0</camel-quarkus.version>
         <cxf.version>4.2.0</cxf.version>
-        <quarkiverse-cxf.version>3.35.1</quarkiverse-cxf.version>
+        <quarkiverse-cxf.version>3.36.0</quarkiverse-cxf.version>
         <wiremock.version>3.13.0</wiremock.version>
         <commons-io.version>2.21.0</commons-io.version>
         <citrus.version>4.10.1</citrus.version>
@@ -57,9 +57,9 @@
         <pooled-jms.version>3.2.2</pooled-jms.version>
         <postgresql.version>42.7.10</postgresql.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <quarkus.version>3.35.4</quarkus.version>
-        <quarkus-artemis-jms.version>3.12.1</quarkus-artemis-jms.version>
-        <quarkus-pooled-jms.version>2.10.0</quarkus-pooled-jms.version>
+        <quarkus.version>3.36.1</quarkus.version>
+        <quarkus-artemis-jms.version>3.14.3</quarkus-artemis-jms.version>
+        <quarkus-pooled-jms.version>2.12.0</quarkus-pooled-jms.version>
         <slf4j.version>2.0.17</slf4j.version>
         <smallrye.version>3.16.0</smallrye.version>
         <spotless.version>3.4.0</spotless.version>
