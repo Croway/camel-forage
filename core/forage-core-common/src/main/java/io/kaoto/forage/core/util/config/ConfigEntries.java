@@ -53,6 +53,7 @@ public abstract class ConfigEntries {
     }
 
     public static void loadOverridesFor(Class<? extends ConfigEntries> clazz, String prefix) {
+        ensureInitialized(clazz);
         List<ConfigModule> base = BASE_MODULES.get(clazz);
         if (base != null) {
             for (ConfigModule module : base) {
