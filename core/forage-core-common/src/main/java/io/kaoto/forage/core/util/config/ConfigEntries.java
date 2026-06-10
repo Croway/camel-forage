@@ -24,7 +24,16 @@ public abstract class ConfigEntries {
     }
 
     public static Map<ConfigModule, ConfigEntry> getModules(Class<? extends ConfigEntries> clazz) {
+        ensureInitialized(clazz);
         return REGISTRY.computeIfAbsent(clazz, k -> new ConcurrentHashMap<>());
+    }
+
+    private static void ensureInitialized(Class<? extends ConfigEntries> clazz) {
+        try {
+            Class.forName(clazz.getName(), true, clazz.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("Failed to initialize " + clazz.getName(), e);
+        }
     }
 
     public static Map<ConfigModule, ConfigEntry> entriesOf(Class<? extends ConfigEntries> clazz) {

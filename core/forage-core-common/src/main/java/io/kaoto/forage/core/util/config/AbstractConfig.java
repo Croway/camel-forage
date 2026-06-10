@@ -10,18 +10,9 @@ public abstract class AbstractConfig implements Config {
     protected AbstractConfig(String prefix, Class<? extends ConfigEntries> entriesClass) {
         this.prefix = prefix;
         this.entriesClass = entriesClass;
-        ensureInitialized(entriesClass);
         ConfigEntries.registerPrefix(entriesClass, prefix);
         loadFromProperties();
         ConfigEntries.loadOverridesFor(entriesClass, prefix);
-    }
-
-    private static void ensureInitialized(Class<? extends ConfigEntries> clazz) {
-        try {
-            Class.forName(clazz.getName(), true, clazz.getClassLoader());
-        } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("Failed to initialize " + clazz.getName(), e);
-        }
     }
 
     @SuppressWarnings("unchecked")
