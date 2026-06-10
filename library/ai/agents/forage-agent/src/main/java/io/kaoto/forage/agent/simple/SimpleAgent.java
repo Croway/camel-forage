@@ -20,7 +20,7 @@ import dev.langchain4j.service.tool.ToolProviderResult;
 /**
  * Simple implementation of an AI agent that provides basic chat functionality.
  *
- * <p>This class is a singleton shared across threads — it is created once by {@link AgentCreator}
+ * <p>This class is a singleton shared across threads — it is created once by {@link io.kaoto.forage.agent.AgentCreator}
  * and registered in the Camel registry. The {@link #configure(AgentConfiguration)} method is called
  * exactly once during creation; the configuration is immutable for the agent's lifetime.
  *
