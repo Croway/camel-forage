@@ -62,10 +62,22 @@ jobs:
 
       - name: Update docs version
         run: |
-          sed -i 's/forage_version: ".*"/forage_version: "${{ github.event.inputs.releaseVersion }}"/' website/mkdocs.yml
-          git add website/mkdocs.yml
-          git commit -m "docs: update stable version to ${{ github.event.inputs.releaseVersion }}"
-          git push
+          BRANCH="${{ github.ref_name }}"
+          VERSION="${{ github.event.inputs.releaseVersion }}"
+
+          if [ "$BRANCH" = "main" ]; then
+            sed -i "s/forage_version: \".*\"/forage_version: \"${VERSION}\"/" website/mkdocs.yml
+            git add website/mkdocs.yml
+            git commit -m "docs: update LTS version to ${VERSION}"
+            git push
+          else
+            git fetch origin main
+            git checkout main -- website/mkdocs.yml
+            sed -i "s/forage_latest_version: \".*\"/forage_latest_version: \"${VERSION}\"/" website/mkdocs.yml
+            git add website/mkdocs.yml
+            git commit -m "docs: update latest version to ${VERSION}"
+            git push origin HEAD:main
+          fi
 
       # Create a release
 

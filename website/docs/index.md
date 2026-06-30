@@ -78,6 +78,17 @@ A complete AI agent with tool use in just two files:
     forage.myGraniteAgent.agent.base.url=http://localhost:11434
     ```
 
+## Versions
+
+Forage publishes two release streams so you can match your Apache Camel version:
+
+| Stream | Forage | Apache Camel | Description |
+|--------|--------|-------------|-------------|
+| **LTS** | {{ forage_version }} | {{ camel_lts_version }} | Tracks the Camel LTS line — recommended for production |
+| **Latest** | {{ forage_latest_version }} | {{ camel_latest_version }} | Tracks the newest Camel release |
+
+Pick the stream that matches the Camel version you use, then follow the [Getting Started](getting-started/index.md) guide.
+
 ## Getting Started
 
 Ready to dive in? Head to the [Getting Started](getting-started/index.md) guide.
