@@ -61,10 +61,10 @@ jobs:
           mvn -DskipTests -Darguments="-DskipTests" -Pdist -B --no-transfer-progress --file pom.xml -Dtag=v${{ github.event.inputs.releaseVersion }} -DreleaseVersion=${{ github.event.inputs.releaseVersion }} -DdevelopmentVersion=${{ github.event.inputs.nextDevelopmentVersion }}-SNAPSHOT release:prepare release:perform
 
       - name: Update docs version
+        env:
+          BRANCH: ${{ github.ref_name }}
+          VERSION: ${{ github.event.inputs.releaseVersion }}
         run: |
-          BRANCH="${{ github.ref_name }}"
-          VERSION="${{ github.event.inputs.releaseVersion }}"
-
           if [ "$BRANCH" = "main" ]; then
             sed -i "s/forage_version: \".*\"/forage_version: \"${VERSION}\"/" website/mkdocs.yml
             git add website/mkdocs.yml
