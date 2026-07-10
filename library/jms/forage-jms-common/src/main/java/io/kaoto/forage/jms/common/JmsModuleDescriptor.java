@@ -59,6 +59,11 @@ public class JmsModuleDescriptor implements ForageModuleDescriptor<ConnectionFac
     }
 
     @Override
+    public String destroyMethodName() {
+        return "stop";
+    }
+
+    @Override
     public Map<String, String> translateProperties(String prefix, ConnectionFactoryConfig config) {
         Map<String, String> props = new HashMap<>();
         String named = prefix;

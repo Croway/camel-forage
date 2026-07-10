@@ -40,6 +40,7 @@ public class ForageSpringBootModuleAdapter<C extends Config, P extends BeanProvi
     private final ForageModuleDescriptor<C, P> descriptor;
     private final Environment environment;
     private UnaryOperator<Object> beanCustomizer;
+    private ConfigurableListableBeanFactory beanFactory;
 
     public ForageSpringBootModuleAdapter(ForageModuleDescriptor<C, P> descriptor, Environment environment) {
         this.descriptor = descriptor;
@@ -77,6 +78,7 @@ public class ForageSpringBootModuleAdapter<C extends Config, P extends BeanProvi
 
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+        this.beanFactory = beanFactory;
         // Replace conflicting alias beans registered by framework auto-configs
         // (e.g., Spring Boot's ArtemisAutoConfiguration creates a CachingConnectionFactory
         // as "jmsConnectionFactory" that wraps Forage's already-pooled ConnectionFactory).
@@ -90,15 +92,8 @@ public class ForageSpringBootModuleAdapter<C extends Config, P extends BeanProvi
                         registry.removeBeanDefinition(alias);
                         LOG.info("Removed conflicting {} bean definition: {}", descriptor.modulePrefix(), alias);
                     }
-                    GenericBeanDefinition aliasDef = new GenericBeanDefinition();
-                    aliasDef.setBeanClass(descriptor.primaryBeanClass());
-                    aliasDef.setInstanceSupplier(() -> beanFactory.getBean(defaultName));
-                    registry.registerBeanDefinition(alias, aliasDef);
-                    LOG.info(
-                            "Registered {} alias bean definition: {} -> {}",
-                            descriptor.modulePrefix(),
-                            alias,
-                            defaultName);
+                    registry.registerAlias(defaultName, alias);
+                    LOG.info("Registered {} alias: {} -> {}", descriptor.modulePrefix(), alias, defaultName);
                 }
             }
         }
@@ -148,6 +143,10 @@ public class ForageSpringBootModuleAdapter<C extends Config, P extends BeanProvi
         beanDefinition.setBeanClass(descriptor.primaryBeanClass());
         beanDefinition.setInstanceSupplier(() -> createPrimaryBean(name));
         beanDefinition.setPrimary(isFirst);
+        String destroyMethod = descriptor.destroyMethodName();
+        if (!destroyMethod.isEmpty()) {
+            beanDefinition.setDestroyMethodName(destroyMethod);
+        }
         registry.registerBeanDefinition(name, beanDefinition);
         LOG.info("Registered {} bean definition: {}", descriptor.modulePrefix(), name);
 
@@ -163,7 +162,8 @@ public class ForageSpringBootModuleAdapter<C extends Config, P extends BeanProvi
     }
 
     private void registerAuxiliaryBeans(BeanDefinitionRegistry registry, String prefix) {
-        List<AuxiliaryBeanDescriptor> auxiliaryBeans = descriptor.auxiliaryBeans(prefix);
+        List<AuxiliaryBeanDescriptor> auxiliaryBeans =
+                descriptor.auxiliaryBeans(prefix, name -> beanFactory != null ? beanFactory.getBean(name) : null);
         for (AuxiliaryBeanDescriptor aux : auxiliaryBeans) {
             if (!registry.containsBeanDefinition(aux.name())) {
                 GenericBeanDefinition beanDef = new GenericBeanDefinition();
