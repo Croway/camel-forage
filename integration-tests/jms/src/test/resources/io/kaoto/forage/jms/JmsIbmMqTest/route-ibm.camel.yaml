@@ -38,7 +38,9 @@
       parameters:
         destinationName: input.queue
         destinationType: queue
-        transacted: "true"
+        # transacted must stay false with XA: the JTA transaction manager wired into the
+        # JMS component drives the transaction; a local JMS transaction on an XA
+        # connection is rejected by IBM MQ (MQRC_SYNCPOINT_NOT_AVAILABLE, 2072). See #427.
         cacheLevelName: CACHE_NONE
       steps:
         - transacted:
@@ -93,7 +95,7 @@
       id: dlq-consumer
       uri: jms
       parameters:
-        destinationName: DLQ2
+        destinationName: DLQ
         destinationType: queue
       steps:
         - log:

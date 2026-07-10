@@ -35,3 +35,22 @@ forage.primaryBroker.jms.url=tcp://broker1:61616
 forage.backupBroker.jms.kind=artemis
 forage.backupBroker.jms.url=tcp://broker2:61617
 ```
+
+## XA Transactions
+
+Setting `forage.jms.transaction.enabled=true` switches the module to XA mode:
+
+- The connection factory becomes an XA-aware pool (`JmsPoolXAConnectionFactory`) that enlists
+  sessions in the Narayana transaction manager.
+- The Narayana transaction manager is initialized from the `forage.jms.transaction.*` properties.
+- JTA transaction policies (`PROPAGATION_REQUIRED`, `REQUIRES_NEW`, ...) are registered in the
+  Camel registry for use with the `transacted` EIP.
+- The Camel JMS component is configured with a JTA transaction manager, so consumers receive
+  each message inside a JTA transaction and a rollback returns the message to the broker.
+
+!!! warning "Endpoint contract"
+    Leave `transacted` at its default (`false`) on `jms:` endpoints. The JTA transaction manager
+    wired into the component drives the transaction; enabling the endpoint's *local* JMS
+    transaction on an XA connection is rejected by brokers such as IBM MQ
+    (`MQRC_SYNCPOINT_NOT_AVAILABLE`, reason code 2072). Use `cacheLevelName: CACHE_NONE` on
+    transactional consumers.

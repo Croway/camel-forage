@@ -2,8 +2,10 @@ package io.kaoto.forage.jms.common;
 
 import jakarta.jms.ConnectionFactory;
 import jakarta.jms.XAConnectionFactory;
+import jakarta.transaction.TransactionManager;
 
 import org.messaginghub.pooled.jms.JmsPoolConnectionFactory;
+import org.messaginghub.pooled.jms.JmsPoolXAConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.jms.ConnectionFactoryProvider;
@@ -78,12 +80,14 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
                 return connectionFactory;
             }
 
-            // The XAConnectionFactory is wrapped as a plain ConnectionFactory, so sessions do NOT
-            // enlist in JTA transactions. Enlisting via JmsPoolXAConnectionFactory alone breaks
-            // consumption on brokers that reject local transactions on XA connections (IBM MQ
-            // MQRC 2072): completing XA also needs a JtaTransactionManager wired into the Camel
-            // JMS component. Tracked in #427.
-            final JmsPoolConnectionFactory pooledConnectionFactory = setupPooledConnectionFactory(xaConnectionFactory);
+            // Sessions created within an active JTA transaction enlist their XAResource in the
+            // Narayana transaction. This alone breaks consumption on brokers that reject local
+            // transactions on XA connections (IBM MQ MQRC 2072), so each runtime also wires a
+            // JtaTransactionManager into the Camel JMS component (see JmsJtaTransactionSupport)
+            // and endpoints must NOT enable local transactions (transacted=true). See #427.
+            TransactionManager transactionManager = com.arjuna.ats.jta.TransactionManager.transactionManager();
+            final JmsPoolXAConnectionFactory pooledConnectionFactory =
+                    setupPooledXAConnectionFactory(xaConnectionFactory, transactionManager);
 
             LOG.info("Pooled XA ConnectionFactory initialized successfully for id: {}", id);
             return pooledConnectionFactory;
@@ -101,6 +105,15 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
             LOG.info("Pooled ConnectionFactory initialized successfully for id: {}", id);
             return pooledConnectionFactory;
         }
+    }
+
+    private JmsPoolXAConnectionFactory setupPooledXAConnectionFactory(
+            XAConnectionFactory xaConnectionFactory, TransactionManager transactionManager) {
+        JmsPoolXAConnectionFactory pooledConnectionFactory = new JmsPoolXAConnectionFactory();
+        pooledConnectionFactory.setConnectionFactory(xaConnectionFactory);
+        pooledConnectionFactory.setTransactionManager(transactionManager);
+        applyPoolSettings(pooledConnectionFactory);
+        return pooledConnectionFactory;
     }
 
     private <T> JmsPoolConnectionFactory setupPooledConnectionFactory(T underlyingConnectionFactory) {

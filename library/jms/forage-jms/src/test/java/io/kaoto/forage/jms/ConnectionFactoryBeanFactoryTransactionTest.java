@@ -6,7 +6,9 @@ import jakarta.jms.JMSContext;
 
 import java.util.List;
 import org.apache.camel.CamelContext;
+import org.apache.camel.component.jms.JmsComponent;
 import org.apache.camel.impl.DefaultCamelContext;
+import org.springframework.transaction.jta.JtaTransactionManager;
 
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,6 +40,37 @@ class ConnectionFactoryBeanFactoryTransactionTest {
                     .as("JTA policy bean '%s' should be bound when a prefixed config enables transactions", name)
                     .isNotNull();
         }
+    }
+
+    @Test
+    void transactionEnabledWiresJtaTransactionManagerIntoJmsComponent() {
+        CamelContext camelContext = new DefaultCamelContext();
+        ConnectionFactory connectionFactory = dummyConnectionFactory();
+        camelContext.getRegistry().bind("mq1", connectionFactory);
+
+        ConnectionFactoryBeanFactory beanFactory = new ConnectionFactoryBeanFactory();
+        beanFactory.setCamelContext(camelContext);
+        beanFactory.configure();
+
+        JtaTransactionManager jtaTransactionManager =
+                camelContext.getRegistry().lookupByNameAndType("jtaTransactionManager", JtaTransactionManager.class);
+        assertThat(jtaTransactionManager)
+                .as("A JtaTransactionManager should be bound when transactions are enabled")
+                .isNotNull();
+
+        // Resolving the component fires onComponentAdd, which applies the registered
+        // ComponentCustomizer — the mechanism used at runtime when routes create the component
+        JmsComponent jmsComponent = camelContext.getComponent("jms", JmsComponent.class);
+        assertThat(jmsComponent.getConfiguration().getTransactionManager())
+                .as("The Camel JMS component should receive the Forage JTA transaction manager (#427)")
+                .isSameAs(jtaTransactionManager);
+
+        // Setting a transaction manager disables JmsComponent's own ConnectionFactory
+        // auto-discovery, so the customizer must replicate it
+        assertThat(jmsComponent.getConfiguration().getConnectionFactory())
+                .as("The single registry ConnectionFactory should still be auto-discovered when a "
+                        + "transaction manager is set (#427)")
+                .isSameAs(connectionFactory);
     }
 
     private static ConnectionFactory dummyConnectionFactory() {

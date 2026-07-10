@@ -227,7 +227,8 @@ cat > "${PROJECT_DIR}/route.camel.yaml" <<'ROUTE'
       parameters:
         destinationName: input.queue
         destinationType: queue
-        transacted: "true"
+        # transacted stays false with XA: the JTA transaction manager wired into the
+        # JMS component drives the transaction (see #427)
         cacheLevelName: CACHE_NONE
       steps:
         - transacted:

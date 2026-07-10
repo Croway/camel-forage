@@ -97,7 +97,9 @@ The critical detail is the shared `transaction.node.id=xa-node1` across both JMS
       uri: jms
       parameters:
         destinationName: in
-        transacted: true
+        # transacted stays false with XA: the JTA transaction manager wired into the
+        # JMS component drives the transaction (a local JMS transaction on an XA
+        # connection is rejected by brokers such as IBM MQ)
         cacheLevelName: CACHE_NONE
       steps:
         - transacted:
