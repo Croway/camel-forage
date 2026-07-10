@@ -36,6 +36,15 @@ public class ForageRun extends Run {
             return validationResult;
         }
 
-        return super.doCall();
+        // super.doCall() triggers the plugin's beforeRun hook (ForagePlugin), which would validate
+        // again — mark validation as handled so warnings are not printed twice and --skip-validation
+        // fully suppresses output. The hook consumes the flag; the finally block resets it in case
+        // the hook never ran (e.g. an early failure), so a reused plugin instance starts clean.
+        ForagePropertyValidator.markValidationHandled();
+        try {
+            return super.doCall();
+        } finally {
+            ForagePropertyValidator.consumeValidationHandled();
+        }
     }
 }

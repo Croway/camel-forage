@@ -23,12 +23,22 @@ public class ForageExport extends Export {
 
     @Override
     public Integer doCall() throws Exception {
+        ForagePlugin.resolveConfigDir(files);
+
         // Validate properties before exporting
         int validationResult = validation.validateAndReport(printer());
         if (validationResult != 0) {
             return validationResult;
         }
 
-        return super.doCall();
+        // Exporting may delegate to run infrastructure that triggers the plugin's beforeRun hook —
+        // mark validation as handled so it is not repeated. The finally block resets the flag in
+        // case the hook never ran, so a reused plugin instance starts clean.
+        ForagePropertyValidator.markValidationHandled();
+        try {
+            return super.doCall();
+        } finally {
+            ForagePropertyValidator.consumeValidationHandled();
+        }
     }
 }
