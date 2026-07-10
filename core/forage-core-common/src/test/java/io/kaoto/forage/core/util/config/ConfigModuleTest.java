@@ -33,6 +33,41 @@ class ConfigModuleTest {
     }
 
     @Test
+    void asNamedPreservesMetadata() {
+        final ConfigModule configModule = ConfigModule.of(
+                TestConfig.class,
+                "forage.test.config",
+                "A description",
+                "A Label",
+                "def",
+                "string",
+                true,
+                ConfigTag.COMMON);
+
+        final ConfigModule named = configModule.asNamed("prefix");
+        assertEquals("forage.prefix.test.config", named.name());
+        assertEquals("A description", named.description());
+        assertEquals("A Label", named.label());
+        assertEquals("def", named.defaultValue());
+        assertEquals("string", named.type());
+        assertTrue(named.required());
+        assertEquals(ConfigTag.COMMON, named.configTag());
+    }
+
+    @Test
+    void propertyNameKeepsUnderscores() {
+        final ConfigModule configModule = ConfigModule.of(TestConfig.class, "forage.jdbc.url");
+        final ConfigModule named = configModule.asNamed("my_datasource");
+        assertEquals("forage.my_datasource.jdbc.url", named.propertyName());
+    }
+
+    @Test
+    void envNameConvertsDotsAndCase() {
+        final ConfigModule configModule = ConfigModule.of(TestConfig.class, "forage.jdbc.url");
+        assertEquals("FORAGE_JDBC_URL", configModule.envName());
+    }
+
+    @Test
     void match() {
         final ConfigModule configModule = ConfigModule.of(TestConfig.class, "test.config");
         assertTrue(configModule.match("test.config"));

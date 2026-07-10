@@ -6,8 +6,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class ConfigEntries {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ConfigEntries.class);
 
     private static final Map<Class<? extends ConfigEntries>, Map<ConfigModule, ConfigEntry>> REGISTRY =
             new ConcurrentHashMap<>();
@@ -48,6 +52,10 @@ public abstract class ConfigEntries {
                 for (ConfigModule module : base) {
                     modules.put(module.asNamed(prefix), ConfigEntry.fromModule());
                 }
+            } else {
+                // ConfigEntries subclasses with dynamic modules (e.g., route policies)
+                // manage their own registry instead of calling initModules()
+                LOG.debug("registerPrefix: no base modules registered for {}", clazz.getName());
             }
         }
     }
@@ -59,15 +67,25 @@ public abstract class ConfigEntries {
             for (ConfigModule module : base) {
                 ConfigStore.getInstance().load(module.asNamed(prefix));
             }
+        } else {
+            LOG.debug("loadOverridesFor: no base modules registered for {}", clazz.getName());
         }
     }
 
+    /**
+     * Finds the module matching the given property name, either directly or as the
+     * prefixed (named) variant of a base module.
+     *
+     * @param configModules the modules to search
+     * @param prefix an optional configuration prefix; when set, a base module also matches
+     *        its prefixed property name even if the prefix was never registered
+     * @param name the full property name to match (e.g., {@code forage.ds1.jdbc.url})
+     */
     public static Optional<ConfigModule> find(
             Map<ConfigModule, ConfigEntry> configModules, String prefix, String name) {
-        return configModules.entrySet().stream()
-                .filter(e -> e.getKey().match(name))
-                .findFirst()
-                .map(Map.Entry::getKey);
+        return configModules.keySet().stream()
+                .filter(m -> m.match(name) || m.asNamed(prefix).match(name))
+                .findFirst();
     }
 
     /**
