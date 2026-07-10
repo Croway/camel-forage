@@ -1,7 +1,9 @@
 package io.kaoto.forage.agent;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import org.apache.camel.component.langchain4j.agent.api.Agent;
@@ -37,12 +39,19 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
  * <p>Extracted from {@link AgentBeanFactory} so that both the plain Camel factory,
  * the Quarkus recorder, and the Spring Boot auto-configuration can share the same
  * agent composition logic.
+ *
+ * <p>Note: the {@code forage.agent.*} to {@code forage.<provider>.*} property bridge (see
+ * {@link #getProviderConfigPrefix(String)}) covers common model properties only. Provider-specific
+ * required properties — e.g. {@code forage.watsonxai.url} and {@code forage.watsonxai.project.id}
+ * for watsonx-ai — must still be set directly and cannot be expressed as {@code forage.agent.*}.
  */
 public final class AgentCreator {
 
     private static final Logger LOG = LoggerFactory.getLogger(AgentCreator.class);
     public static final String DEFAULT_AGENT = "agent";
     private static final String FEATURE_MEMORY = "memory";
+
+    private static final Object CREATION_LOCK = new Object();
 
     private AgentCreator() {}
 
@@ -162,24 +171,37 @@ public final class AgentCreator {
                 String providerPrefix = getProviderConfigPrefix(modelKind);
                 String prefix = DEFAULT_AGENT.equals(agentName) ? null : agentName;
 
-                List<String> setKeys = new ArrayList<>();
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "api.key", config.apiKey());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "model.name", config.modelName());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "base.url", config.baseUrl());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "temperature", config.temperature());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "max.tokens", config.maxTokens());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "top.p", config.topP());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "top.k", config.topK());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "endpoint", config.endpoint());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "deployment.name", config.deploymentName());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "log.requests", config.logRequests());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "log.responses", config.logResponses());
-                setSystemPropertyIfNotNull(setKeys, prefix, providerPrefix, "timeout", config.timeout());
+                synchronized (CREATION_LOCK) {
+                    Map<String, String> previousValues = new LinkedHashMap<>();
+                    // The set calls run inside the try so that the finally block restores any
+                    // already-set properties even when an argument (e.g. a malformed
+                    // forage.agent.temperature) throws mid-sequence.
+                    try {
+                        setSystemPropertyIfNotNull(previousValues, prefix, providerPrefix, "api.key", config.apiKey());
+                        setSystemPropertyIfNotNull(
+                                previousValues, prefix, providerPrefix, "model.name", config.modelName());
+                        setSystemPropertyIfNotNull(
+                                previousValues, prefix, providerPrefix, "base.url", config.baseUrl());
+                        setSystemPropertyIfNotNull(
+                                previousValues, prefix, providerPrefix, "temperature", config.temperature());
+                        setSystemPropertyIfNotNull(
+                                previousValues, prefix, providerPrefix, "max.tokens", config.maxTokens());
+                        setSystemPropertyIfNotNull(previousValues, prefix, providerPrefix, "top.p", config.topP());
+                        setSystemPropertyIfNotNull(previousValues, prefix, providerPrefix, "top.k", config.topK());
+                        setSystemPropertyIfNotNull(
+                                previousValues, prefix, providerPrefix, "endpoint", config.endpoint());
+                        setSystemPropertyIfNotNull(
+                                previousValues, prefix, providerPrefix, "deployment.name", config.deploymentName());
+                        setSystemPropertyIfNotNull(
+                                previousValues, prefix, providerPrefix, "log.requests", config.logRequests());
+                        setSystemPropertyIfNotNull(
+                                previousValues, prefix, providerPrefix, "log.responses", config.logResponses());
+                        setSystemPropertyIfNotNull(previousValues, prefix, providerPrefix, "timeout", config.timeout());
 
-                try {
-                    return modelProvider.create(prefix);
-                } finally {
-                    clearSystemProperties(setKeys);
+                        return modelProvider.create(prefix);
+                    } finally {
+                        restoreSystemProperties(previousValues);
+                    }
                 }
             }
         }
@@ -202,20 +224,46 @@ public final class AgentCreator {
                 String providerPrefix = getProviderConfigPrefix(modelKind);
                 String prefix = DEFAULT_AGENT.equals(agentName) ? null : agentName;
 
-                List<String> setKeys = new ArrayList<>();
-                setSystemPropertyIfNotNull(
-                        setKeys, prefix, providerPrefix, "embedding.model.name", config.embeddingModelName());
-                setSystemPropertyIfNotNull(
-                        setKeys, prefix, providerPrefix, "embedding.model.timeout", config.embeddingModelTimeout());
-                setSystemPropertyIfNotNull(
-                        setKeys, prefix, providerPrefix, "embedding.max.retries", config.embeddingModelMaxRetries());
-                setSystemPropertyIfNotNull(
-                        setKeys, prefix, providerPrefix, "embedding.base.url", config.embeddingModelBaseUrl());
+                synchronized (CREATION_LOCK) {
+                    Map<String, String> previousValues = new LinkedHashMap<>();
+                    // Set calls run inside the try so partially-set properties are always restored
+                    // even when an argument (e.g. a malformed embedding.model.timeout) throws.
+                    try {
+                        setSystemPropertyIfNotNull(
+                                previousValues,
+                                prefix,
+                                providerPrefix,
+                                "embedding.model.api.key",
+                                config.embeddingModelApiKey());
+                        setSystemPropertyIfNotNull(
+                                previousValues,
+                                prefix,
+                                providerPrefix,
+                                "embedding.model.name",
+                                config.embeddingModelName());
+                        setSystemPropertyIfNotNull(
+                                previousValues,
+                                prefix,
+                                providerPrefix,
+                                "embedding.model.timeout",
+                                config.embeddingModelTimeout());
+                        setSystemPropertyIfNotNull(
+                                previousValues,
+                                prefix,
+                                providerPrefix,
+                                "embedding.model.max.retries",
+                                config.embeddingModelMaxRetries());
+                        setSystemPropertyIfNotNull(
+                                previousValues,
+                                prefix,
+                                providerPrefix,
+                                "embedding.model.base.url",
+                                config.embeddingModelBaseUrl());
 
-                try {
-                    return modelProvider.create(prefix);
-                } finally {
-                    clearSystemProperties(setKeys);
+                        return modelProvider.create(prefix);
+                    } finally {
+                        restoreSystemProperties(previousValues);
+                    }
                 }
             }
         }
@@ -234,23 +282,32 @@ public final class AgentCreator {
             LOG.debug("Found embedding store provider for kind '{}': {}", modelKind, providerClass.getName());
             EmbeddingStoreProvider storeProvider = provider.get();
 
-            String providerPrefix = getProviderConfigPrefix(modelKind);
             String prefix = DEFAULT_AGENT.equals(agentName) ? null : agentName;
-
-            List<String> setKeys = new ArrayList<>();
-            setSystemPropertyIfNotNull(setKeys, prefix, "in.memory.store", "file.source", config.fileSource());
-            setSystemPropertyIfNotNull(setKeys, prefix, "in.memory.store", "max.size", config.embeddingStoreMaxSize());
-            setSystemPropertyIfNotNull(
-                    setKeys, prefix, "in.memory.store", "overlap.size", config.embeddingStoreOverlapSize());
 
             if (storeProvider instanceof EmbeddingModelAware modelAware) {
                 modelAware.withEmbeddingModel(model);
             }
 
-            try {
-                return storeProvider.create(prefix);
-            } finally {
-                clearSystemProperties(setKeys);
+            synchronized (CREATION_LOCK) {
+                Map<String, String> previousValues = new LinkedHashMap<>();
+                // Set calls run inside the try so partially-set properties are always restored
+                // even when an argument (e.g. a malformed max.size) throws.
+                try {
+                    setSystemPropertyIfNotNull(
+                            previousValues, prefix, "in.memory.store", "file.source", config.fileSource());
+                    setSystemPropertyIfNotNull(
+                            previousValues, prefix, "in.memory.store", "max.size", config.embeddingStoreMaxSize());
+                    setSystemPropertyIfNotNull(
+                            previousValues,
+                            prefix,
+                            "in.memory.store",
+                            "overlap.size",
+                            config.embeddingStoreOverlapSize());
+
+                    return storeProvider.create(prefix);
+                } finally {
+                    restoreSystemProperties(previousValues);
+                }
             }
         }
 
@@ -274,12 +331,7 @@ public final class AgentCreator {
             LOG.debug("Found retrieval augmentor provider for kind '{}': {}", modelKind, providerClass.getName());
             RetrievalAugmentorProvider retrievalAugmentorProvider = provider.get();
 
-            String providerPrefix = getProviderConfigPrefix(modelKind);
             String prefix = DEFAULT_AGENT.equals(agentName) ? null : agentName;
-
-            List<String> setKeys = new ArrayList<>();
-            setSystemPropertyIfNotNull(setKeys, prefix, "rag", "max.results", config.defaultRagMaxResults());
-            setSystemPropertyIfNotNull(setKeys, prefix, "rag", "min.score", config.defaultRagMinScore());
 
             if (retrievalAugmentorProvider instanceof EmbeddingModelAware modelAware) {
                 modelAware.withEmbeddingModel(embeddingModel);
@@ -288,10 +340,19 @@ public final class AgentCreator {
                 storeAware.withEmbeddingStore(embeddingStore);
             }
 
-            try {
-                return retrievalAugmentorProvider.create(prefix);
-            } finally {
-                clearSystemProperties(setKeys);
+            synchronized (CREATION_LOCK) {
+                Map<String, String> previousValues = new LinkedHashMap<>();
+                // Set calls run inside the try so partially-set properties are always restored
+                // even when an argument (e.g. a malformed min.score) throws.
+                try {
+                    setSystemPropertyIfNotNull(
+                            previousValues, prefix, "rag", "max.results", config.defaultRagMaxResults());
+                    setSystemPropertyIfNotNull(previousValues, prefix, "rag", "min.score", config.defaultRagMinScore());
+
+                    return retrievalAugmentorProvider.create(prefix);
+                } finally {
+                    restoreSystemProperties(previousValues);
+                }
             }
         }
 
@@ -399,24 +460,41 @@ public final class AgentCreator {
     }
 
     static void setSystemPropertyIfNotNull(
-            List<String> setKeys, String prefix, String providerPrefix, String key, Object value) {
+            Map<String, String> previousValues, String prefix, String providerPrefix, String key, Object value) {
         if (value != null) {
             String fullKey = prefix != null
                     ? "forage." + prefix + "." + providerPrefix + "." + key
                     : "forage." + providerPrefix + "." + key;
+            previousValues.put(fullKey, System.getProperty(fullKey));
             System.setProperty(fullKey, String.valueOf(value));
-            setKeys.add(fullKey);
             LOG.trace("Set system property: {}={}", fullKey, value);
         }
     }
 
-    private static void clearSystemProperties(List<String> keys) {
-        for (String key : keys) {
-            System.clearProperty(key);
-            LOG.trace("Cleared system property: {}", key);
+    static void restoreSystemProperties(Map<String, String> previousValues) {
+        for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+            if (entry.getValue() == null) {
+                System.clearProperty(entry.getKey());
+            } else {
+                System.setProperty(entry.getKey(), entry.getValue());
+            }
+            LOG.trace("Restored system property: {}", entry.getKey());
         }
     }
 
+    /**
+     * Maps a model kind (the value of {@code forage.agent.model.kind}) to the configuration
+     * prefix used by the corresponding provider module's ConfigEntries class, so that
+     * {@code forage.agent.*} properties can be bridged to {@code forage.<prefix>.*} ones.
+     *
+     * <p><strong>Limitation:</strong> only the common properties handled by the bridge sites in
+     * this class are mapped. Provider-specific required properties have no {@code forage.agent.*}
+     * counterpart and must be set directly. Notably, watsonx-ai still requires
+     * {@code forage.watsonxai.url} and {@code forage.watsonxai.project.id} to be configured
+     * directly — they cannot be bridged from {@code forage.agent.*} configuration.
+     *
+     * <p>Package-private (rather than private) for testability.
+     */
     static String getProviderConfigPrefix(String modelKind) {
         return switch (modelKind) {
             case "google-gemini" -> "google";
@@ -424,9 +502,9 @@ public final class AgentCreator {
             case "openai" -> "openai";
             case "ollama" -> "ollama";
             case "anthropic" -> "anthropic";
-            case "mistral-ai" -> "mistral";
+            case "mistral-ai" -> "mistralai";
             case "hugging-face" -> "huggingface";
-            case "watsonx-ai" -> "watsonx";
+            case "watsonx-ai" -> "watsonxai";
             case "local-ai" -> "localai";
             case "dashscope" -> "dashscope";
             default -> modelKind.replace("-", ".");
