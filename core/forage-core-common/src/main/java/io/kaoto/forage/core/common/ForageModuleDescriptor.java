@@ -3,6 +3,7 @@ package io.kaoto.forage.core.common;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import io.kaoto.forage.core.util.config.Config;
 
 /**
@@ -88,7 +89,39 @@ public interface ForageModuleDescriptor<C extends Config, P extends BeanProvider
     }
 
     /**
+     * Returns auxiliary bean descriptors using a runtime-supplied primary bean lookup function.
+     * Runtimes (e.g., Spring Boot) that manage the primary bean lifecycle should pass a lookup
+     * so that auxiliary beans share the same managed instance rather than opening a new pool.
+     *
+     * <p>The default implementation ignores the lookup and delegates to {@link #auxiliaryBeans(String)}.
+     * Descriptors that create secondary resources (e.g., DataSource for JDBC repositories) should
+     * override this to use the lookup instead.
+     *
+     * @param prefix        the configuration prefix
+     * @param primaryLookup a function that resolves the primary bean by name; the argument is the
+     *                      prefix (or default bean name when prefix is {@code null})
+     * @return list of auxiliary bean descriptors; empty list if none
+     * @since 1.2
+     */
+    default List<AuxiliaryBeanDescriptor> auxiliaryBeans(String prefix, Function<String, Object> primaryLookup) {
+        return auxiliaryBeans(prefix);
+    }
+
+    /**
      * Whether transactions are enabled for the given configuration.
      */
     boolean transactionEnabled(C config);
+
+    /**
+     * The destroy method name to call on the primary bean when the application context closes,
+     * or an empty string to let Spring infer it (Spring looks for {@code close()} or
+     * {@code shutdown()} by default). Override when the primary bean uses a different lifecycle
+     * method (e.g., {@code "stop"} for {@code JmsPoolConnectionFactory}).
+     *
+     * @return the destroy method name, or {@code ""} for Spring's default inference
+     * @since 1.2
+     */
+    default String destroyMethodName() {
+        return "";
+    }
 }
