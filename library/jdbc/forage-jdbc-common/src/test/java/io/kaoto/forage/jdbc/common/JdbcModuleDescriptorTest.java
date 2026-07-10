@@ -1,6 +1,7 @@
 package io.kaoto.forage.jdbc.common;
 
 import java.util.Map;
+import io.kaoto.forage.core.util.config.ConfigStore;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,11 @@ class JdbcModuleDescriptorTest {
         System.clearProperty("forage.jdbc.password");
         System.clearProperty("forage.jdbc.pool.min.size");
         System.clearProperty("forage.jdbc.pool.max.size");
+        // Constructing DataSourceFactoryConfig caches the system-property values (including
+        // forage.jdbc.transaction.enabled=true from unsetOptionalPropertiesAreNotTranslated)
+        // in the singleton ConfigStore; clearing the system properties alone leaves those
+        // stale values behind for later tests in the same JVM
+        ConfigStore.getInstance().reload();
     }
 
     @Test
