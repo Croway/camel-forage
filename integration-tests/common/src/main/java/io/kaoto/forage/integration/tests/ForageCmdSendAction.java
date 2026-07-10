@@ -18,9 +18,9 @@ import org.slf4j.LoggerFactory;
  * Sends a message to a running Camel integration via {@code camel cmd send}, addressing the
  * integration by the PID of its {@code Running} process instead of by name.
  *
- * <p>Workaround for Camel JBang 4.20: with exported runtimes (spring-boot, quarkus) the launcher
- * process leaves a {@code Terminated} status entry under the same integration name, and
- * {@code camel cmd send <name>} fails with "matches 2 running Camel integrations" while still
+ * <p>Workaround for CAMEL-24002 (Camel JBang 4.20): with exported runtimes (spring-boot, quarkus)
+ * the launcher process leaves a {@code Terminated} status entry under the same integration name,
+ * and {@code camel cmd send <name>} fails with "matches 2 running Camel integrations" while still
  * exiting 0 — so the Citrus {@code CamelCmdSendAction} reports success although nothing was sent.
  *
  * <p>This action:
