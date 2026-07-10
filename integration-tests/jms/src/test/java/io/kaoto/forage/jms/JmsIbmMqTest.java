@@ -77,7 +77,6 @@ public class JmsIbmMqTest implements ForageIntegrationTest {
         destinations.createQueue("input.queue");
         destinations.createQueue("output.queue");
         destinations.createQueue("DLQ");
-        destinations.createQueue("DLQ2");
 
         // Load template properties and replace testcontainer-specific values
         String brokerUrl = "mq://%s:%d/%s/%s"
@@ -103,10 +102,16 @@ public class JmsIbmMqTest implements ForageIntegrationTest {
     @Test
     @CitrusTest()
     public void ibmMqTransactional(ForageTestCaseRunner runner) {
-        // validation of logged message
+        // the successful message commits through to the output queue via XA
         runner.then(camel().jbang()
                 .verify()
                 .integration(INTEGRATION_NAME)
                 .waitForLogMessage("Successfully processed message: Transactional message"));
+
+        // the failing messages are dead-lettered to DLQ within the XA transaction
+        runner.then(camel().jbang()
+                .verify()
+                .integration(INTEGRATION_NAME)
+                .waitForLogMessage("Message sent to DLQ after max redeliveries"));
     }
 }

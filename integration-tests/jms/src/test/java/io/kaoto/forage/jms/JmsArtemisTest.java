@@ -68,10 +68,23 @@ public class JmsArtemisTest implements ForageIntegrationTest {
     @CitrusTest()
     public void artemisTransactional(ForageTestCaseRunner runner) {
 
-        // validation of logged message
+        // the successful message commits through to the output queue
         runner.then(camel().jbang()
                 .verify()
                 .integration(INTEGRATION_NAME)
                 .waitForLogMessage("Successfully processed message: Transactional message"));
+
+        // the failing messages are dead-lettered to DLQ within the XA transaction
+        runner.then(camel().jbang()
+                .verify()
+                .integration(INTEGRATION_NAME)
+                .waitForLogMessage("Message sent to DLQ after max redeliveries"));
+
+        // an XA rollback returns the message to the broker: the broker redelivers it with
+        // JMSRedelivered=true; with broken XA enlistment the message would be lost (#427)
+        runner.then(camel().jbang()
+                .verify()
+                .integration(INTEGRATION_NAME)
+                .waitForLogMessage("Message redelivered after XA rollback"));
     }
 }

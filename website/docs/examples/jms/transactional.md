@@ -52,7 +52,10 @@ forage.myBroker.jms.transaction.object.store.directory=tx-object-store
 forage.myBroker.jms.transaction.object.store.type=file-system
 ```
 
-Setting `transaction.enabled=true` changes Forage's behavior: it creates an `XAConnectionFactory` instead of a regular `ConnectionFactory`, initializes the Narayana transaction manager, and registers JTA transaction policies (`PROPAGATION_REQUIRED`, `PROPAGATION_REQUIRES_NEW`, etc.) in the Camel registry.
+Setting `transaction.enabled=true` changes Forage's behavior: it creates an `XAConnectionFactory` instead of a regular `ConnectionFactory` (pooled through an XA-aware pool that enlists sessions in the transaction), initializes the Narayana transaction manager, registers JTA transaction policies (`PROPAGATION_REQUIRED`, `PROPAGATION_REQUIRES_NEW`, etc.) in the Camel registry, and configures the Camel JMS component with a JTA transaction manager so every consumer receives its messages inside a JTA transaction.
+
+!!! warning "Do not set `transacted=true` on JMS endpoints when XA is enabled"
+    With `transaction.enabled=true` the JTA transaction manager wired into the JMS component drives the transaction. Setting `transacted: "true"` on an endpoint would additionally start a *local* JMS transaction on the XA connection, which brokers such as IBM MQ reject (`MQRC_SYNCPOINT_NOT_AVAILABLE`, reason code 2072). Leave `transacted` at its default (`false`).
 
 ## Route
 
@@ -86,7 +89,6 @@ Setting `transaction.enabled=true` changes Forage's behavior: it creates an `XAC
           parameters:
             destinationName: input.queue
             destinationType: queue
-            transacted: "true"
             cacheLevelName: CACHE_NONE
           steps:
             - transacted:
@@ -154,7 +156,7 @@ Setting `transaction.enabled=true` changes Forage's behavior: it creates an `XAC
                     .log("Sent message to input queue");
 
             // Transactional consumer - processes messages within XA transaction
-            from("jms:queue:input.queue?transacted=true")
+            from("jms:queue:input.queue?cacheLevelName=CACHE_NONE")
                     .transacted("PROPAGATION_REQUIRED")
                     .log("Processing message: ${body}")
                     .choice()
@@ -187,9 +189,9 @@ The example has four routes:
 
 Key points in the transactional consumer:
 
-- `transacted: "true"` on the JMS endpoint tells Camel to use transacted message acknowledgment.
+- The JMS endpoint does **not** set `transacted=true` -- the JTA transaction manager that Forage wires into the JMS component starts a JTA transaction around each receive, and the XA session enlists in it. A local JMS transaction would conflict with XA (IBM MQ rejects it with reason code 2072).
 - `cacheLevelName: CACHE_NONE` is required for XA transactions to prevent stale session caching.
-- `transacted` with `ref: PROPAGATION_REQUIRED` joins an existing transaction or creates a new one.
+- `transacted` with `ref: PROPAGATION_REQUIRED` joins the transaction started by the consumer (or creates a new one when there is none).
 
 ## Running
 
@@ -203,7 +205,7 @@ You can also monitor queue depths in the Artemis web console at `http://localhos
 
 ## Key Takeaways
 
-- **One property enables XA** -- setting `transaction.enabled=true` switches from plain `ConnectionFactory` to `XAConnectionFactory` and wires up Narayana automatically.
+- **One property enables XA** -- setting `transaction.enabled=true` switches from plain `ConnectionFactory` to a pooled `XAConnectionFactory`, wires up Narayana, and configures the Camel JMS component with a JTA transaction manager automatically.
 - **Transaction policies are auto-registered** -- `PROPAGATION_REQUIRED`, `PROPAGATION_REQUIRES_NEW`, and others are available in the registry without any Java configuration.
 - **Rollback is automatic** -- any exception within a transacted route causes a full rollback; the message returns to the queue for redelivery.
 - **DLQ safety net** -- after the broker's maximum redelivery attempts, messages move to the dead letter queue rather than being lost.
