@@ -1,13 +1,19 @@
 package io.kaoto.forage.jms.common.transactions;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.jms.common.ConnectionFactoryConfig;
+import com.arjuna.ats.arjuna.common.CoordinatorEnvironmentBean;
+import com.arjuna.ats.arjuna.common.CoreEnvironmentBean;
 import com.arjuna.ats.arjuna.common.CoreEnvironmentBeanException;
 import com.arjuna.ats.arjuna.common.ObjectStoreEnvironmentBean;
 import com.arjuna.ats.arjuna.common.RecoveryEnvironmentBean;
 import com.arjuna.ats.internal.arjuna.objectstore.VolatileStore;
+import com.arjuna.ats.jta.common.JTAEnvironmentBean;
+import com.arjuna.common.internal.util.propertyservice.BeanPopulator;
 
 /**
  * Manages Narayana transaction manager configuration for JMS operations.
@@ -15,6 +21,9 @@ import com.arjuna.ats.internal.arjuna.objectstore.VolatileStore;
  */
 public class TransactionConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(TransactionConfiguration.class);
+
+    /** Narayana's out-of-the-box node identifier, treated as "not yet configured by Forage". */
+    private static final String NARAYANA_DEFAULT_NODE_IDENTIFIER = "1";
 
     private final ConnectionFactoryConfig config;
     private final String instanceId;
@@ -30,7 +39,9 @@ public class TransactionConfiguration {
         try {
             configureNodeIdentifier();
             configureObjectStore();
+            configureCoordinator();
             configureRecovery();
+            configureJTA();
             LOG.info("Narayana transaction manager initialized successfully");
         } catch (Exception e) {
             LOG.error("Failed to initialize Narayana transaction manager", e);
@@ -39,32 +50,58 @@ public class TransactionConfiguration {
     }
 
     private void configureNodeIdentifier() throws CoreEnvironmentBeanException {
-        var coreEnvironmentBean = com.arjuna.ats.arjuna.common.arjPropertyManager.getCoreEnvironmentBean();
-
         String nodeId = config.transactionNodeId();
-        if (nodeId != null) {
-            LOG.debug("Setting transaction node identifier: {}", nodeId);
-            coreEnvironmentBean.setNodeIdentifier(nodeId);
-        } else {
+        if (nodeId == null) {
             LOG.debug("Using default node identifier for instance: {}", instanceId);
+            return;
+        }
+
+        CoreEnvironmentBean coreEnvironmentBean = BeanPopulator.getDefaultInstance(CoreEnvironmentBean.class);
+        // The node identifier is JVM-global: set it only once, first writer wins.
+        // The CoreEnvironmentBean singleton is shared with the JDBC TransactionConfiguration,
+        // so synchronizing on it guards the check-and-set across both modules.
+        synchronized (coreEnvironmentBean) {
+            String currentNodeId = coreEnvironmentBean.getNodeIdentifier();
+            if (currentNodeId == null || NARAYANA_DEFAULT_NODE_IDENTIFIER.equals(currentNodeId)) {
+                LOG.debug("Setting transaction node identifier: {}", nodeId);
+                coreEnvironmentBean.setNodeIdentifier(nodeId);
+            } else if (!currentNodeId.equals(nodeId)) {
+                LOG.warn(
+                        "Narayana transaction node identifier is already set to '{}' (JVM-global); "
+                                + "ignoring new value '{}'. The active node identifier remains '{}'.",
+                        currentNodeId,
+                        nodeId,
+                        currentNodeId);
+            }
         }
     }
 
     private void configureObjectStore() {
-        ObjectStoreEnvironmentBean defaultActionStoreObjectStoreEnvironmentBean =
-                com.arjuna.common.internal.util.propertyservice.BeanPopulator.getNamedInstance(
-                        ObjectStoreEnvironmentBean.class, "default");
-
         String objectStoreType = config.transactionObjectStoreType();
         String objectStoreDir = config.transactionObjectStoreDirectory();
 
         LOG.debug("Configuring object store - Type: {}, Directory: {}", objectStoreType, objectStoreDir);
 
         if ("volatile".equalsIgnoreCase(objectStoreType)) {
-            defaultActionStoreObjectStoreEnvironmentBean.setObjectStoreType(VolatileStore.class.getName());
+            for (String storeName : new String[] {null, "stateStore", "communicationStore"}) {
+                ObjectStoreEnvironmentBean bean = storeName == null
+                        ? BeanPopulator.getDefaultInstance(ObjectStoreEnvironmentBean.class)
+                        : BeanPopulator.getNamedInstance(ObjectStoreEnvironmentBean.class, storeName);
+                bean.setObjectStoreType(VolatileStore.class.getName());
+            }
         } else {
-            defaultActionStoreObjectStoreEnvironmentBean.setObjectStoreDir(objectStoreDir);
+            BeanPopulator.getDefaultInstance(ObjectStoreEnvironmentBean.class).setObjectStoreDir(objectStoreDir);
+            BeanPopulator.getNamedInstance(ObjectStoreEnvironmentBean.class, "stateStore")
+                    .setObjectStoreDir(objectStoreDir);
+            BeanPopulator.getNamedInstance(ObjectStoreEnvironmentBean.class, "communicationStore")
+                    .setObjectStoreDir(objectStoreDir);
         }
+    }
+
+    private void configureCoordinator() {
+        LOG.debug("Configuring coordinator with timeout: {} seconds", config.transactionTimeoutSeconds());
+        BeanPopulator.getDefaultInstance(CoordinatorEnvironmentBean.class)
+                .setDefaultTimeout(config.transactionTimeoutSeconds());
     }
 
     private void configureRecovery() {
@@ -78,19 +115,44 @@ public class TransactionConfiguration {
         RecoveryEnvironmentBean recoveryEnvironmentBean =
                 com.arjuna.ats.arjuna.common.recoveryPropertyManager.getRecoveryEnvironmentBean();
 
-        // Configure recovery modules
-        String recoveryModules = config.transactionRecoveryModules();
-        recoveryEnvironmentBean.setRecoveryModuleClassNames(Arrays.asList(recoveryModules.split(",")));
+        recoveryEnvironmentBean.setRecoveryModuleClassNames(
+                Arrays.stream(config.transactionRecoveryModules().split(","))
+                        .map(String::trim)
+                        .toList());
 
-        // Configure expiry scanners
-        String expiryScanners = config.transactionExpiryScanners();
-        recoveryEnvironmentBean.setExpiryScannerClassNames(Arrays.asList(expiryScanners.split(",")));
+        recoveryEnvironmentBean.setExpiryScannerClassNames(
+                Arrays.stream(config.transactionExpiryScanners().split(","))
+                        .map(String::trim)
+                        .toList());
 
-        // Configure XA resource orphan filters
-        String orphanFilters = config.transactionXaResourceOrphanFilters();
-        var jtaEnvironmentBean = com.arjuna.ats.jta.common.jtaPropertyManager.getJTAEnvironmentBean();
-        jtaEnvironmentBean.setXaResourceOrphanFilterClassNames(Arrays.asList(orphanFilters.split(",")));
+        LOG.info("Transaction recovery configured with modules: {}", config.transactionRecoveryModules());
+    }
 
-        LOG.info("Transaction recovery configured with modules: {}", recoveryModules);
+    private void configureJTA() {
+        JTAEnvironmentBean jtaBean = BeanPopulator.getDefaultInstance(JTAEnvironmentBean.class);
+
+        // Accumulate recovery nodes instead of replacing.
+        // The JTAEnvironmentBean singleton is shared with the JDBC TransactionConfiguration,
+        // so synchronizing on it guards the read-modify-write across both modules.
+        String nodeId = config.transactionNodeId() != null ? config.transactionNodeId() : instanceId;
+        synchronized (jtaBean) {
+            List<String> currentNodes = jtaBean.getXaRecoveryNodes();
+            if (currentNodes == null || !currentNodes.contains(nodeId)) {
+                List<String> updatedNodes = new ArrayList<>(currentNodes == null ? List.of() : currentNodes);
+                updatedNodes.add(nodeId);
+                jtaBean.setXaRecoveryNodes(updatedNodes);
+            }
+        }
+
+        // Note: the last-resource-optimisation interface is deliberately NOT set here. It is a
+        // JVM-global setting also configured by the JDBC module (to Agroal's LocalXAResource);
+        // setting it here would clobber that value order-dependently in mixed JDBC+JMS apps.
+
+        jtaBean.setXaResourceOrphanFilterClassNames(
+                Arrays.stream(config.transactionXaResourceOrphanFilters().split(","))
+                        .map(String::trim)
+                        .toList());
+
+        LOG.debug("JTA configured with recovery node: {}", nodeId);
     }
 }
