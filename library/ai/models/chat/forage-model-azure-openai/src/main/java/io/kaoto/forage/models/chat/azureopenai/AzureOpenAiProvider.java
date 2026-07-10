@@ -70,10 +70,20 @@ public class AzureOpenAiProvider implements ModelProvider {
             builder.maxRetries(config.maxRetries());
         }
 
-        // Configure logging settings
-        boolean logRequestsAndResponses = config.logRequestsAndResponses() == null || config.logRequestsAndResponses();
-        builder.logRequestsAndResponses(logRequestsAndResponses);
+        // Configure logging settings (disabled by default to avoid leaking sensitive data)
+        builder.logRequestsAndResponses(resolveLogRequestsAndResponses(config.logRequestsAndResponses()));
 
         return builder.build();
+    }
+
+    /**
+     * Resolves the effective request/response logging flag. Logging is disabled unless
+     * explicitly enabled, since it may expose sensitive data (prompts, completions, PII).
+     *
+     * @param configured the configured value, or null if not configured
+     * @return true only if logging was explicitly enabled
+     */
+    static boolean resolveLogRequestsAndResponses(Boolean configured) {
+        return Boolean.TRUE.equals(configured);
     }
 }

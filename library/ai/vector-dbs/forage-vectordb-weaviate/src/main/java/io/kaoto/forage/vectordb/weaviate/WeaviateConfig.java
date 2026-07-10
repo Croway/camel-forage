@@ -96,7 +96,7 @@ public class WeaviateConfig extends AbstractConfig {
     public String toString() {
         return "apiKey: %s, scheme %s, host %s, port %s, useGrpcForInserts %s, securedGrpc %s, objectClass %s, avoidDups %s, consistencyLevel %s"
                 .formatted(
-                        apiKey(),
+                        apiKey() != null ? "***" : null,
                         scheme(),
                         host(),
                         port().toString(),
