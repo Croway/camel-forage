@@ -1,5 +1,6 @@
 package io.kaoto.forage.jdbc.common.transactions;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.slf4j.Logger;
@@ -101,12 +102,19 @@ public class TransactionConfiguration {
                 "Configuring JTA with recovery nodes: {} and orphan filters: {}",
                 transactionNodeId,
                 config.transactionXaResourceOrphanFilters());
-        BeanPopulator.getDefaultInstance(JTAEnvironmentBean.class).setXaRecoveryNodes(List.of(transactionNodeId));
-        BeanPopulator.getDefaultInstance(JTAEnvironmentBean.class)
-                .setLastResourceOptimisationInterface(LocalXAResource.class);
-        BeanPopulator.getDefaultInstance(JTAEnvironmentBean.class)
-                .setXaResourceOrphanFilterClassNames(Arrays.stream(
-                                config.transactionXaResourceOrphanFilters().split(","))
+        JTAEnvironmentBean jtaBean = BeanPopulator.getDefaultInstance(JTAEnvironmentBean.class);
+
+        // Accumulate recovery nodes instead of replacing so multiple datasources all register
+        List<String> currentNodes = jtaBean.getXaRecoveryNodes();
+        if (currentNodes == null || !currentNodes.contains(transactionNodeId)) {
+            List<String> updatedNodes = new ArrayList<>(currentNodes == null ? List.of() : currentNodes);
+            updatedNodes.add(transactionNodeId);
+            jtaBean.setXaRecoveryNodes(updatedNodes);
+        }
+
+        jtaBean.setLastResourceOptimisationInterface(LocalXAResource.class);
+        jtaBean.setXaResourceOrphanFilterClassNames(
+                Arrays.stream(config.transactionXaResourceOrphanFilters().split(","))
                         .map(String::trim)
                         .toList());
         log.debug("JTA configured successfully");
