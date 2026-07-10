@@ -83,9 +83,17 @@ public abstract class ConfigEntries {
      */
     public static Optional<ConfigModule> find(
             Map<ConfigModule, ConfigEntry> configModules, String prefix, String name) {
+        // Exact matches first: a prefixed key must resolve to its named module, never to the
+        // base module, otherwise the value would be stored under the base (unprefixed) key
+        Optional<ConfigModule> exact =
+                configModules.keySet().stream().filter(m -> m.match(name)).findFirst();
+        if (exact.isPresent()) {
+            return exact;
+        }
         return configModules.keySet().stream()
-                .filter(m -> m.match(name) || m.asNamed(prefix).match(name))
-                .findFirst();
+                .filter(m -> m.asNamed(prefix).match(name))
+                .findFirst()
+                .map(m -> m.asNamed(prefix));
     }
 
     /**
