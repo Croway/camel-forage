@@ -80,7 +80,8 @@ public class JmsModuleDescriptor implements ForageModuleDescriptor<ConnectionFac
 
             addIfNotEmpty(props, "quarkus.pooled-jms.max-connections", config::maxConnections);
             addIfNotEmpty(props, "quarkus.pooled-jms.max-sessions-per-connection", config::maxSessionsPerConnection);
-            addSecondsFromMillis(props, "quarkus.pooled-jms.connection-idle-timeout", config::idleTimeoutMillis);
+            // pooled-jms expects both timeouts in milliseconds - pass the configured millis through unchanged
+            addIfNotEmpty(props, "quarkus.pooled-jms.connection-idle-timeout", config::idleTimeoutMillis);
             addIfNotEmpty(props, "quarkus.pooled-jms.connection-check-interval", config::expiryTimeoutMillis);
             addIfNotEmpty(props, "quarkus.pooled-jms.block-if-session-pool-is-full", config::blockIfFull);
             addIfNotEmpty(
@@ -130,14 +131,6 @@ public class JmsModuleDescriptor implements ForageModuleDescriptor<ConnectionFac
         String stringValue = String.valueOf(value);
         if (value != null && !Strings.isNullOrEmpty(stringValue)) {
             config.put(key, stringValue);
-        }
-    }
-
-    private static void addSecondsFromMillis(Map<String, String> config, String key, Supplier<Long> method) {
-        Long value = method.get();
-        if (value != null) {
-            int intValue = (int) (value / 1000);
-            config.put(key, String.valueOf(intValue));
         }
     }
 }

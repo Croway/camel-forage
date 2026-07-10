@@ -37,4 +37,21 @@ class JdbcModuleDescriptorTest {
         assertThat(props.get("quarkus.datasource.\"dataSource\".jdbc.min-size")).isEqualTo("2");
         assertThat(props.get("quarkus.datasource.\"dataSource\".jdbc.max-size")).isEqualTo("20");
     }
+
+    @Test
+    void unsetOptionalPropertiesAreNotTranslated() {
+        System.setProperty("forage.jdbc.transaction.enabled", "true");
+        try {
+            DataSourceFactoryConfig config = new DataSourceFactoryConfig();
+            Map<String, String> props = new JdbcModuleDescriptor().translateProperties(null, config);
+
+            // Optional properties without a configured value must be absent from the
+            // translated map, not present as null or the literal string "null"
+            assertThat(props).doesNotContainKey("quarkus.transaction-manager.node-name");
+            assertThat(props).doesNotContainKey("quarkus.transaction-manager.object-store.datasource");
+            assertThat(props.values()).noneMatch(v -> v == null || v.isEmpty() || "null".equals(v));
+        } finally {
+            System.clearProperty("forage.jdbc.transaction.enabled");
+        }
+    }
 }
