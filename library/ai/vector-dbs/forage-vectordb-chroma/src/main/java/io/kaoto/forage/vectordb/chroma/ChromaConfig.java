@@ -171,15 +171,15 @@ public class ChromaConfig extends AbstractConfig {
      *   <li>CHROMA_LOG_REQUESTS environment variable</li>
      *   <li>chroma.log.requests system property</li>
      *   <li>log-requests property in forage-vectordb-chroma.properties</li>
-     *   <li>default value is true</li>
+     *   <li>default value is false</li>
      * </ol>
      *
      * <p><strong>Valid Values:</strong> "true" or "false" (case-insensitive)
      *
-     * @return true if request logging is enabled, false if disabled, null if not configured
+     * @return true if request logging is enabled, false if disabled or not configured
      */
     public Boolean logRequests() {
-        return get(LOG_REQUESTS).map(Boolean::parseBoolean).orElse(true);
+        return get(LOG_REQUESTS).map(Boolean::parseBoolean).orElse(false);
     }
 
     /**
@@ -194,14 +194,14 @@ public class ChromaConfig extends AbstractConfig {
      *   <li>CHROMA_LOG_RESPONSES environment variable</li>
      *   <li>chroma.log.responses system property</li>
      *   <li>log-responses property in forage-vectordb-chroma.properties</li>
-     *   <li>default value is true</li>
+     *   <li>default value is false</li>
      * </ol>
      *
      * <p><strong>Valid Values:</strong> "true" or "false" (case-insensitive)
      *
-     * @return true if response logging is enabled, false if disabled, null if not configured
+     * @return true if response logging is enabled, false if disabled or not configured
      */
     public Boolean logResponses() {
-        return get(LOG_RESPONSES).map(Boolean::parseBoolean).orElse(true);
+        return get(LOG_RESPONSES).map(Boolean::parseBoolean).orElse(false);
     }
 }
