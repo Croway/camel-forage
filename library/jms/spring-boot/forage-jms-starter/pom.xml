@@ -44,6 +44,28 @@
             <artifactId>pooled-jms</artifactId>
             <version>${pooled-jms.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>io.kaoto.forage</groupId>
+            <artifactId>forage-jms-artemis</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

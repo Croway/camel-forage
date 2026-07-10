@@ -114,14 +114,21 @@ public interface ForageModuleDescriptor<C extends Config, P extends BeanProvider
 
     /**
      * The destroy method name to call on the primary bean when the application context closes,
-     * or an empty string to let Spring infer it (Spring looks for {@code close()} or
-     * {@code shutdown()} by default). Override when the primary bean uses a different lifecycle
-     * method (e.g., {@code "stop"} for {@code JmsPoolConnectionFactory}).
+     * or an empty string when no explicit destroy method should be set. Override when the
+     * primary bean uses a specific lifecycle method (e.g., {@code "stop"} for
+     * {@code JmsPoolConnectionFactory}).
      *
-     * @return the destroy method name, or {@code ""} for Spring's default inference
+     * <p>The prefix is passed so descriptors can make the destroy method configuration-dependent:
+     * the concrete bean type may vary with configuration (e.g., JMS returns a raw, non-poolable
+     * connection factory when {@code pool.enabled=false}, which has no {@code stop()} method).
+     * Returning a destroy method that does not exist on the actual bean would make Spring fail
+     * at context close with a {@code BeanDefinitionValidationException}.
+     *
+     * @param prefix the configuration prefix ({@code null} for the default configuration)
+     * @return the destroy method name, or {@code ""} to set no explicit destroy method
      * @since 1.2
      */
-    default String destroyMethodName() {
+    default String destroyMethodName(String prefix) {
         return "";
     }
 }
