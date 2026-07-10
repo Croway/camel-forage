@@ -38,9 +38,14 @@ public class ForageAgentRecorder {
             agent = AgentCreator.createAgent(config, name, cl);
         }
 
-        if (agent != null) {
-            return new RuntimeValue<>(agent);
+        if (agent == null) {
+            throw new IllegalStateException(
+                    ("Forage Agent '%s' could not be created: no ChatModel was found in the registry and no suitable "
+                                    + "ModelProvider was resolved via ServiceLoader. Ensure a Forage model artifact "
+                                    + "(e.g. forage-model-open-ai, forage-model-ollama) is on the classpath and the "
+                                    + "'forage.*' model properties for '%s' are configured.")
+                            .formatted(name, name));
         }
-        return null;
+        return new RuntimeValue<>(agent);
     }
 }

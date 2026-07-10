@@ -91,7 +91,14 @@ public class ForageJdbcProcessor {
 
             if (isNotBlank(dsConfig.aggregationRepositoryName())) {
                 if (!dsConfig.transactionEnabled()) {
-                    LOG.warn("Transactions have to be enabled in order to create aggregation repositories");
+                    LOG.warnf(
+                            "Skipping aggregation repository '%s' for datasource '%s': transactions have to be "
+                                    + "enabled in order to create aggregation repositories. Set '%s' to true.",
+                            dsConfig.aggregationRepositoryName(),
+                            name,
+                            prefix == null
+                                    ? "forage.jdbc.transaction.enabled"
+                                    : "forage." + prefix + ".jdbc.transaction.enabled");
                 } else {
                     RuntimeValue<JdbcAggregationRepository> aggRepo =
                             recorder.createAggregationRepository(name, prefix, context.getCamelContext());
