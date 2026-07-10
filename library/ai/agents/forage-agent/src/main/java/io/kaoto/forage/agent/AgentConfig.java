@@ -11,6 +11,7 @@ import static io.kaoto.forage.agent.AgentConfigEntries.BASE_URL;
 import static io.kaoto.forage.agent.AgentConfigEntries.DEFAULT_RAG_MAX_RESULTS;
 import static io.kaoto.forage.agent.AgentConfigEntries.DEFAULT_RAG_MIN_SCORE;
 import static io.kaoto.forage.agent.AgentConfigEntries.DEPLOYMENT_NAME;
+import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_MODEL_API_KEY;
 import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_MODEL_BASE_URL;
 import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_MODEL_MAX_RETRIES;
 import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_MODEL_MODEL_NAME;
@@ -189,8 +190,12 @@ public class AgentConfig extends AbstractConfig {
 
     // RAG
 
+    public String embeddingModelApiKey() {
+        return get(EMBEDDING_MODEL_API_KEY).or(() -> get(API_KEY)).orElse(null);
+    }
+
     public String embeddingModelBaseUrl() {
-        return get(EMBEDDING_MODEL_BASE_URL).orElse(BASE_URL.defaultValue());
+        return get(EMBEDDING_MODEL_BASE_URL).or(() -> get(BASE_URL)).orElse(null);
     }
 
     public String embeddingModelName() {
