@@ -70,8 +70,18 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
             XAConnectionFactory xaConnectionFactory = createXAConnectionFactory(config);
 
             if (!config.poolEnabled()) {
-                LOG.info("Connection pooling is disabled, returning underlying XAConnectionFactory");
-                return (ConnectionFactory) xaConnectionFactory;
+                LOG.warn("Connection pooling is disabled (forage.jms.pool.enabled=false) while transactions are "
+                        + "enabled: XA/JTA enlistment requires pooling, so the returned ConnectionFactory "
+                        + "will NOT enlist its sessions in JTA transactions. Enable pooling to get XA "
+                        + "enlistment.");
+                if (!(xaConnectionFactory instanceof ConnectionFactory connectionFactory)) {
+                    throw new IllegalStateException("XAConnectionFactory of type "
+                            + xaConnectionFactory.getClass().getName()
+                            + " does not implement jakarta.jms.ConnectionFactory and cannot be used with pooling "
+                            + "disabled. Enable connection pooling (forage.jms.pool.enabled=true) to use this "
+                            + "factory with transactions.");
+                }
+                return connectionFactory;
             }
 
             // Use JmsPoolXAConnectionFactory so XA sessions enlist in the JTA transaction

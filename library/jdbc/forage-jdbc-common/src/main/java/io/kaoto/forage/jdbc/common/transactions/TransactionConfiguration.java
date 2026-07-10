@@ -12,12 +12,16 @@ import com.arjuna.ats.arjuna.common.CoreEnvironmentBean;
 import com.arjuna.ats.arjuna.common.CoreEnvironmentBeanException;
 import com.arjuna.ats.arjuna.common.ObjectStoreEnvironmentBean;
 import com.arjuna.ats.arjuna.common.RecoveryEnvironmentBean;
+import com.arjuna.ats.internal.arjuna.objectstore.VolatileStore;
 import com.arjuna.ats.jta.common.JTAEnvironmentBean;
 import com.arjuna.common.internal.util.propertyservice.BeanPopulator;
 
 public class TransactionConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(TransactionConfiguration.class);
+
+    /** Narayana's out-of-the-box node identifier, treated as "not yet configured by Forage". */
+    private static final String NARAYANA_DEFAULT_NODE_IDENTIFIER = "1";
 
     private final DataSourceFactoryConfig config;
     private final String transactionNodeId;
@@ -50,18 +54,44 @@ public class TransactionConfiguration {
     private void configureCoreEnvironment() throws CoreEnvironmentBeanException {
         log.debug("Configuring core environment with nodeId: {}", transactionNodeId);
         CoreEnvironmentBean coreBean = BeanPopulator.getDefaultInstance(CoreEnvironmentBean.class);
-        coreBean.setNodeIdentifier(transactionNodeId);
-        log.debug("Core environment configured successfully");
+        // The node identifier is JVM-global: set it only once, first writer wins.
+        // The CoreEnvironmentBean singleton is shared with the JMS TransactionConfiguration,
+        // so synchronizing on it guards the check-and-set across both modules.
+        synchronized (coreBean) {
+            String currentNodeId = coreBean.getNodeIdentifier();
+            if (currentNodeId == null || NARAYANA_DEFAULT_NODE_IDENTIFIER.equals(currentNodeId)) {
+                coreBean.setNodeIdentifier(transactionNodeId);
+                log.debug("Core environment configured with node identifier: {}", transactionNodeId);
+            } else if (!currentNodeId.equals(transactionNodeId)) {
+                log.warn(
+                        "Narayana transaction node identifier is already set to '{}' (JVM-global); "
+                                + "ignoring new value '{}'. The active node identifier remains '{}'.",
+                        currentNodeId,
+                        transactionNodeId,
+                        currentNodeId);
+            }
+        }
     }
 
     private void configureObjectStore() {
-        log.debug(
-                "Configuring object store with type: {} and directory: {}",
-                config.transactionObjectStoreType(),
-                config.transactionObjectStoreDirectory());
-        ObjectStoreEnvironmentBean osBean = BeanPopulator.getDefaultInstance(ObjectStoreEnvironmentBean.class);
-        if ("file-system".equals(config.transactionObjectStoreType())) {
-            osBean.setObjectStoreDir(config.transactionObjectStoreDirectory());
+        String objectStoreType = config.transactionObjectStoreType();
+        String objectStoreDir = config.transactionObjectStoreDirectory();
+
+        log.debug("Configuring object store with type: {} and directory: {}", objectStoreType, objectStoreDir);
+
+        if ("volatile".equalsIgnoreCase(objectStoreType)) {
+            for (String storeName : new String[] {null, "stateStore", "communicationStore"}) {
+                ObjectStoreEnvironmentBean bean = storeName == null
+                        ? BeanPopulator.getDefaultInstance(ObjectStoreEnvironmentBean.class)
+                        : BeanPopulator.getNamedInstance(ObjectStoreEnvironmentBean.class, storeName);
+                bean.setObjectStoreType(VolatileStore.class.getName());
+            }
+        } else {
+            BeanPopulator.getDefaultInstance(ObjectStoreEnvironmentBean.class).setObjectStoreDir(objectStoreDir);
+            BeanPopulator.getNamedInstance(ObjectStoreEnvironmentBean.class, "stateStore")
+                    .setObjectStoreDir(objectStoreDir);
+            BeanPopulator.getNamedInstance(ObjectStoreEnvironmentBean.class, "communicationStore")
+                    .setObjectStoreDir(objectStoreDir);
         }
 
         // TODO Handle jdbc case, a datasource has to be created for this use case
@@ -104,12 +134,16 @@ public class TransactionConfiguration {
                 config.transactionXaResourceOrphanFilters());
         JTAEnvironmentBean jtaBean = BeanPopulator.getDefaultInstance(JTAEnvironmentBean.class);
 
-        // Accumulate recovery nodes instead of replacing so multiple datasources all register
-        List<String> currentNodes = jtaBean.getXaRecoveryNodes();
-        if (currentNodes == null || !currentNodes.contains(transactionNodeId)) {
-            List<String> updatedNodes = new ArrayList<>(currentNodes == null ? List.of() : currentNodes);
-            updatedNodes.add(transactionNodeId);
-            jtaBean.setXaRecoveryNodes(updatedNodes);
+        // Accumulate recovery nodes instead of replacing so multiple datasources all register.
+        // The JTAEnvironmentBean singleton is shared with the JMS TransactionConfiguration,
+        // so synchronizing on it guards the read-modify-write across both modules.
+        synchronized (jtaBean) {
+            List<String> currentNodes = jtaBean.getXaRecoveryNodes();
+            if (currentNodes == null || !currentNodes.contains(transactionNodeId)) {
+                List<String> updatedNodes = new ArrayList<>(currentNodes == null ? List.of() : currentNodes);
+                updatedNodes.add(transactionNodeId);
+                jtaBean.setXaRecoveryNodes(updatedNodes);
+            }
         }
 
         jtaBean.setLastResourceOptimisationInterface(LocalXAResource.class);
