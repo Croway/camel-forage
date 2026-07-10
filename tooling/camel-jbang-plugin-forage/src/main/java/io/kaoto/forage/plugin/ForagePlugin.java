@@ -78,6 +78,7 @@ public class ForagePlugin implements Plugin {
         resolveConfigDir(files);
         propagateProfile(main);
         addCatalogDrivenRepos(main);
+        ForagePropertyValidator.validateAndReport(new Printer.SystemOutPrinter(), false, false);
     }
 
     // JVM-global side effect: sets camel.main.profile so ForagePropertyScanner can resolve the

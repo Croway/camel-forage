@@ -23,6 +23,8 @@ public class ForageExport extends Export {
 
     @Override
     public Integer doCall() throws Exception {
+        ForagePlugin.resolveConfigDir(files);
+
         // Validate properties before exporting
         int validationResult = validation.validateAndReport(printer());
         if (validationResult != 0) {

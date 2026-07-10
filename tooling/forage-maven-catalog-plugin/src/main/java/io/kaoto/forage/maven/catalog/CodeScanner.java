@@ -91,15 +91,20 @@ public class CodeScanner {
         try {
             log.debug("Scanning source directory: " + sourceDir);
 
+            // Prefer src/main/java to avoid scanning generated sources under target/
+            Path javaSourceDir = sourceDir.resolve("src").resolve("main").resolve("java");
+            Path scanDir = Files.isDirectory(javaSourceDir) ? javaSourceDir : sourceDir;
+
             // Walk through all Java files ONCE and extract all information
-            try (Stream<Path> paths = Files.walk(sourceDir)) {
+            try (Stream<Path> paths = Files.walk(scanDir)) {
                 paths.filter(path -> path.toString().endsWith(".java"))
-                        .filter(path -> !path.toString().contains("/test/"))
+                        .filter(path -> !containsPathSegment(path, "target"))
+                        .filter(path -> !containsPathSegment(path, "test"))
                         .forEach(javaFile -> {
                             try {
                                 scanJavaFileForAllInfo(javaFile, result);
                             } catch (Exception e) {
-                                log.warn("Failed to parse Java file: " + javaFile);
+                                log.warn("Failed to parse Java file: " + javaFile + " - " + e.getMessage());
                                 log.debug("Parse error details: " + e.getMessage(), e);
                             }
                         });
@@ -911,10 +916,13 @@ public class CodeScanner {
     private List<String> extractStringArrayValue(Expression value) {
         List<String> result = new ArrayList<>();
 
-        ArrayInitializerExpr arrayExpr = (ArrayInitializerExpr) value;
-        for (Expression element : arrayExpr.getValues()) {
-            if (element instanceof StringLiteralExpr) {
-                result.add(((StringLiteralExpr) element).asString());
+        if (value instanceof StringLiteralExpr stringLiteral) {
+            result.add(stringLiteral.asString());
+        } else if (value instanceof ArrayInitializerExpr arrayExpr) {
+            for (Expression element : arrayExpr.getValues()) {
+                if (element instanceof StringLiteralExpr stringElement) {
+                    result.add(stringElement.asString());
+                }
             }
         }
 
@@ -967,5 +975,14 @@ public class CodeScanner {
         }
 
         return null;
+    }
+
+    private static boolean containsPathSegment(Path path, String segment) {
+        for (Path part : path) {
+            if (segment.equals(part.toString())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
