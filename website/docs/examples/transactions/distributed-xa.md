@@ -16,17 +16,34 @@ A single XA transaction spanning both JMS and JDBC, demonstrating two-phase comm
 - Java 17 or later
 - [Camel JBang](https://camel.apache.org/manual/camel-jbang.html) with the Forage plugin installed
 
-Start PostgreSQL and ActiveMQ Artemis:
+Start ActiveMQ Artemis:
 
 ```bash
-camel infra run postgres
 camel infra run artemis
 ```
+
+Start PostgreSQL with prepared transactions enabled:
+
+```bash
+docker run -d --name camel-postgres -p 5432:5432 \
+  -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=postgres \
+  postgres:16 -c max_prepared_transactions=100
+```
+
+!!! warning "PostgreSQL must allow prepared transactions"
+    A transaction spanning two resources uses two-phase commit: Narayana issues
+    `PREPARE TRANSACTION` against PostgreSQL, which fails with
+    `ERROR: prepared transactions are disabled` when `max_prepared_transactions` is `0` —
+    and `0` is both the PostgreSQL default and what `camel infra run postgres` starts with.
+    Start PostgreSQL with `-c max_prepared_transactions=100` as shown above, or on an
+    existing server run `ALTER SYSTEM SET max_prepared_transactions = 100;` and restart it.
+    The single-resource JDBC examples don't need this: with only one participant, Narayana
+    uses the one-phase-commit optimization and never issues `PREPARE TRANSACTION`.
 
 Create the database schema:
 
 ```bash
-docker exec -i camel-postgres psql -U postgres -c \
+docker exec -i camel-postgres psql -U test -d postgres -c \
   "CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY, action VARCHAR(255));"
 ```
 
