@@ -2,10 +2,8 @@ package io.kaoto.forage.jms.common;
 
 import jakarta.jms.ConnectionFactory;
 import jakarta.jms.XAConnectionFactory;
-import jakarta.transaction.TransactionManager;
 
 import org.messaginghub.pooled.jms.JmsPoolConnectionFactory;
-import org.messaginghub.pooled.jms.JmsPoolXAConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.jms.ConnectionFactoryProvider;
@@ -70,24 +68,22 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
             XAConnectionFactory xaConnectionFactory = createXAConnectionFactory(config);
 
             if (!config.poolEnabled()) {
-                LOG.warn("Connection pooling is disabled (forage.jms.pool.enabled=false) while transactions are "
-                        + "enabled: XA/JTA enlistment requires pooling, so the returned ConnectionFactory "
-                        + "will NOT enlist its sessions in JTA transactions. Enable pooling to get XA "
-                        + "enlistment.");
+                LOG.info("Connection pooling is disabled, returning underlying XAConnectionFactory");
                 if (!(xaConnectionFactory instanceof ConnectionFactory connectionFactory)) {
                     throw new IllegalStateException("XAConnectionFactory of type "
                             + xaConnectionFactory.getClass().getName()
-                            + " does not implement jakarta.jms.ConnectionFactory and cannot be used with pooling "
-                            + "disabled. Enable connection pooling (forage.jms.pool.enabled=true) to use this "
-                            + "factory with transactions.");
+                            + " does not implement jakarta.jms.ConnectionFactory and cannot be returned when "
+                            + "connection pooling is disabled (forage.jms.pool.enabled=false).");
                 }
                 return connectionFactory;
             }
 
-            // Use JmsPoolXAConnectionFactory so XA sessions enlist in the JTA transaction
-            TransactionManager transactionManager = com.arjuna.ats.jta.TransactionManager.transactionManager();
-            final JmsPoolXAConnectionFactory pooledConnectionFactory =
-                    setupPooledXAConnectionFactory(xaConnectionFactory, transactionManager);
+            // The XAConnectionFactory is wrapped as a plain ConnectionFactory, so sessions do NOT
+            // enlist in JTA transactions. Enlisting via JmsPoolXAConnectionFactory alone breaks
+            // consumption on brokers that reject local transactions on XA connections (IBM MQ
+            // MQRC 2072): completing XA also needs a JtaTransactionManager wired into the Camel
+            // JMS component. Tracked in #427.
+            final JmsPoolConnectionFactory pooledConnectionFactory = setupPooledConnectionFactory(xaConnectionFactory);
 
             LOG.info("Pooled XA ConnectionFactory initialized successfully for id: {}", id);
             return pooledConnectionFactory;
@@ -105,15 +101,6 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
             LOG.info("Pooled ConnectionFactory initialized successfully for id: {}", id);
             return pooledConnectionFactory;
         }
-    }
-
-    private JmsPoolXAConnectionFactory setupPooledXAConnectionFactory(
-            XAConnectionFactory xaConnectionFactory, TransactionManager transactionManager) {
-        JmsPoolXAConnectionFactory pooledConnectionFactory = new JmsPoolXAConnectionFactory();
-        pooledConnectionFactory.setConnectionFactory(xaConnectionFactory);
-        pooledConnectionFactory.setTransactionManager(transactionManager);
-        applyPoolSettings(pooledConnectionFactory);
-        return pooledConnectionFactory;
     }
 
     private <T> JmsPoolConnectionFactory setupPooledConnectionFactory(T underlyingConnectionFactory) {
