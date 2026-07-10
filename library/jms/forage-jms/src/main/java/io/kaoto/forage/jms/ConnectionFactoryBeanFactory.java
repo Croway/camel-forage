@@ -94,7 +94,7 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
         closeAndUnbind(DEFAULT_CONNECTION_FACTORY);
 
         // Unbind JTA transaction policies if they were registered
-        if (config.transactionEnabled()) {
+        if (anyTransactionEnabled(config, prefixes)) {
             for (String name : List.of(
                     "PROPAGATION_REQUIRED", "MANDATORY", "NEVER", "NOT_SUPPORTED", "REQUIRES_NEW", "SUPPORTS")) {
                 camelContext.getRegistry().unbind(name);
@@ -116,7 +116,9 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
         Set<String> prefixes =
                 ConfigStore.getInstance().readPrefixes(config, ConfigHelper.getNamedPropertyRegexp("jms"));
 
-        if (config.transactionEnabled()) {
+        // Bind JTA policies when the default config OR any discovered prefixed config
+        // has transactions enabled (e.g., forage.mq1.jms.transaction.enabled=true)
+        if (anyTransactionEnabled(config, prefixes)) {
             camelContext.getRegistry().bind("PROPAGATION_REQUIRED", new RequiredJtaTransactionPolicy());
             camelContext.getRegistry().bind("MANDATORY", new MandatoryJtaTransactionPolicy());
             camelContext.getRegistry().bind("NEVER", new NeverJtaTransactionPolicy());
@@ -155,6 +157,13 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
                 LOG.error(ex.getMessage(), ex);
             }
         }
+    }
+
+    private static boolean anyTransactionEnabled(ConnectionFactoryConfig defaultConfig, Set<String> prefixes) {
+        if (defaultConfig.transactionEnabled()) {
+            return true;
+        }
+        return prefixes.stream().anyMatch(p -> new ConnectionFactoryConfig(p).transactionEnabled());
     }
 
     private synchronized ConnectionFactory newConnectionFactory(

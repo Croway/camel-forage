@@ -6,6 +6,7 @@ import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.agroal.api.AgroalDataSource;
+import io.agroal.api.configuration.AgroalConnectionPoolConfiguration.ConnectionValidator;
 import io.agroal.api.configuration.AgroalDataSourceConfiguration;
 import io.agroal.api.configuration.supplier.AgroalConnectionFactoryConfigurationSupplier;
 import io.agroal.api.configuration.supplier.AgroalConnectionPoolConfigurationSupplier;
@@ -88,7 +89,8 @@ public abstract class PooledDataSource implements DataSourceProvider, ForageIdRe
                 .acquisitionTimeout(Duration.ofSeconds(config.acquisitionTimeoutSeconds()))
                 .validationTimeout(Duration.ofSeconds(config.validationTimeoutSeconds()))
                 .leakTimeout(Duration.ofMinutes(config.leakTimeoutMinutes()))
-                .idleValidationTimeout(Duration.ofMinutes(config.idleValidationTimeoutMinutes()));
+                .idleValidationTimeout(Duration.ofMinutes(config.idleValidationTimeoutMinutes()))
+                .connectionValidator(ConnectionValidator.defaultValidator());
 
         if (config.transactionEnabled()) {
             new TransactionConfiguration(config, id == null ? "dataSource" : id).initializeNarayana();

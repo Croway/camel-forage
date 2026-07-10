@@ -3,6 +3,7 @@ package io.kaoto.forage.core.common;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import io.kaoto.forage.core.util.config.Config;
 
 /**
@@ -88,7 +89,46 @@ public interface ForageModuleDescriptor<C extends Config, P extends BeanProvider
     }
 
     /**
+     * Returns auxiliary bean descriptors using a runtime-supplied primary bean lookup function.
+     * Runtimes (e.g., Spring Boot) that manage the primary bean lifecycle should pass a lookup
+     * so that auxiliary beans share the same managed instance rather than opening a new pool.
+     *
+     * <p>The default implementation ignores the lookup and delegates to {@link #auxiliaryBeans(String)}.
+     * Descriptors that create secondary resources (e.g., DataSource for JDBC repositories) should
+     * override this to use the lookup instead.
+     *
+     * @param prefix        the configuration prefix
+     * @param primaryLookup a function that resolves the primary bean by name; the argument is the
+     *                      prefix (or default bean name when prefix is {@code null})
+     * @return list of auxiliary bean descriptors; empty list if none
+     * @since 1.2
+     */
+    default List<AuxiliaryBeanDescriptor> auxiliaryBeans(String prefix, Function<String, Object> primaryLookup) {
+        return auxiliaryBeans(prefix);
+    }
+
+    /**
      * Whether transactions are enabled for the given configuration.
      */
     boolean transactionEnabled(C config);
+
+    /**
+     * The destroy method name to call on the primary bean when the application context closes,
+     * or an empty string when no explicit destroy method should be set. Override when the
+     * primary bean uses a specific lifecycle method (e.g., {@code "stop"} for
+     * {@code JmsPoolConnectionFactory}).
+     *
+     * <p>The prefix is passed so descriptors can make the destroy method configuration-dependent:
+     * the concrete bean type may vary with configuration (e.g., JMS returns a raw, non-poolable
+     * connection factory when {@code pool.enabled=false}, which has no {@code stop()} method).
+     * Returning a destroy method that does not exist on the actual bean would make Spring fail
+     * at context close with a {@code BeanDefinitionValidationException}.
+     *
+     * @param prefix the configuration prefix ({@code null} for the default configuration)
+     * @return the destroy method name, or {@code ""} to set no explicit destroy method
+     * @since 1.2
+     */
+    default String destroyMethodName(String prefix) {
+        return "";
+    }
 }

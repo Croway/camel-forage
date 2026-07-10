@@ -37,7 +37,7 @@ public final class ChromaConfigEntries extends ConfigEntries {
             "forage.chroma.log.requests",
             "Enable request logging",
             "Log Requests",
-            "true",
+            "false",
             "boolean",
             false,
             ConfigTag.ADVANCED);
@@ -46,7 +46,7 @@ public final class ChromaConfigEntries extends ConfigEntries {
             "forage.chroma.log.responses",
             "Enable response logging",
             "Log Responses",
-            "true",
+            "false",
             "boolean",
             false,
             ConfigTag.ADVANCED);

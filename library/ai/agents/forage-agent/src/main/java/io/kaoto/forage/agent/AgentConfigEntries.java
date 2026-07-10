@@ -284,9 +284,9 @@ public final class AgentConfigEntries extends ConfigEntries {
     // embedding model
     public static final ConfigModule EMBEDDING_MODEL_API_KEY = ConfigModule.of(
             AgentConfig.class,
-            "forage.agent.api.key",
-            "API key for authentication with the model provider",
-            "API Key",
+            "forage.agent.embedding.model.api.key",
+            "API key for the embedding model provider (falls back to forage.agent.api.key when not set)",
+            "Embedding API Key",
             null,
             "password",
             false,
@@ -294,9 +294,9 @@ public final class AgentConfigEntries extends ConfigEntries {
 
     public static final ConfigModule EMBEDDING_MODEL_BASE_URL = ConfigModule.of(
             AgentConfig.class,
-            "forage.agent.base.url",
-            "Base URL for the model provider API",
-            "Base URL",
+            "forage.agent.embedding.model.base.url",
+            "Base URL for the embedding model provider (falls back to forage.agent.base.url when not set)",
+            "Embedding Base URL",
             null,
             "string",
             false,

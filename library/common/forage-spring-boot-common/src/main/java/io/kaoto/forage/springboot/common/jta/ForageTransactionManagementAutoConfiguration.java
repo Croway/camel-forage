@@ -39,49 +39,49 @@ public abstract class ForageTransactionManagementAutoConfiguration {
         return transactionManager;
     }
 
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(name = "PROPAGATION_REQUIRED")
     @Bean("PROPAGATION_REQUIRED")
     public SpringTransactionPolicy propagationRequired(JtaTransactionManager jtaTransactionManager) {
 
         return createSpringBootTransactionPolicy(jtaTransactionManager, "PROPAGATION_REQUIRED");
     }
 
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(name = "NESTED")
     @Bean("NESTED")
     public SpringTransactionPolicy nested(JtaTransactionManager jtaTransactionManager) {
 
         return createSpringBootTransactionPolicy(jtaTransactionManager, "PROPAGATION_NESTED");
     }
 
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(name = "MANDATORY")
     @Bean("MANDATORY")
     public SpringTransactionPolicy mandatory(JtaTransactionManager jtaTransactionManager) {
 
         return createSpringBootTransactionPolicy(jtaTransactionManager, "PROPAGATION_MANDATORY");
     }
 
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(name = "NEVER")
     @Bean("NEVER")
     public SpringTransactionPolicy never(JtaTransactionManager jtaTransactionManager) {
 
         return createSpringBootTransactionPolicy(jtaTransactionManager, "PROPAGATION_NEVER");
     }
 
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(name = "NOT_SUPPORTED")
     @Bean("NOT_SUPPORTED")
     public SpringTransactionPolicy notSupported(JtaTransactionManager jtaTransactionManager) {
 
         return createSpringBootTransactionPolicy(jtaTransactionManager, "PROPAGATION_NOT_SUPPORTED");
     }
 
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(name = "REQUIRES_NEW")
     @Bean("REQUIRES_NEW")
     public SpringTransactionPolicy requiresNew(JtaTransactionManager jtaTransactionManager) {
 
         return createSpringBootTransactionPolicy(jtaTransactionManager, "PROPAGATION_REQUIRES_NEW");
     }
 
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(name = "SUPPORTS")
     @Bean("SUPPORTS")
     public SpringTransactionPolicy supports(JtaTransactionManager jtaTransactionManager) {
 

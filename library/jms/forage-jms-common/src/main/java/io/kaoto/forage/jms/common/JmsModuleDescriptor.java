@@ -59,6 +59,14 @@ public class JmsModuleDescriptor implements ForageModuleDescriptor<ConnectionFac
     }
 
     @Override
+    public String destroyMethodName(String prefix) {
+        // JmsPoolConnectionFactory is stopped via stop(). When pooling is disabled the provider
+        // returns the raw broker ConnectionFactory (e.g., ActiveMQConnectionFactory) which has
+        // no stop() method — setting one would make Spring fail at context close.
+        return createConfig(prefix).poolEnabled() ? "stop" : "";
+    }
+
+    @Override
     public Map<String, String> translateProperties(String prefix, ConnectionFactoryConfig config) {
         Map<String, String> props = new HashMap<>();
         String named = prefix;

@@ -69,10 +69,20 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
 
             if (!config.poolEnabled()) {
                 LOG.info("Connection pooling is disabled, returning underlying XAConnectionFactory");
-                return (ConnectionFactory) xaConnectionFactory;
+                if (!(xaConnectionFactory instanceof ConnectionFactory connectionFactory)) {
+                    throw new IllegalStateException("XAConnectionFactory of type "
+                            + xaConnectionFactory.getClass().getName()
+                            + " does not implement jakarta.jms.ConnectionFactory and cannot be returned when "
+                            + "connection pooling is disabled (forage.jms.pool.enabled=false).");
+                }
+                return connectionFactory;
             }
 
-            // Configure pooled connection factory for XA
+            // The XAConnectionFactory is wrapped as a plain ConnectionFactory, so sessions do NOT
+            // enlist in JTA transactions. Enlisting via JmsPoolXAConnectionFactory alone breaks
+            // consumption on brokers that reject local transactions on XA connections (IBM MQ
+            // MQRC 2072): completing XA also needs a JtaTransactionManager wired into the Camel
+            // JMS component. Tracked in #427.
             final JmsPoolConnectionFactory pooledConnectionFactory = setupPooledConnectionFactory(xaConnectionFactory);
 
             LOG.info("Pooled XA ConnectionFactory initialized successfully for id: {}", id);
@@ -94,9 +104,13 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
     }
 
     private <T> JmsPoolConnectionFactory setupPooledConnectionFactory(T underlyingConnectionFactory) {
-        // Configure pooled connection factory
         JmsPoolConnectionFactory pooledConnectionFactory = new JmsPoolConnectionFactory();
         pooledConnectionFactory.setConnectionFactory(underlyingConnectionFactory);
+        applyPoolSettings(pooledConnectionFactory);
+        return pooledConnectionFactory;
+    }
+
+    private void applyPoolSettings(JmsPoolConnectionFactory pooledConnectionFactory) {
         pooledConnectionFactory.setMaxConnections(config.maxConnections());
         pooledConnectionFactory.setMaxSessionsPerConnection(config.maxSessionsPerConnection());
         pooledConnectionFactory.setConnectionIdleTimeout((int) config.idleTimeoutMillis());
@@ -106,7 +120,6 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
         if (config.blockIfFull() && config.blockIfFullTimeoutMillis() > 0) {
             pooledConnectionFactory.setBlockIfSessionPoolIsFullTimeout(config.blockIfFullTimeoutMillis());
         }
-        return pooledConnectionFactory;
     }
 
     protected ConnectionFactoryConfig getConfig() {

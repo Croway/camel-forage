@@ -54,8 +54,8 @@ public class ConfigReadCommand extends CamelCommand {
 
     @CommandLine.Option(
             names = {"--strategy", "-s"},
-            description = "Property file strategy: 'forage' reads from forage-*.properties files (default), "
-                    + "'application' reads from application.properties.",
+            description = "Property file strategy: 'application' reads from application.properties (default), "
+                    + "'forage' reads from forage-*.properties files.",
             defaultValue = "application")
     private String strategy;
 
@@ -400,7 +400,7 @@ public class ConfigReadCommand extends CamelCommand {
     private String mapFeatureToJavaType(String feature) {
         // Map feature category names to their Java types
         return switch (feature) {
-            case "Chat Model" -> "dev.langchain4j.model.chat.ChatLanguageModel";
+            case "Chat Model" -> "dev.langchain4j.model.chat.ChatModel";
             case "Memory" -> "dev.langchain4j.memory.ChatMemory";
             case "javax.sql.DataSource" -> "javax.sql.DataSource";
             case "jakarta.jms.ConnectionFactory" -> "jakarta.jms.ConnectionFactory";
