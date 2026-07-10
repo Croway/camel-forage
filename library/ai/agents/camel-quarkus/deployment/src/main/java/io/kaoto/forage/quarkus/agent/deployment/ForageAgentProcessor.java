@@ -75,9 +75,7 @@ public class ForageAgentProcessor {
                     name, agentItem.getConfig().modelKind());
 
             RuntimeValue<Agent> agent = recorder.createAgent(name, context.getCamelContext());
-            if (agent != null) {
-                beans.produce(new CamelRuntimeBeanBuildItem(name, Agent.class.getName(), agent));
-            }
+            beans.produce(new CamelRuntimeBeanBuildItem(name, Agent.class.getName(), agent));
         }
     }
 }

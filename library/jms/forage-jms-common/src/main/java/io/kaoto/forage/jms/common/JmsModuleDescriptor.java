@@ -83,7 +83,7 @@ public class JmsModuleDescriptor implements ForageModuleDescriptor<ConnectionFac
             addSecondsFromMillis(props, "quarkus.pooled-jms.connection-idle-timeout", config::idleTimeoutMillis);
             addIfNotEmpty(props, "quarkus.pooled-jms.connection-check-interval", config::expiryTimeoutMillis);
             addIfNotEmpty(props, "quarkus.pooled-jms.block-if-session-pool-is-full", config::blockIfFull);
-            addSecondsFromMillis(
+            addIfNotEmpty(
                     props,
                     "quarkus.pooled-jms.block-if-session-pool-is-full-timeout",
                     config::blockIfFullTimeoutMillis);
