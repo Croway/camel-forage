@@ -143,6 +143,28 @@ class PropertyFileLocatorTest {
     }
 
     @Test
+    void readPrefixesDoesNotInventPrefixesFromSimilarKeys() {
+        Properties props = new Properties();
+        // With unescaped dots and unanchored find(), "forage.(.+).jdbc..+" used to match
+        // "forage.foo.jdbcurl.x" and invent the prefix "foo"
+        props.setProperty("forage.foo.jdbcurl.x", "value");
+        props.setProperty("forage.ds1.jdbc.url", "jdbc:postgresql://localhost/db");
+
+        Set<String> prefixes = PropertyFileLocator.readPrefixes(props, ConfigHelper.getNamedPropertyRegexp("jdbc"));
+        assertThat(prefixes).containsExactly("ds1");
+    }
+
+    @Test
+    void readPrefixesDefaultRegexpMatchesOnlyExactModulePrefix() {
+        Properties props = new Properties();
+        props.setProperty("forage.jdbc.url", "jdbc:h2:mem:test");
+        props.setProperty("forage.jdbcx.url", "value");
+
+        Set<String> prefixes = PropertyFileLocator.readPrefixes(props, ConfigHelper.getDefaultPropertyRegexp("jdbc"));
+        assertThat(prefixes).containsExactly("jdbc");
+    }
+
+    @Test
     void readPrefixesReturnsEmptyForNoMatch() {
         Properties props = new Properties();
         props.setProperty("unrelated.key", "value");

@@ -8,19 +8,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default configuration resolver that reads from environment variables, system properties,
- * and runtime-specific configuration sources (Spring Boot, Quarkus, Camel Main).
+ * Default configuration resolver that reads from runtime-specific configuration sources
+ * (Spring Boot, Quarkus, Camel Main).
  *
- * <p>This resolver encapsulates the original {@link ConfigStore} resolution logic and is
- * always registered at priority 0 as the baseline resolver.
- *
- * <p><strong>Resolution order:</strong>
- * <ol>
- *   <li>Environment variables (via {@link System#getenv(String)})</li>
- *   <li>System properties (via {@link System#getProperty(String)})</li>
- *   <li>Runtime-specific config (Spring Boot application.properties, Quarkus SmallRyeConfig,
- *       or Camel Main application.properties)</li>
- * </ol>
+ * <p>Environment variables and system properties are handled by {@link ConfigStore} itself,
+ * before the resolver chain, so the documented precedence contract (env vars &gt; system
+ * properties &gt; configuration files) holds on every runtime. This resolver is always
+ * registered at priority 0 as the baseline for the configuration-file tier.
  *
  * @see ConfigResolver
  * @since 1.1
@@ -31,20 +25,6 @@ public class DefaultConfigResolver implements ConfigResolver {
 
     @Override
     public Optional<String> resolve(String propertyName) {
-        // 1. Environment variables: convert dot notation to UPPER_SNAKE_CASE
-        String envName = propertyName.replace(".", "_").toUpperCase();
-        String environmentValue = System.getenv(envName);
-        if (environmentValue != null) {
-            return Optional.of(environmentValue);
-        }
-
-        // 2. System properties
-        String propertyValue = System.getProperty(propertyName);
-        if (propertyValue != null) {
-            return Optional.of(propertyValue);
-        }
-
-        // 3. Runtime-specific fallback
         Optional<String> result =
                 switch (ConfigHelper.getRuntime()) {
                     case springBoot -> ConfigHelper.getSpringBootProperty(propertyName);

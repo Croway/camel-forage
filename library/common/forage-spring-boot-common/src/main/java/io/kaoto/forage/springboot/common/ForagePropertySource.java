@@ -1,8 +1,6 @@
 package io.kaoto.forage.springboot.common;
 
-import java.util.Map;
 import org.springframework.core.env.EnumerablePropertySource;
-import io.kaoto.forage.core.util.config.ConfigModule;
 import io.kaoto.forage.core.util.config.ConfigStore;
 
 /**
@@ -28,20 +26,11 @@ public class ForagePropertySource extends EnumerablePropertySource<ConfigStore> 
 
     @Override
     public String[] getPropertyNames() {
-        return getSource().entries().stream()
-                .map(Map.Entry::getKey)
-                .filter(key -> key instanceof ConfigModule)
-                .map(key -> ((ConfigModule) key).propertyName())
-                .toArray(String[]::new);
+        return getSource().propertyNames().toArray(String[]::new);
     }
 
     @Override
     public Object getProperty(String name) {
-        return getSource().entries().stream()
-                .filter(entry -> entry.getKey() instanceof ConfigModule cm
-                        && cm.propertyName().equals(name))
-                .map(Map.Entry::getValue)
-                .findFirst()
-                .orElse(null);
+        return getSource().getByPropertyName(name).orElse(null);
     }
 }

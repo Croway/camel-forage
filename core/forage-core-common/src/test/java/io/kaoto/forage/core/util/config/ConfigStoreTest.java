@@ -1,0 +1,163 @@
+package io.kaoto.forage.core.util.config;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+
+class ConfigStoreTest {
+
+    private static class TestConfig implements Config {
+        @Override
+        public String name() {
+            return "test-config-store";
+        }
+
+        @Override
+        public void register(String name, String value) {
+            // NO-OP
+        }
+    }
+
+    private static class StubResolver implements ConfigResolver {
+        private final Map<String, String> values;
+
+        StubResolver(Map<String, String> values) {
+            this.values = values;
+        }
+
+        @Override
+        public Optional<String> resolve(String propertyName) {
+            return Optional.ofNullable(values.get(propertyName));
+        }
+
+        @Override
+        public Set<String> discoverPrefixes(String regexp) {
+            return Collections.emptySet();
+        }
+
+        @Override
+        public int priority() {
+            return 100;
+        }
+    }
+
+    @AfterEach
+    void cleanup() {
+        ConfigStore.getInstance().unregisterResolver(StubResolver.class);
+    }
+
+    @Test
+    void setNullRemovesValue() {
+        ConfigModule module = ConfigModule.of(TestConfig.class, "forage.storetest.remove.key");
+        ConfigStore store = ConfigStore.getInstance();
+
+        store.set(module, "value");
+        assertThat(store.get(module)).contains("value");
+        assertThat(store.getByPropertyName("forage.storetest.remove.key")).contains("value");
+
+        store.set(module, null);
+        assertThat(store.get(module)).isEmpty();
+        assertThat(store.getByPropertyName("forage.storetest.remove.key")).isEmpty();
+    }
+
+    @Test
+    void setDirectNullRemovesValue() {
+        ConfigStore store = ConfigStore.getInstance();
+
+        store.setDirect("forage.storetest.direct.key", "value");
+        assertThat(store.getDirect("forage.storetest.direct.key")).contains("value");
+
+        store.setDirect("forage.storetest.direct.key", null);
+        assertThat(store.getDirect("forage.storetest.direct.key")).isEmpty();
+    }
+
+    @Test
+    void entriesReturnsDefensiveSnapshot() {
+        ConfigModule module = ConfigModule.of(TestConfig.class, "forage.storetest.snapshot.key");
+        ConfigStore store = ConfigStore.getInstance();
+        store.set(module, "before");
+
+        Set<Map.Entry<Object, Object>> snapshot = store.entries();
+        store.set(module, "after");
+
+        assertThat(snapshot.stream()
+                        .filter(e -> module.equals(e.getKey()))
+                        .map(Map.Entry::getValue)
+                        .findFirst())
+                .contains("before");
+
+        store.set(module, null);
+    }
+
+    @Test
+    void registerResolverReplacesSameClass() {
+        ConfigStore store = ConfigStore.getInstance();
+        int before = store.getResolvers().size();
+
+        store.registerResolver(new StubResolver(Map.of("forage.storetest.resolver.key", "first")));
+        store.registerResolver(new StubResolver(Map.of("forage.storetest.resolver.key", "second")));
+
+        assertThat(store.getResolvers()).hasSize(before + 1);
+
+        ConfigModule module = ConfigModule.of(TestConfig.class, "forage.storetest.resolver.key");
+        store.load(module);
+        assertThat(store.get(module)).contains("second");
+        store.set(module, null);
+    }
+
+    @Test
+    void unregisterResolverRemovesIt() {
+        ConfigStore store = ConfigStore.getInstance();
+        int before = store.getResolvers().size();
+
+        store.registerResolver(new StubResolver(Map.of()));
+        assertThat(store.getResolvers()).hasSize(before + 1);
+
+        assertThat(store.unregisterResolver(StubResolver.class)).isTrue();
+        assertThat(store.getResolvers()).hasSize(before);
+        assertThat(store.unregisterResolver(StubResolver.class)).isFalse();
+    }
+
+    @Test
+    void systemPropertyBeatsResolverChain() {
+        ConfigStore store = ConfigStore.getInstance();
+        ConfigModule module = ConfigModule.of(TestConfig.class, "forage.storetest.precedence.key");
+        store.registerResolver(new StubResolver(Map.of("forage.storetest.precedence.key", "from-resolver")));
+
+        try {
+            System.setProperty("forage.storetest.precedence.key", "from-sysprop");
+            store.load(module);
+            assertThat(store.get(module)).contains("from-sysprop");
+        } finally {
+            System.clearProperty("forage.storetest.precedence.key");
+            store.set(module, null);
+        }
+    }
+
+    @Test
+    void resolverProvidesValueWhenNoEnvOrSysprop() {
+        ConfigStore store = ConfigStore.getInstance();
+        ConfigModule module = ConfigModule.of(TestConfig.class, "forage.storetest.fallback.key");
+        store.registerResolver(new StubResolver(Map.of("forage.storetest.fallback.key", "from-resolver")));
+
+        store.load(module);
+        assertThat(store.get(module)).contains("from-resolver");
+        store.set(module, null);
+    }
+
+    @Test
+    void propertyNamesIncludesIndexedKeys() {
+        ConfigStore store = ConfigStore.getInstance();
+        ConfigModule module = ConfigModule.of(TestConfig.class, "forage.storetest.names.key");
+        store.set(module, "value");
+
+        assertThat(store.propertyNames()).contains("forage.storetest.names.key");
+        store.set(module, null);
+        assertThat(store.propertyNames()).doesNotContain("forage.storetest.names.key");
+    }
+}

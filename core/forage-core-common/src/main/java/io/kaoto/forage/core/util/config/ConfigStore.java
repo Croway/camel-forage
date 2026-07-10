@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import org.slf4j.Logger;
@@ -57,10 +58,11 @@ import org.slf4j.LoggerFactory;
 public final class ConfigStore {
     private static final Logger LOG = LoggerFactory.getLogger(ConfigStore.class);
 
-    private static ConfigStore INSTANCE;
+    private static final ConfigStore INSTANCE = new ConfigStore();
     private final Properties properties = new Properties();
+    private final Map<String, String> propertyNameIndex = new ConcurrentHashMap<>();
     private final List<ConfigResolver> resolvers = new CopyOnWriteArrayList<>();
-    private ClassLoader classLoader;
+    private volatile ClassLoader classLoader;
 
     /**
      * Private constructor to enforce singleton pattern.
@@ -73,17 +75,12 @@ public final class ConfigStore {
     /**
      * Returns the singleton instance of the ConfigStore.
      *
-     * <p>This method is thread-safe and implements lazy initialization. The same instance
-     * will be returned for all calls within the same JVM.
+     * <p>The instance is created eagerly at class initialization, so this method is
+     * lock-free. The same instance is returned for all calls within the same JVM.
      *
      * @return the singleton ConfigStore instance
      */
-    public static synchronized ConfigStore getInstance() {
-        if (INSTANCE != null) {
-            return INSTANCE;
-        }
-
-        INSTANCE = new ConfigStore();
+    public static ConfigStore getInstance() {
         return INSTANCE;
     }
 
@@ -93,11 +90,26 @@ public final class ConfigStore {
      * <p>Resolvers are consulted in priority order (highest first) when resolving configuration values.
      * The {@link DefaultConfigResolver} is always present at priority 0.
      *
+     * <p>If a resolver of the same class is already registered, it is replaced. This prevents
+     * stale resolvers (e.g., wrapping a closed Spring context) from accumulating and shadowing
+     * the freshly registered one when an application context is refreshed.
+     *
      * @param resolver the resolver to register
      */
     public void registerResolver(ConfigResolver resolver) {
+        resolvers.removeIf(existing -> existing.getClass().equals(resolver.getClass()));
         resolvers.add(resolver);
         resolvers.sort(Comparator.comparingInt(ConfigResolver::priority).reversed());
+    }
+
+    /**
+     * Removes all registered resolvers of the given class from the resolver chain.
+     *
+     * @param resolverClass the resolver class to unregister
+     * @return true if at least one resolver was removed
+     */
+    public boolean unregisterResolver(Class<? extends ConfigResolver> resolverClass) {
+        return resolvers.removeIf(existing -> existing.getClass().equals(resolverClass));
     }
 
     /**
@@ -124,7 +136,11 @@ public final class ConfigStore {
     public void load(ConfigModule module) {
         final Optional<String> read = tryRead(module);
 
-        read.ifPresent(s -> properties.put(module, PlaceholderResolver.resolve(s)));
+        read.ifPresent(s -> {
+            String resolved = PlaceholderResolver.resolve(s);
+            properties.put(module, resolved);
+            propertyNameIndex.put(module.propertyName(), resolved);
+        });
     }
 
     /**
@@ -239,15 +255,33 @@ public final class ConfigStore {
     }
 
     /**
-     * Reads a configuration value by consulting the resolver chain in priority order.
+     * Reads a configuration value following the documented precedence contract:
+     * environment variables, then system properties, then the resolver chain.
      *
-     * <p>Each registered {@link ConfigResolver} is tried in order of descending priority.
-     * The first resolver that returns a non-empty value wins.
+     * <p>Environment variables and system properties are checked here, before any resolver,
+     * so the contract holds identically on every runtime regardless of which resolvers are
+     * registered. Resolvers only supply runtime-specific configuration sources (Spring
+     * Environment, Quarkus SmallRyeConfig, application.properties files) and are tried in
+     * order of descending priority; the first non-empty value wins.
      *
      * @return an Optional containing the configuration value, or empty if not found
      */
     private Optional<String> tryRead(ConfigModule module) {
+        // 1. Environment variables
+        String envName = module.envName();
+        String environmentValue = envName != null ? System.getenv(envName) : null;
+        if (environmentValue != null) {
+            return Optional.of(environmentValue);
+        }
+
+        // 2. System properties
         String propertyName = module.propertyName();
+        String propertyValue = System.getProperty(propertyName);
+        if (propertyValue != null) {
+            return Optional.of(propertyValue);
+        }
+
+        // 3. Resolver chain (runtime-specific configuration sources)
         for (ConfigResolver resolver : resolvers) {
             Optional<String> value = resolver.resolve(propertyName);
             if (value.isPresent()) {
@@ -324,7 +358,13 @@ public final class ConfigStore {
      * @since 1.0
      */
     public void set(ConfigModule module, String value) {
-        properties.put(module, value);
+        if (value == null) {
+            properties.remove(module);
+            propertyNameIndex.remove(module.propertyName());
+        } else {
+            properties.put(module, value);
+            propertyNameIndex.put(module.propertyName(), value);
+        }
     }
 
     /**
@@ -339,7 +379,13 @@ public final class ConfigStore {
      * @since 1.0
      */
     public void setDirect(String key, String value) {
-        properties.put(key, value);
+        if (value == null) {
+            properties.remove(key);
+            propertyNameIndex.remove(key);
+        } else {
+            properties.put(key, value);
+            propertyNameIndex.put(key, value);
+        }
     }
 
     /**
@@ -365,11 +411,42 @@ public final class ConfigStore {
     }
 
     /**
-     * Gets all the configuration entries stored/set
+     * Gets all the configuration entries stored/set.
+     *
+     * <p>Returns a defensive snapshot: mutations of the store after this call are not
+     * reflected in the returned set, and iterating it can never fail with
+     * {@link java.util.ConcurrentModificationException}.
+     *
      * @return A Set of all the entries
      */
     public Set<Map.Entry<Object, Object>> entries() {
-        return properties.entrySet();
+        return Collections.unmodifiableSet(((Properties) properties.clone()).entrySet());
+    }
+
+    /**
+     * Looks up a stored configuration value by its dot-notation property name
+     * (e.g., {@code "forage.jdbc.url"}).
+     *
+     * <p>This is an indexed lookup covering both {@link ConfigModule}-keyed values
+     * (indexed under {@link ConfigModule#propertyName()}) and values stored via
+     * {@link #setDirect(String, String)}.
+     *
+     * @param propertyName the dot-notation property name
+     * @return an Optional containing the value if present, or empty if not found
+     * @since 1.2
+     */
+    public Optional<String> getByPropertyName(String propertyName) {
+        return Optional.ofNullable(propertyNameIndex.get(propertyName));
+    }
+
+    /**
+     * Returns a snapshot of all dot-notation property names with a stored value.
+     *
+     * @return the set of property names
+     * @since 1.2
+     */
+    public Set<String> propertyNames() {
+        return Set.copyOf(propertyNameIndex.keySet());
     }
 
     /**
@@ -377,14 +454,16 @@ public final class ConfigStore {
      * sources (property files, environment variables, system properties) on next access.
      *
      * <p>This method is used during hot-reload to force a fresh read of configuration
-     * values from disk. Resolvers are not affected as they are stateless and read
-     * live values on each call.
+     * values from disk. Resolvers are not cleared: hot-reload does not re-run the
+     * runtime bootstrap that registers them, and {@link #registerResolver(ConfigResolver)}
+     * replaces same-class resolvers so refreshed contexts cannot leave stale ones behind.
      *
      * @since 1.1
      */
     public void reload() {
         LOG.debug("ConfigStore.reload() - clearing {} cached properties", properties.size());
         properties.clear();
+        propertyNameIndex.clear();
         ConfigHelper.clearCache();
         LOG.debug("ConfigStore.reload() - caches cleared");
     }

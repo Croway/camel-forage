@@ -6,8 +6,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class ConfigEntries {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ConfigEntries.class);
 
     private static final Map<Class<? extends ConfigEntries>, Map<ConfigModule, ConfigEntry>> REGISTRY =
             new ConcurrentHashMap<>();
@@ -24,7 +28,16 @@ public abstract class ConfigEntries {
     }
 
     public static Map<ConfigModule, ConfigEntry> getModules(Class<? extends ConfigEntries> clazz) {
+        ensureInitialized(clazz);
         return REGISTRY.computeIfAbsent(clazz, k -> new ConcurrentHashMap<>());
+    }
+
+    private static void ensureInitialized(Class<? extends ConfigEntries> clazz) {
+        try {
+            Class.forName(clazz.getName(), true, clazz.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("Failed to initialize " + clazz.getName(), e);
+        }
     }
 
     public static Map<ConfigModule, ConfigEntry> entriesOf(Class<? extends ConfigEntries> clazz) {
@@ -39,25 +52,48 @@ public abstract class ConfigEntries {
                 for (ConfigModule module : base) {
                     modules.put(module.asNamed(prefix), ConfigEntry.fromModule());
                 }
+            } else {
+                // ConfigEntries subclasses with dynamic modules (e.g., route policies)
+                // manage their own registry instead of calling initModules()
+                LOG.debug("registerPrefix: no base modules registered for {}", clazz.getName());
             }
         }
     }
 
     public static void loadOverridesFor(Class<? extends ConfigEntries> clazz, String prefix) {
+        ensureInitialized(clazz);
         List<ConfigModule> base = BASE_MODULES.get(clazz);
         if (base != null) {
             for (ConfigModule module : base) {
                 ConfigStore.getInstance().load(module.asNamed(prefix));
             }
+        } else {
+            LOG.debug("loadOverridesFor: no base modules registered for {}", clazz.getName());
         }
     }
 
+    /**
+     * Finds the module matching the given property name, either directly or as the
+     * prefixed (named) variant of a base module.
+     *
+     * @param configModules the modules to search
+     * @param prefix an optional configuration prefix; when set, a base module also matches
+     *        its prefixed property name even if the prefix was never registered
+     * @param name the full property name to match (e.g., {@code forage.ds1.jdbc.url})
+     */
     public static Optional<ConfigModule> find(
             Map<ConfigModule, ConfigEntry> configModules, String prefix, String name) {
-        return configModules.entrySet().stream()
-                .filter(e -> e.getKey().match(name))
+        // Exact matches first: a prefixed key must resolve to its named module, never to the
+        // base module, otherwise the value would be stored under the base (unprefixed) key
+        Optional<ConfigModule> exact =
+                configModules.keySet().stream().filter(m -> m.match(name)).findFirst();
+        if (exact.isPresent()) {
+            return exact;
+        }
+        return configModules.keySet().stream()
+                .filter(m -> m.asNamed(prefix).match(name))
                 .findFirst()
-                .map(Map.Entry::getKey);
+                .map(m -> m.asNamed(prefix));
     }
 
     /**
