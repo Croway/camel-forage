@@ -87,7 +87,10 @@ class ForageTransactionEnabledConditionTest {
         try {
             contextRunner.run(ctx -> assertThat(ctx).hasBean("jdbcTxMarker"));
         } finally {
-            ConfigStore.getInstance().setDirect("forage.csonly.jdbc.transaction.enabled", "false");
+            // Clear the store rather than setting the key to "false": the singleton
+            // ConfigStore outlives this test, and a leftover forage.csonly.* key leaks
+            // into prefix discovery of tests that enumerate ForagePropertySource
+            ConfigStore.getInstance().reload();
         }
     }
 }
