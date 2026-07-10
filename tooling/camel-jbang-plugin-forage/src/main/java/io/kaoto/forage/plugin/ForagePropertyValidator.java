@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.camel.dsl.jbang.core.common.Printer;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.slf4j.Logger;
@@ -33,7 +34,33 @@ public final class ForagePropertyValidator {
 
     private static final Logger LOG = LoggerFactory.getLogger(ForagePropertyValidator.class);
 
+    /**
+     * Set when a Forage command ({@code camel forage run}/{@code camel forage export}) has already
+     * validated properties with the user's {@code --skip-validation}/{@code --strict} flags, so the
+     * plugin's {@code beforeRun} hook (triggered by the delegated {@code camel run}) must not
+     * validate — and print warnings — a second time. The commands and the plugin live in the same
+     * module/classloader and run in the same JVM, so a static flag is sufficient and avoids leaking
+     * internal state into the user-visible system property space.
+     */
+    private static final AtomicBoolean VALIDATION_HANDLED = new AtomicBoolean(false);
+
     private ForagePropertyValidator() {}
+
+    /**
+     * Marks property validation as already handled by a Forage command, so the plugin's
+     * {@code beforeRun} hook skips its own validation for the current run.
+     */
+    public static void markValidationHandled() {
+        VALIDATION_HANDLED.set(true);
+    }
+
+    /**
+     * Returns whether validation was already handled and resets the flag, so a plugin instance
+     * reused in the same JVM starts the next run with a clean state.
+     */
+    public static boolean consumeValidationHandled() {
+        return VALIDATION_HANDLED.getAndSet(false);
+    }
 
     /**
      * Helper method to avoid code redundancy.

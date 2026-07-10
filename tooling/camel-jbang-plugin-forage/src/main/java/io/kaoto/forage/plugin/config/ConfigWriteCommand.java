@@ -54,8 +54,8 @@ public class ConfigWriteCommand extends CamelCommand {
 
     @CommandLine.Option(
             names = {"--strategy", "-s"},
-            description = "Property file strategy: 'forage' writes to forage-*.properties files (default), "
-                    + "'application' writes to application.properties.",
+            description = "Property file strategy: 'application' writes to application.properties (default), "
+                    + "'forage' writes to forage-*.properties files.",
             defaultValue = "application")
     private String strategy;
 

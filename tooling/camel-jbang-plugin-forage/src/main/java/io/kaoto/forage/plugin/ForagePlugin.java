@@ -78,6 +78,48 @@ public class ForagePlugin implements Plugin {
         resolveConfigDir(files);
         propagateProfile(main);
         addCatalogDrivenRepos(main);
+        validateProperties();
+    }
+
+    /**
+     * Validates Forage properties when running via plain {@code camel run}.
+     *
+     * <p>Skipped when a Forage command ({@code camel forage run}/{@code camel forage export}) has
+     * already validated with the user's {@code --skip-validation}/{@code --strict} flags, to avoid
+     * printing warnings twice.
+     *
+     * <p>For plain {@code camel run} (where the Forage command options are not available),
+     * validation is controlled via the {@code forage.validation.skip} system property (or
+     * {@code FORAGE_VALIDATION_SKIP} environment variable) to skip validation, and
+     * {@code forage.validation.strict} (or {@code FORAGE_VALIDATION_STRICT}) to fail the run on
+     * validation warnings.
+     *
+     * <p>{@link PluginRunCustomizer#beforeRun} returns {@code void} and Camel JBang's {@code Run}
+     * invokes it outside any try/catch, so in strict mode the only way to abort the run is to
+     * throw. The exception propagates to picocli's execution exception handler, which prints it
+     * and exits with a non-zero code.
+     */
+    private static void validateProperties() {
+        if (ForagePropertyValidator.consumeValidationHandled()) {
+            return;
+        }
+
+        boolean skip = booleanOverride("forage.validation.skip", "FORAGE_VALIDATION_SKIP");
+        boolean strict = booleanOverride("forage.validation.strict", "FORAGE_VALIDATION_STRICT");
+
+        int result = ForagePropertyValidator.validateAndReport(new Printer.SystemOutPrinter(), skip, strict);
+        if (result != 0) {
+            throw new RuntimeException("Forage property validation failed in strict mode. "
+                    + "Fix the reported warnings, or unset forage.validation.strict / FORAGE_VALIDATION_STRICT.");
+        }
+    }
+
+    private static boolean booleanOverride(String systemProperty, String envVar) {
+        String value = System.getProperty(systemProperty);
+        if (value == null) {
+            value = System.getenv(envVar);
+        }
+        return Boolean.parseBoolean(value);
     }
 
     // JVM-global side effect: sets camel.main.profile so ForagePropertyScanner can resolve the

@@ -91,15 +91,19 @@ public class CodeScanner {
         try {
             log.debug("Scanning source directory: " + sourceDir);
 
+            // Prefer src/main/java to avoid scanning generated sources under target/
+            Path javaSourceDir = sourceDir.resolve("src").resolve("main").resolve("java");
+            Path scanDir = Files.isDirectory(javaSourceDir) ? javaSourceDir : sourceDir;
+
             // Walk through all Java files ONCE and extract all information
-            try (Stream<Path> paths = Files.walk(sourceDir)) {
+            try (Stream<Path> paths = Files.walk(scanDir)) {
                 paths.filter(path -> path.toString().endsWith(".java"))
-                        .filter(path -> !path.toString().contains("/test/"))
+                        .filter(path -> isScannablePath(scanDir, path))
                         .forEach(javaFile -> {
                             try {
                                 scanJavaFileForAllInfo(javaFile, result);
                             } catch (Exception e) {
-                                log.warn("Failed to parse Java file: " + javaFile);
+                                log.warn("Failed to parse Java file: " + javaFile + " - " + e.getMessage());
                                 log.debug("Parse error details: " + e.getMessage(), e);
                             }
                         });
@@ -375,7 +379,7 @@ public class CodeScanner {
                         data.setName(stringLiteral.asString());
                     }
                 }
-                case "components" -> data.setComponents(extractStringArrayValue(value));
+                case "components" -> data.setComponents(extractStringArrayValue(value, "@ForageFactory 'components'"));
                 case "description" -> {
                     if (value instanceof StringLiteralExpr stringLiteral) {
                         data.setDescription(stringLiteral.asString());
@@ -390,7 +394,8 @@ public class CodeScanner {
                 case "conditionalBeans" -> data.setConditionalBeans(extractConditionalBeanGroupArray(value));
                 case "variant" -> data.setVariant(extractVariantValue(value));
                 case "configClass" -> data.setConfigClassName(extractClassValue(value, cu));
-                case "runtimeDependencies" -> data.setRuntimeDependencies(extractStringArrayValue(value));
+                case "runtimeDependencies" ->
+                    data.setRuntimeDependencies(extractStringArrayValue(value, "@ForageFactory 'runtimeDependencies'"));
                 default -> {}
             }
         }
@@ -447,7 +452,8 @@ public class CodeScanner {
                     }
                 }
                 case "beans" -> beans = extractConditionalBeanArray(value);
-                case "runtimeDependencies" -> runtimeDeps = extractStringArrayValue(value);
+                case "runtimeDependencies" ->
+                    runtimeDeps = extractStringArrayValue(value, "@ConditionalBeanGroup 'runtimeDependencies'");
                 default -> {}
             }
         }
@@ -566,7 +572,7 @@ public class CodeScanner {
                             name = stringLiteral.asString();
                         }
                     }
-                    case "components" -> components = extractStringArrayValue(value);
+                    case "components" -> components = extractStringArrayValue(value, "@ForageBean 'components'");
                     case "description" -> {
                         if (value instanceof StringLiteralExpr stringLiteral) {
                             description = stringLiteral.asString();
@@ -578,8 +584,9 @@ public class CodeScanner {
                         }
                     }
                     case "configClass" -> configClassName = extractClassValue(value, cu);
-                    case "runtimeDependencies" -> runtimeDeps = extractStringArrayValue(value);
-                    case "repositories" -> repositories = extractStringArrayValue(value);
+                    case "runtimeDependencies" ->
+                        runtimeDeps = extractStringArrayValue(value, "@ForageBean 'runtimeDependencies'");
+                    case "repositories" -> repositories = extractStringArrayValue(value, "@ForageBean 'repositories'");
                     default -> {}
                 }
             }
@@ -907,15 +914,32 @@ public class CodeScanner {
 
     /**
      * Extracts a list of strings from an annotation value that can be either a single string or an array of strings.
+     * Non-literal expressions (e.g. constant references) cannot be resolved by source parsing and are
+     * skipped with a warning naming the annotation member being read.
+     *
+     * @param value the annotation member value expression
+     * @param annotationContext the annotation and member being parsed (e.g. {@code @ForageBean 'components'}),
+     *        used in warning messages
      */
-    private List<String> extractStringArrayValue(Expression value) {
+    private List<String> extractStringArrayValue(Expression value, String annotationContext) {
         List<String> result = new ArrayList<>();
 
-        ArrayInitializerExpr arrayExpr = (ArrayInitializerExpr) value;
-        for (Expression element : arrayExpr.getValues()) {
-            if (element instanceof StringLiteralExpr) {
-                result.add(((StringLiteralExpr) element).asString());
+        if (value instanceof StringLiteralExpr stringLiteral) {
+            result.add(stringLiteral.asString());
+        } else if (value instanceof ArrayInitializerExpr arrayExpr) {
+            for (Expression element : arrayExpr.getValues()) {
+                if (element instanceof StringLiteralExpr stringElement) {
+                    result.add(stringElement.asString());
+                } else {
+                    log.warn("Skipping non-string-literal element of type "
+                            + element.getClass().getSimpleName() + " in " + annotationContext
+                            + " (only string literals are supported): " + element);
+                }
             }
+        } else {
+            log.warn("Cannot extract string values from " + annotationContext + ": unsupported expression type "
+                    + value.getClass().getSimpleName()
+                    + " (only string literals and array initializers are supported): " + value);
         }
 
         return result;
@@ -967,5 +991,26 @@ public class CodeScanner {
         }
 
         return null;
+    }
+
+    /**
+     * Returns whether a Java file under the scan root should be scanned. Files under {@code target}
+     * or {@code test} directories are skipped, but only segments <em>below</em> the scan root are
+     * considered: the path is relativized against the scan root first, so a checkout under a
+     * directory literally named {@code test} or {@code target} (e.g. {@code /home/ci/test/forage})
+     * does not cause every file to be skipped.
+     */
+    static boolean isScannablePath(Path scanRoot, Path path) {
+        Path relative = scanRoot.relativize(path);
+        return !containsPathSegment(relative, "target") && !containsPathSegment(relative, "test");
+    }
+
+    private static boolean containsPathSegment(Path path, String segment) {
+        for (Path part : path) {
+            if (segment.equals(part.toString())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
