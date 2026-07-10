@@ -4,6 +4,7 @@ import javax.sql.DataSource;
 
 import org.apache.camel.processor.idempotent.jdbc.JdbcMessageIdRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.jta.JtaTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import io.kaoto.forage.jdbc.common.DataSourceFactoryConfig;
@@ -38,8 +39,9 @@ public class ForageJdbcMessageIdRepository extends JdbcMessageIdRepository {
         if (config.transactionEnabled()) {
             JtaTransactionManager jtaTransactionManager =
                     new JtaTransactionManager(com.arjuna.ats.jta.TransactionManager.transactionManager());
-            TransactionTemplate transactionTemplate = new TransactionTemplate(jtaTransactionManager);
-            setTransactionTemplate(transactionTemplate);
+            setTransactionTemplate(new TransactionTemplate(jtaTransactionManager));
+        } else {
+            setTransactionTemplate(new TransactionTemplate(new DataSourceTransactionManager(dataSource)));
         }
     }
 }
