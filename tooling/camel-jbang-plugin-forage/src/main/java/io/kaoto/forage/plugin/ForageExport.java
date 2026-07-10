@@ -31,6 +31,14 @@ public class ForageExport extends Export {
             return validationResult;
         }
 
-        return super.doCall();
+        // Exporting may delegate to run infrastructure that triggers the plugin's beforeRun hook —
+        // mark validation as handled so it is not repeated. The finally block resets the flag in
+        // case the hook never ran, so a reused plugin instance starts clean.
+        ForagePropertyValidator.markValidationHandled();
+        try {
+            return super.doCall();
+        } finally {
+            ForagePropertyValidator.consumeValidationHandled();
+        }
     }
 }

@@ -273,6 +273,19 @@ class ForagePropertyValidatorTest {
         assertThat(farTypoWarning.getMessage()).doesNotContain("Did you mean");
     }
 
+    @Test
+    void testValidationHandledGuardIsConsumedAndReset() {
+        // Initially not handled
+        assertThat(ForagePropertyValidator.consumeValidationHandled()).isFalse();
+
+        // Marking makes the next consume return true...
+        ForagePropertyValidator.markValidationHandled();
+        assertThat(ForagePropertyValidator.consumeValidationHandled()).isTrue();
+
+        // ...and consuming resets the flag so a reused plugin instance starts clean
+        assertThat(ForagePropertyValidator.consumeValidationHandled()).isFalse();
+    }
+
     // Helper method to create properties files
     private File createPropertiesFile(String filename, String... lines) throws IOException {
         File file = tempDir.resolve(filename).toFile();
