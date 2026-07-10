@@ -143,7 +143,7 @@ public class ForageSpringBootModuleAdapter<C extends Config, P extends BeanProvi
         beanDefinition.setBeanClass(descriptor.primaryBeanClass());
         beanDefinition.setInstanceSupplier(() -> createPrimaryBean(name));
         beanDefinition.setPrimary(isFirst);
-        String destroyMethod = descriptor.destroyMethodName();
+        String destroyMethod = descriptor.destroyMethodName(name);
         if (!destroyMethod.isEmpty()) {
             beanDefinition.setDestroyMethodName(destroyMethod);
         }

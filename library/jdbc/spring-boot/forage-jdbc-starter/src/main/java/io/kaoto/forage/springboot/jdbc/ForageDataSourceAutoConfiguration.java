@@ -13,10 +13,8 @@ import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
 import io.agroal.api.AgroalDataSource;
 import io.agroal.springframework.boot.AgroalDataSourceAutoConfiguration;
 import io.kaoto.forage.core.annotations.FactoryType;
@@ -39,10 +37,15 @@ import io.kaoto.forage.springboot.common.ForageSpringBootModuleAdapter;
  *
  * <p>This configuration class handles:
  * <ul>
- *   <li>Transaction management setup (when {@code forage.jdbc.transaction.enabled=true})</li>
  *   <li>The {@link ForageSpringBootModuleAdapter} bean for dynamic registration</li>
  *   <li>Fallback single-provider DataSource when no prefixed configurations are found</li>
  * </ul>
+ *
+ * <p>Transaction management (JTA transaction manager, Camel transaction policies, and
+ * {@code @EnableTransactionManagement}) is provided by
+ * {@code io.kaoto.forage.springboot.jdbc.jta.ForageJdbcTransactionManagementAutoConfiguration},
+ * which activates when any default or prefixed {@code forage[.<name>].jdbc.transaction.enabled=true}
+ * property is present.
  */
 @ForageFactory(
         value = "DataSource (Spring Boot)",
@@ -63,21 +66,6 @@ import io.kaoto.forage.springboot.common.ForageSpringBootModuleAdapter;
 public class ForageDataSourceAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(ForageDataSourceAutoConfiguration.class);
-
-    /**
-     * Transaction management configuration that enables Spring transaction support
-     * when JDBC transactions are configured in Forage DataSource settings.
-     */
-    @Configuration
-    @ConditionalOnProperty(value = "forage.jdbc.transaction.enabled", havingValue = "true")
-    @EnableTransactionManagement
-    static class ForageTransactionManagement {
-
-        @jakarta.annotation.PostConstruct
-        public void init() {
-            log.info("ForageTransactionManagement configuration enabled");
-        }
-    }
 
     /**
      * Registers the generic module adapter that discovers prefixed DataSource

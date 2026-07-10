@@ -111,10 +111,11 @@ public class JdbcModuleDescriptor implements ForageModuleDescriptor<DataSourceFa
 
     @Override
     public List<AuxiliaryBeanDescriptor> auxiliaryBeans(String prefix) {
-        String lookupName = prefix != null ? prefix : defaultBeanName();
         return auxiliaryBeans(prefix, name -> {
             DataSourceFactoryConfig c = createConfig(prefix);
-            ForageDataSource ds = createDataSource(c, lookupName);
+            // Pass the original prefix (null for the default config) so the provider reads
+            // forage.jdbc.* rather than forage.dataSource.jdbc.* for the default configuration.
+            ForageDataSource ds = createDataSource(c, prefix);
             return ds != null ? ds.dataSource() : null;
         });
     }
@@ -129,7 +130,7 @@ public class JdbcModuleDescriptor implements ForageModuleDescriptor<DataSourceFa
             String repoName = config.aggregationRepositoryName();
             beans.add(new AuxiliaryBeanDescriptor(repoName, ForageAggregationRepository.class, () -> {
                 DataSourceFactoryConfig c = createConfig(prefix);
-                AgroalDataSource ds = (AgroalDataSource) primaryLookup.apply(lookupName);
+                AgroalDataSource ds = lookupAgroalDataSource(primaryLookup, lookupName, repoName);
                 if (ds != null) {
                     return new ForageAggregationRepository(
                             ds, com.arjuna.ats.jta.TransactionManager.transactionManager(), c);
@@ -142,7 +143,7 @@ public class JdbcModuleDescriptor implements ForageModuleDescriptor<DataSourceFa
             String tableName = config.idempotentRepositoryTableName();
             beans.add(new AuxiliaryBeanDescriptor(tableName, ForageJdbcMessageIdRepository.class, () -> {
                 DataSourceFactoryConfig c = createConfig(prefix);
-                AgroalDataSource ds = (AgroalDataSource) primaryLookup.apply(lookupName);
+                AgroalDataSource ds = lookupAgroalDataSource(primaryLookup, lookupName, tableName);
                 if (ds != null) {
                     ForageIdRepository idRepo = resolveIdRepository(c);
                     return new ForageJdbcMessageIdRepository(c, ds, idRepo);
@@ -152,6 +153,22 @@ public class JdbcModuleDescriptor implements ForageModuleDescriptor<DataSourceFa
         }
 
         return beans;
+    }
+
+    private static AgroalDataSource lookupAgroalDataSource(
+            Function<String, Object> primaryLookup, String lookupName, String auxiliaryBeanName) {
+        Object primary = primaryLookup.apply(lookupName);
+        if (primary == null) {
+            return null;
+        }
+        if (!(primary instanceof AgroalDataSource agroalDataSource)) {
+            throw new IllegalStateException("Forage auxiliary repository '" + auxiliaryBeanName
+                    + "' requires the Forage-managed AgroalDataSource bean '" + lookupName + "', but the resolved bean"
+                    + " is of type " + primary.getClass().getName()
+                    + ". Auxiliary JDBC repositories (aggregation/idempotent) can only be attached to a Forage"
+                    + " AgroalDataSource.");
+        }
+        return agroalDataSource;
     }
 
     /**

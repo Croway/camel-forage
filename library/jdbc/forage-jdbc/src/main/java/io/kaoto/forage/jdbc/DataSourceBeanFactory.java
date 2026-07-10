@@ -110,7 +110,7 @@ public class DataSourceBeanFactory implements BeanFactory {
         closeAndUnbind(DEFAULT_DATASOURCE);
 
         // Unbind JTA transaction policies if they were registered
-        if (config.transactionEnabled()) {
+        if (anyTransactionEnabled(config, prefixes)) {
             for (String name : List.of(
                     "PROPAGATION_REQUIRED", "MANDATORY", "NEVER", "NOT_SUPPORTED", "REQUIRES_NEW", "SUPPORTS")) {
                 camelContext.getRegistry().unbind(name);
@@ -151,7 +151,9 @@ public class DataSourceBeanFactory implements BeanFactory {
         Set<String> prefixes =
                 ConfigStore.getInstance().readPrefixes(config, ConfigHelper.getNamedPropertyRegexp("jdbc"));
 
-        if (config.transactionEnabled()) {
+        // Bind JTA policies when the default config OR any discovered prefixed config
+        // has transactions enabled (e.g., forage.ds1.jdbc.transaction.enabled=true)
+        if (anyTransactionEnabled(config, prefixes)) {
             camelContext.getRegistry().bind("PROPAGATION_REQUIRED", new RequiredJtaTransactionPolicy());
             camelContext.getRegistry().bind("MANDATORY", new MandatoryJtaTransactionPolicy());
             camelContext.getRegistry().bind("NEVER", new NeverJtaTransactionPolicy());
@@ -190,6 +192,13 @@ public class DataSourceBeanFactory implements BeanFactory {
                 LOG.error(ex.getMessage(), ex);
             }
         }
+    }
+
+    private static boolean anyTransactionEnabled(DataSourceFactoryConfig defaultConfig, Set<String> prefixes) {
+        if (defaultConfig.transactionEnabled()) {
+            return true;
+        }
+        return prefixes.stream().anyMatch(p -> new DataSourceFactoryConfig(p).transactionEnabled());
     }
 
     private void createIdempotentRepository(

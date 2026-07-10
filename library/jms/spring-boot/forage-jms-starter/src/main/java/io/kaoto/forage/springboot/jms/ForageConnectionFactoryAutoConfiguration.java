@@ -4,8 +4,10 @@ import jakarta.jms.ConnectionFactory;
 
 import java.util.List;
 import java.util.ServiceLoader;
+import org.messaginghub.pooled.jms.JmsPoolConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.artemis.autoconfigure.ArtemisAutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -13,7 +15,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
 import io.kaoto.forage.core.annotations.FactoryType;
 import io.kaoto.forage.core.annotations.FactoryVariant;
 import io.kaoto.forage.core.annotations.ForageFactory;
@@ -40,24 +41,11 @@ import io.kaoto.forage.springboot.common.ForageSpringBootModuleAdapter;
         variant = FactoryVariant.SPRING_BOOT)
 @Configuration
 @AutoConfigureBefore(ArtemisAutoConfiguration.class)
-public class ForageConnectionFactoryAutoConfiguration {
+public class ForageConnectionFactoryAutoConfiguration implements DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(ForageConnectionFactoryAutoConfiguration.class);
 
-    /**
-     * Transaction management configuration that enables Spring transaction support
-     * when JMS transactions are configured.
-     */
-    @Configuration
-    @ConditionalOnProperty(value = "forage.jms.transaction.enabled", havingValue = "true")
-    @EnableTransactionManagement
-    static class ForageTransactionManagement {
-
-        @jakarta.annotation.PostConstruct
-        public void init() {
-            log.info("ForageTransactionManagement configuration enabled");
-        }
-    }
+    private ConnectionFactory defaultConnectionFactory;
 
     /**
      * Registers the generic module adapter that discovers prefixed ConnectionFactory
@@ -74,8 +62,14 @@ public class ForageConnectionFactoryAutoConfiguration {
      * Fallback ConnectionFactory bean created when no named/prefixed configurations are found
      * and default (unprefixed) JMS properties exist. Uses {@code forage.jms.kind} to select
      * the matching provider when multiple providers are on the classpath.
+     *
+     * <p>{@code destroyMethod = ""} disables Spring's destroy-method inference:
+     * {@link JmsPoolConnectionFactory} exposes {@code stop()} rather than {@code close()}/
+     * {@code shutdown()}, so inference would never stop the pool (and a raw, pool-disabled
+     * connection factory may have no lifecycle method at all). The pool is instead stopped
+     * explicitly in {@link #destroy()} when the context closes.
      */
-    @Bean("jmsConnectionFactory")
+    @Bean(value = "jmsConnectionFactory", destroyMethod = "")
     @ConditionalOnMissingBean(name = "jmsConnectionFactory")
     @ConditionalOnProperty(prefix = "forage.jms", name = "kind")
     public ConnectionFactory forageDefaultConnectionFactory() {
@@ -92,6 +86,7 @@ public class ForageConnectionFactoryAutoConfiguration {
                 log.info("Creating default ConnectionFactory using provider: {}", providerClassName);
                 ConnectionFactory connectionFactory = provider.get().create(null);
                 log.info("Registered default ConnectionFactory bean");
+                this.defaultConnectionFactory = connectionFactory;
                 return connectionFactory;
             }
         }
@@ -102,5 +97,18 @@ public class ForageConnectionFactoryAutoConfiguration {
                 .orElse("none");
         throw new IllegalStateException("No ConnectionFactoryProvider found for kind '" + kind + "' (expected "
                 + providerClassName + "). Available providers: " + available);
+    }
+
+    /**
+     * Stops the default pooled ConnectionFactory when the application context closes.
+     * {@link JmsPoolConnectionFactory} has no {@code close()}/{@code shutdown()} method, so
+     * Spring's inferred destroy method would never release the pool.
+     */
+    @Override
+    public void destroy() {
+        if (defaultConnectionFactory instanceof JmsPoolConnectionFactory pool) {
+            log.info("Stopping default pooled ConnectionFactory");
+            pool.stop();
+        }
     }
 }
