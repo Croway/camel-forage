@@ -104,9 +104,7 @@ public class ForageCxfProcessor {
         for (ForageCxfBuildItem item : cxfEndpoints) {
             LOG.infof("Registering CXF endpoint bean '%s'", item.getName());
             RuntimeValue<Object> endpoint = recorder.createCxfEndpoint(item.getPrefix());
-            if (endpoint != null) {
-                beans.produce(new CamelRuntimeBeanBuildItem(item.getName(), Object.class.getName(), endpoint));
-            }
+            beans.produce(new CamelRuntimeBeanBuildItem(item.getName(), Object.class.getName(), endpoint));
         }
     }
 

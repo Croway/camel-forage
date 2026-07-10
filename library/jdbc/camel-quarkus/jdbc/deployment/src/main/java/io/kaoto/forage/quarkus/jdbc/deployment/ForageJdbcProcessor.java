@@ -77,7 +77,7 @@ public class ForageJdbcProcessor {
      * {@link ForageDataSourceBuildItem}s instead of reading ConfigStore directly.
      */
     @BuildStep
-    @Record(value = ExecutionTime.STATIC_INIT)
+    @Record(value = ExecutionTime.RUNTIME_INIT)
     void registerRepositories(
             CamelContextBuildItem context,
             ForageJdbcRecorder recorder,
@@ -90,9 +90,18 @@ public class ForageJdbcProcessor {
             DataSourceFactoryConfig dsConfig = ds.getConfig();
 
             if (isNotBlank(dsConfig.aggregationRepositoryName())) {
-                RuntimeValue<JdbcAggregationRepository> aggRepo =
-                        recorder.createAggregationRepository(name, prefix, context.getCamelContext());
-                if (aggRepo != null) {
+                if (!dsConfig.transactionEnabled()) {
+                    LOG.warnf(
+                            "Skipping aggregation repository '%s' for datasource '%s': transactions have to be "
+                                    + "enabled in order to create aggregation repositories. Set '%s' to true.",
+                            dsConfig.aggregationRepositoryName(),
+                            name,
+                            prefix == null
+                                    ? "forage.jdbc.transaction.enabled"
+                                    : "forage." + prefix + ".jdbc.transaction.enabled");
+                } else {
+                    RuntimeValue<JdbcAggregationRepository> aggRepo =
+                            recorder.createAggregationRepository(name, prefix, context.getCamelContext());
                     beans.produce(new CamelRuntimeBeanBuildItem(
                             dsConfig.aggregationRepositoryName(), JdbcAggregationRepository.class.getName(), aggRepo));
                 }
@@ -107,12 +116,8 @@ public class ForageJdbcProcessor {
                 if (isNotBlank(dsConfig.idempotentRepositoryTableName())) {
                     RuntimeValue<JdbcMessageIdRepository> idRepo =
                             recorder.createIdempotentRepository(name, prefix, context.getCamelContext());
-                    if (idRepo != null) {
-                        beans.produce(new CamelRuntimeBeanBuildItem(
-                                dsConfig.idempotentRepositoryTableName(),
-                                JdbcMessageIdRepository.class.getName(),
-                                idRepo));
-                    }
+                    beans.produce(new CamelRuntimeBeanBuildItem(
+                            dsConfig.idempotentRepositoryTableName(), JdbcMessageIdRepository.class.getName(), idRepo));
                 } else {
                     logMissingMandatoryProperty(
                             "idempotent",

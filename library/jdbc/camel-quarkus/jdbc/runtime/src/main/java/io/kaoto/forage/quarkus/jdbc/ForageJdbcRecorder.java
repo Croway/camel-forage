@@ -5,7 +5,6 @@ import javax.sql.DataSource;
 import org.apache.camel.CamelContext;
 import org.apache.camel.processor.aggregate.jdbc.JdbcAggregationRepository;
 import org.apache.camel.processor.idempotent.jdbc.JdbcMessageIdRepository;
-import org.jboss.logging.Logger;
 import io.kaoto.forage.jdbc.common.DataSourceFactoryConfig;
 import io.kaoto.forage.jdbc.common.aggregation.ForageAggregationRepository;
 import io.kaoto.forage.jdbc.common.idempotent.ForageIdRepository;
@@ -26,7 +25,6 @@ import io.quarkus.runtime.annotations.Recorder;
  */
 @Recorder
 public class ForageJdbcRecorder {
-    private static final Logger LOG = Logger.getLogger(ForageJdbcRecorder.class);
 
     public RuntimeValue<JdbcAggregationRepository> createAggregationRepository(
             String dsName, String prefix, RuntimeValue<CamelContext> camelContext) {
@@ -34,11 +32,7 @@ public class ForageJdbcRecorder {
         DataSourceFactoryConfig config = new DataSourceFactoryConfig(prefix);
         CamelContext context = camelContext.getValue();
         DataSource agroalDataSource = context.getRegistry().lookupByNameAndType(dsName, DataSource.class);
-        JdbcAggregationRepository ar = createAggregationRepository(config, agroalDataSource);
-        if (ar != null) {
-            return new RuntimeValue<>(ar);
-        }
-        return null;
+        return new RuntimeValue<>(createAggregationRepository(config, agroalDataSource));
     }
 
     public RuntimeValue<JdbcMessageIdRepository> createIdempotentRepository(
@@ -47,24 +41,13 @@ public class ForageJdbcRecorder {
         DataSourceFactoryConfig config = new DataSourceFactoryConfig(prefix);
         CamelContext context = camelContext.getValue();
         DataSource agroalDataSource = context.getRegistry().lookupByNameAndType(dsName, DataSource.class);
-        JdbcMessageIdRepository ir = createIdempotentRepository(config, agroalDataSource);
-        if (ir != null) {
-            return new RuntimeValue<>(ir);
-        }
-        return null;
+        return new RuntimeValue<>(createIdempotentRepository(config, agroalDataSource));
     }
 
     private JdbcAggregationRepository createAggregationRepository(
             DataSourceFactoryConfig dsFactoryConfig, DataSource agroalDataSource) {
-        if (!dsFactoryConfig.transactionEnabled() && dsFactoryConfig.aggregationRepositoryName() != null) {
-            LOG.warn("Transactions have to be enabled in order to create aggregation repositories");
-            return null;
-        }
-        if (dsFactoryConfig.aggregationRepositoryName() != null) {
-            return new ForageAggregationRepository(
-                    agroalDataSource, com.arjuna.ats.jta.TransactionManager.transactionManager(), dsFactoryConfig);
-        }
-        return null;
+        return new ForageAggregationRepository(
+                agroalDataSource, com.arjuna.ats.jta.TransactionManager.transactionManager(), dsFactoryConfig);
     }
 
     private JdbcMessageIdRepository createIdempotentRepository(
@@ -80,19 +63,11 @@ public class ForageJdbcRecorder {
                     case "mysql" -> new MysqlJdbc();
                     case "oracle" -> new OracleJdbc();
                     case "postgresql" -> new PostgresqlJdbc();
-                    default -> null;
+                    default ->
+                        throw new IllegalStateException(
+                                "Unsupported db kind '%s' for idempotent repository".formatted(config.dbKind()));
                 };
 
-        if (config.enableIdempotentRepository()) {
-            if (forageIdRepository == null) {
-                LOG.warn("Unsupported type of db ('%s') for the idempotent repository".formatted(config.dbKind()));
-                return null;
-            }
-            if (config.idempotentRepositoryTableName() != null) {
-                return new ForageJdbcMessageIdRepository(config, agroalDataSource, forageIdRepository);
-            }
-        }
-
-        return null;
+        return new ForageJdbcMessageIdRepository(config, agroalDataSource, forageIdRepository);
     }
 }
