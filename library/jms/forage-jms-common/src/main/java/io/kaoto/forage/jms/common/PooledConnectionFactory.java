@@ -2,8 +2,10 @@ package io.kaoto.forage.jms.common;
 
 import jakarta.jms.ConnectionFactory;
 import jakarta.jms.XAConnectionFactory;
+import jakarta.transaction.TransactionManager;
 
 import org.messaginghub.pooled.jms.JmsPoolConnectionFactory;
+import org.messaginghub.pooled.jms.JmsPoolXAConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.jms.ConnectionFactoryProvider;
@@ -72,8 +74,10 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
                 return (ConnectionFactory) xaConnectionFactory;
             }
 
-            // Configure pooled connection factory for XA
-            final JmsPoolConnectionFactory pooledConnectionFactory = setupPooledConnectionFactory(xaConnectionFactory);
+            // Use JmsPoolXAConnectionFactory so XA sessions enlist in the JTA transaction
+            TransactionManager transactionManager = com.arjuna.ats.jta.TransactionManager.transactionManager();
+            final JmsPoolXAConnectionFactory pooledConnectionFactory =
+                    setupPooledXAConnectionFactory(xaConnectionFactory, transactionManager);
 
             LOG.info("Pooled XA ConnectionFactory initialized successfully for id: {}", id);
             return pooledConnectionFactory;
@@ -93,10 +97,23 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
         }
     }
 
+    private JmsPoolXAConnectionFactory setupPooledXAConnectionFactory(
+            XAConnectionFactory xaConnectionFactory, TransactionManager transactionManager) {
+        JmsPoolXAConnectionFactory pooledConnectionFactory = new JmsPoolXAConnectionFactory();
+        pooledConnectionFactory.setConnectionFactory(xaConnectionFactory);
+        pooledConnectionFactory.setTransactionManager(transactionManager);
+        applyPoolSettings(pooledConnectionFactory);
+        return pooledConnectionFactory;
+    }
+
     private <T> JmsPoolConnectionFactory setupPooledConnectionFactory(T underlyingConnectionFactory) {
-        // Configure pooled connection factory
         JmsPoolConnectionFactory pooledConnectionFactory = new JmsPoolConnectionFactory();
         pooledConnectionFactory.setConnectionFactory(underlyingConnectionFactory);
+        applyPoolSettings(pooledConnectionFactory);
+        return pooledConnectionFactory;
+    }
+
+    private void applyPoolSettings(JmsPoolConnectionFactory pooledConnectionFactory) {
         pooledConnectionFactory.setMaxConnections(config.maxConnections());
         pooledConnectionFactory.setMaxSessionsPerConnection(config.maxSessionsPerConnection());
         pooledConnectionFactory.setConnectionIdleTimeout((int) config.idleTimeoutMillis());
@@ -106,7 +123,6 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
         if (config.blockIfFull() && config.blockIfFullTimeoutMillis() > 0) {
             pooledConnectionFactory.setBlockIfSessionPoolIsFullTimeout(config.blockIfFullTimeoutMillis());
         }
-        return pooledConnectionFactory;
     }
 
     protected ConnectionFactoryConfig getConfig() {
