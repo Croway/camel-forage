@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.function.Function;
 import io.agroal.api.AgroalDataSource;
 import io.kaoto.forage.core.common.AuxiliaryBeanDescriptor;
 import io.kaoto.forage.core.common.ForageModuleDescriptor;
@@ -122,17 +123,29 @@ public class JdbcModuleDescriptor implements ForageModuleDescriptor<DataSourceFa
 
     @Override
     public List<AuxiliaryBeanDescriptor> auxiliaryBeans(String prefix) {
+        return auxiliaryBeans(prefix, name -> {
+            DataSourceFactoryConfig c = createConfig(prefix);
+            // Pass the original prefix (null for the default config) so the provider reads
+            // forage.jdbc.* rather than forage.dataSource.jdbc.* for the default configuration.
+            ForageDataSource ds = createDataSource(c, prefix);
+            return ds != null ? ds.dataSource() : null;
+        });
+    }
+
+    @Override
+    public List<AuxiliaryBeanDescriptor> auxiliaryBeans(String prefix, Function<String, Object> primaryLookup) {
         DataSourceFactoryConfig config = createConfig(prefix);
         List<AuxiliaryBeanDescriptor> beans = new ArrayList<>();
+        String lookupName = prefix != null ? prefix : defaultBeanName();
 
         if (config.transactionEnabled() && config.aggregationRepositoryName() != null) {
             String repoName = config.aggregationRepositoryName();
             beans.add(new AuxiliaryBeanDescriptor(repoName, ForageAggregationRepository.class, () -> {
                 DataSourceFactoryConfig c = createConfig(prefix);
-                ForageDataSource ds = createDataSource(c, prefix);
+                AgroalDataSource ds = lookupAgroalDataSource(primaryLookup, lookupName, repoName);
                 if (ds != null) {
                     return new ForageAggregationRepository(
-                            ds.dataSource(), com.arjuna.ats.jta.TransactionManager.transactionManager(), c);
+                            ds, com.arjuna.ats.jta.TransactionManager.transactionManager(), c);
                 }
                 return null;
             }));
@@ -142,15 +155,59 @@ public class JdbcModuleDescriptor implements ForageModuleDescriptor<DataSourceFa
             String tableName = config.idempotentRepositoryTableName();
             beans.add(new AuxiliaryBeanDescriptor(tableName, ForageJdbcMessageIdRepository.class, () -> {
                 DataSourceFactoryConfig c = createConfig(prefix);
-                ForageDataSource ds = createDataSource(c, prefix);
+                AgroalDataSource ds = lookupAgroalDataSource(primaryLookup, lookupName, tableName);
                 if (ds != null) {
-                    return new ForageJdbcMessageIdRepository(c, ds.dataSource(), ds.forageIdRepository());
+                    ForageIdRepository idRepo = resolveIdRepository(c);
+                    return new ForageJdbcMessageIdRepository(c, ds, idRepo);
                 }
                 return null;
             }));
         }
 
         return beans;
+    }
+
+    private static AgroalDataSource lookupAgroalDataSource(
+            Function<String, Object> primaryLookup, String lookupName, String auxiliaryBeanName) {
+        Object primary = primaryLookup.apply(lookupName);
+        if (primary == null) {
+            return null;
+        }
+        if (!(primary instanceof AgroalDataSource agroalDataSource)) {
+            throw new IllegalStateException("Forage auxiliary repository '" + auxiliaryBeanName
+                    + "' requires the Forage-managed AgroalDataSource bean '" + lookupName + "', but the resolved bean"
+                    + " is of type " + primary.getClass().getName()
+                    + ". Auxiliary JDBC repositories (aggregation/idempotent) can only be attached to a Forage"
+                    + " AgroalDataSource.");
+        }
+        return agroalDataSource;
+    }
+
+    /**
+     * Resolves the ForageIdRepository from the provider without creating a DataSource pool.
+     * Used when the primary DataSource is already available (e.g., as a Spring bean).
+     */
+    ForageIdRepository resolveIdRepository(DataSourceFactoryConfig config) {
+        String providerClass = resolveProviderClassName(config);
+        List<ServiceLoader.Provider<DataSourceProvider>> providers =
+                ServiceLoader.load(DataSourceProvider.class).stream().toList();
+
+        ServiceLoader.Provider<DataSourceProvider> provider;
+        if (providers.size() == 1) {
+            provider = providers.get(0);
+        } else {
+            provider = ServiceLoaderHelper.findProviderByClassName(providers, providerClass);
+        }
+
+        if (provider == null) {
+            return null;
+        }
+
+        DataSourceProvider dsProvider = provider.get();
+        if (dsProvider instanceof ForageIdRepository forageIdRepo) {
+            return forageIdRepo;
+        }
+        return null;
     }
 
     /**

@@ -52,12 +52,12 @@ class ForageJdbcBeanRegistrar implements ImportBeanDefinitionRegistrar, org.spri
         boolean isFirst = true;
         for (String name : prefixes.stream().sorted().toList()) {
             if (!registry.containsBeanDefinition(name)) {
-                registerBean(registry, descriptor, name);
+                registerBean(registry, descriptor, name, isFirst);
                 if (isFirst) {
                     String defaultName = descriptor.defaultBeanName();
-                    if (!registry.containsBeanDefinition(defaultName)) {
-                        registerBean(registry, descriptor, defaultName, name);
-                        LOG.info("Registered default JDBC bean '{}' using prefix: {}", defaultName, name);
+                    if (!registry.containsBeanDefinition(defaultName) && !name.equals(defaultName)) {
+                        registry.registerAlias(name, defaultName);
+                        LOG.info("Registered default JDBC alias '{}' -> '{}'", defaultName, name);
                     }
                     isFirst = false;
                 }
@@ -65,18 +65,15 @@ class ForageJdbcBeanRegistrar implements ImportBeanDefinitionRegistrar, org.spri
         }
     }
 
-    private void registerBean(BeanDefinitionRegistry registry, JdbcModuleDescriptor descriptor, String beanName) {
-        registerBean(registry, descriptor, beanName, beanName);
-    }
-
     private void registerBean(
-            BeanDefinitionRegistry registry, JdbcModuleDescriptor descriptor, String beanName, String prefix) {
+            BeanDefinitionRegistry registry, JdbcModuleDescriptor descriptor, String beanName, boolean primary) {
         GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
         beanDefinition.setBeanClass(descriptor.primaryBeanClass());
         beanDefinition.setInstanceSupplier(
-                () -> new ForageSpringBootModuleAdapter<>(descriptor, environment).createBean(prefix));
+                () -> new ForageSpringBootModuleAdapter<>(descriptor, environment).createBean(beanName));
+        beanDefinition.setPrimary(primary);
         registry.registerBeanDefinition(beanName, beanDefinition);
-        LOG.info("Registered JDBC bean definition: {}", beanName);
+        LOG.info("Registered JDBC bean definition: {} (primary={})", beanName, primary);
     }
 
     private Set<String> discoverPrefixes(JdbcModuleDescriptor descriptor) {
