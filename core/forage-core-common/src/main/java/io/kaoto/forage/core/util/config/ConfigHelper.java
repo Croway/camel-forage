@@ -54,18 +54,25 @@ import io.smallrye.config.SmallRyeConfig;
  */
 public final class ConfigHelper {
     private static final Logger LOG = LoggerFactory.getLogger(ConfigHelper.class);
-    private static final String DEFAULT_PROPERTY_REGEXP = "forage.(%s)..+";
-    private static final String NAMED_PROPERTY_REGEXP = "forage.(.+).%s..+";
+    private static final String DEFAULT_PROPERTY_REGEXP = "forage\\.(%s)\\..+";
+    private static final String NAMED_PROPERTY_REGEXP = "forage\\.(.+)\\.%s\\..+";
+
+    /**
+     * Sentinel for "application.properties was looked up and not found", so the
+     * negative result is cached instead of re-scanning the filesystem on every
+     * unresolved lookup.
+     */
+    private static final Properties NOT_FOUND = new Properties();
 
     /**
      * Private constructor to prevent instantiation of this utility class.
      */
     private ConfigHelper() {}
 
-    private static RuntimeType runtime = null;
-    private static SmallRyeConfig quarkusConfig = null;
-    private static Properties springBootConfig = null;
-    private static Properties camelConfig = null;
+    private static volatile RuntimeType runtime = null;
+    private static volatile SmallRyeConfig quarkusConfig = null;
+    private static volatile Properties springBootConfig = null;
+    private static volatile Properties camelConfig = null;
 
     /**
      * Re-entrancy guard for {@link #getQuarkusConfig()}.
@@ -219,13 +226,17 @@ public final class ConfigHelper {
         };
     }
 
-    private static Properties quarkusAppProps = null;
+    private static volatile Properties quarkusAppProps = null;
 
     private static Properties getQuarkusApplicationProperties() {
         if (quarkusAppProps == null) {
             quarkusAppProps = loadApplicationProperties();
         }
-        return quarkusAppProps;
+        return orNull(quarkusAppProps);
+    }
+
+    private static Properties orNull(Properties props) {
+        return props == NOT_FOUND ? null : props;
     }
 
     private static SmallRyeConfig getQuarkusConfig() {
@@ -242,7 +253,8 @@ public final class ConfigHelper {
                 quarkusConfig = (SmallRyeConfig) org.eclipse.microprofile.config.ConfigProvider.getConfig()
                         .unwrap(SmallRyeConfig.class);
             } finally {
-                quarkusConfigBuilding.set(false);
+                // remove() instead of set(false) so pooled threads don't retain the entry
+                quarkusConfigBuilding.remove();
             }
         }
         return quarkusConfig;
@@ -262,27 +274,27 @@ public final class ConfigHelper {
         }
 
         Properties props = PropertyFileLocator.readProperties(input);
-        return props.isEmpty() ? null : props;
+        return props.isEmpty() ? NOT_FOUND : props;
     }
 
     private static Properties getSpringBootConfig() {
         if (springBootConfig == null) {
             springBootConfig = loadApplicationProperties();
         }
-        return springBootConfig;
+        return orNull(springBootConfig);
     }
 
     private static Properties getCamelMainConfig() {
         if (camelConfig == null) {
             LOG.debug("getCamelMainConfig() - cache miss, loading application.properties from disk");
             camelConfig = loadApplicationProperties();
-            if (camelConfig != null) {
+            if (camelConfig != NOT_FOUND) {
                 LOG.debug("getCamelMainConfig() - loaded {} properties", camelConfig.size());
             }
         } else {
             LOG.trace("getCamelMainConfig() - returning cached properties ({} entries)", camelConfig.size());
         }
-        return camelConfig;
+        return orNull(camelConfig);
     }
 
     /**
@@ -293,6 +305,8 @@ public final class ConfigHelper {
         camelConfig = null;
         springBootConfig = null;
         quarkusAppProps = null;
+        quarkusConfig = null;
+        runtime = null;
     }
 
     /**
@@ -381,7 +395,7 @@ public final class ConfigHelper {
      * <strong>jdbc</strong> value is returned.
      */
     public static String getDefaultPropertyRegexp(String prefix) {
-        return DEFAULT_PROPERTY_REGEXP.formatted(prefix);
+        return DEFAULT_PROPERTY_REGEXP.formatted(java.util.regex.Pattern.quote(prefix));
     }
 
     /**
@@ -401,6 +415,6 @@ public final class ConfigHelper {
      * empty Set is returned, because there is no named jdbc property.
      */
     public static String getNamedPropertyRegexp(String prefix) {
-        return NAMED_PROPERTY_REGEXP.formatted(prefix);
+        return NAMED_PROPERTY_REGEXP.formatted(java.util.regex.Pattern.quote(prefix));
     }
 }
