@@ -2,12 +2,34 @@ package io.kaoto.forage.agent;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import io.kaoto.forage.core.util.config.ConfigEntries;
+import io.kaoto.forage.core.util.config.ConfigModule;
+import io.kaoto.forage.core.util.config.ConfigStore;
+import io.kaoto.forage.models.chat.anthropic.AnthropicConfigEntries;
+import io.kaoto.forage.models.chat.azureopenai.AzureOpenAiConfigEntries;
+import io.kaoto.forage.models.chat.bedrock.BedrockConfigEntries;
+import io.kaoto.forage.models.chat.dashscope.DashscopeConfigEntries;
+import io.kaoto.forage.models.chat.google.GoogleConfigEntries;
+import io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries;
+import io.kaoto.forage.models.chat.localai.LocalAiConfigEntries;
+import io.kaoto.forage.models.chat.mistralai.MistralAiConfigEntries;
+import io.kaoto.forage.models.chat.ollama.OllamaConfigEntries;
+import io.kaoto.forage.models.chat.openai.OpenAIConfigEntries;
+import io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 @DisplayName("AgentCreator Tests")
 class AgentCreatorTest {
@@ -25,29 +47,36 @@ class AgentCreatorTest {
     @DisplayName("getProviderConfigPrefix() — drift-prevention")
     class PrefixMappingTests {
 
-        @Test
-        @DisplayName("Every model kind maps to the prefix used by its ConfigEntries class")
-        void everyModelKindMapsToCorrectConfigEntriesPrefix() {
-            // openai → OpenAIConfigEntries: forage.openai.*
-            assertThat(AgentCreator.getProviderConfigPrefix("openai")).isEqualTo("openai");
-            // ollama → OllamaConfigEntries: forage.ollama.*
-            assertThat(AgentCreator.getProviderConfigPrefix("ollama")).isEqualTo("ollama");
-            // google-gemini → GoogleConfigEntries: forage.google.*
-            assertThat(AgentCreator.getProviderConfigPrefix("google-gemini")).isEqualTo("google");
-            // azure-openai → AzureOpenAiConfigEntries: forage.azure.openai.*
-            assertThat(AgentCreator.getProviderConfigPrefix("azure-openai")).isEqualTo("azure.openai");
-            // anthropic → AnthropicConfigEntries: forage.anthropic.*
-            assertThat(AgentCreator.getProviderConfigPrefix("anthropic")).isEqualTo("anthropic");
-            // mistral-ai → MistralAiConfigEntries: forage.mistralai.*
-            assertThat(AgentCreator.getProviderConfigPrefix("mistral-ai")).isEqualTo("mistralai");
-            // hugging-face → HuggingFaceConfigEntries: forage.huggingface.*
-            assertThat(AgentCreator.getProviderConfigPrefix("hugging-face")).isEqualTo("huggingface");
-            // watsonx-ai → WatsonxAiConfigEntries: forage.watsonxai.*
-            assertThat(AgentCreator.getProviderConfigPrefix("watsonx-ai")).isEqualTo("watsonxai");
-            // local-ai → LocalAiConfigEntries: forage.localai.*
-            assertThat(AgentCreator.getProviderConfigPrefix("local-ai")).isEqualTo("localai");
-            // dashscope → DashscopeConfigEntries: forage.dashscope.*
-            assertThat(AgentCreator.getProviderConfigPrefix("dashscope")).isEqualTo("dashscope");
+        /**
+         * Cross-checks each model kind's mapped prefix against the actual configuration keys
+         * registered by the corresponding module's ConfigEntries class, instead of hardcoded
+         * string literals. If a module ever renames its keys (e.g. {@code forage.mistralai.*}
+         * to {@code forage.mistral.ai.*}) this test fails until the switch in
+         * {@code AgentCreator#getProviderConfigPrefix} is updated.
+         */
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("io.kaoto.forage.agent.AgentCreatorTest#modelKindToConfigEntries")
+        @DisplayName("Model kind prefix matches the keys registered by the module's ConfigEntries")
+        void modelKindPrefixMatchesModuleConfigEntries(String modelKind, Class<? extends ConfigEntries> entriesClass)
+                throws ClassNotFoundException {
+            // getModules() does not force static initialization of the subclass on all branches,
+            // so initialize the registry explicitly before reading it
+            Class.forName(entriesClass.getName(), true, entriesClass.getClassLoader());
+
+            String prefix = AgentCreator.getProviderConfigPrefix(modelKind);
+
+            Set<String> propertyNames = ConfigEntries.getModules(entriesClass).keySet().stream()
+                    .map(ConfigModule::propertyName)
+                    .collect(Collectors.toSet());
+            assertThat(propertyNames).isNotEmpty();
+
+            // The bridge writes keys of the form forage.<prefix>.<key>; the module must actually
+            // read at least one of them ("temperature" is defined by every chat model module)
+            assertThat(propertyNames).contains("forage." + prefix + ".temperature");
+
+            // ...and every key registered by the module must live under the same prefix,
+            // so a partial prefix (e.g. "azure" instead of "azure.openai") cannot pass
+            assertThat(propertyNames).allSatisfy(name -> assertThat(name).startsWith("forage." + prefix + "."));
         }
 
         @Test
@@ -56,6 +85,22 @@ class AgentCreatorTest {
             assertThat(AgentCreator.getProviderConfigPrefix("some-new-provider"))
                     .isEqualTo("some.new.provider");
         }
+    }
+
+    static Stream<Arguments> modelKindToConfigEntries() {
+        return Stream.of(
+                arguments("openai", OpenAIConfigEntries.class),
+                arguments("ollama", OllamaConfigEntries.class),
+                arguments("google-gemini", GoogleConfigEntries.class),
+                arguments("azure-openai", AzureOpenAiConfigEntries.class),
+                arguments("anthropic", AnthropicConfigEntries.class),
+                arguments("mistral-ai", MistralAiConfigEntries.class),
+                arguments("hugging-face", HuggingFaceConfigEntries.class),
+                arguments("watsonx-ai", WatsonxAiConfigEntries.class),
+                arguments("local-ai", LocalAiConfigEntries.class),
+                arguments("dashscope", DashscopeConfigEntries.class),
+                // not in the switch: exercises the dash-to-dot fallback against a real module
+                arguments("bedrock", BedrockConfigEntries.class));
     }
 
     @Nested
@@ -121,48 +166,115 @@ class AgentCreatorTest {
     }
 
     @Nested
-    @DisplayName("Embedding bridge key correctness")
-    class EmbeddingBridgeKeyTests {
+    @DisplayName("createChatModel() bridge — real call site")
+    class ChatModelBridgeTests {
 
-        @Test
-        @DisplayName(
-                "Embedding bridge sets forage.ollama.embedding.model.base.url not forage.ollama.embedding.base.url")
-        void embeddingBridgeUsesModelBaseUrlKey() {
-            String correctKey = "forage.ollama.embedding.model.base.url";
-            String wrongKey = "forage.ollama.embedding.base.url";
-            try {
-                Map<String, String> snapshot = new LinkedHashMap<>();
-                AgentCreator.setSystemPropertyIfNotNull(
-                        snapshot, null, "ollama", "embedding.model.base.url", "http://remote:11434");
+        private final ClassLoader classLoader = getClass().getClassLoader();
 
-                assertThat(System.getProperty(correctKey)).isEqualTo("http://remote:11434");
-                assertThat(System.getProperty(wrongKey)).isNull();
-
-                AgentCreator.restoreSystemProperties(snapshot);
-            } finally {
-                System.clearProperty(correctKey);
-                System.clearProperty(wrongKey);
-            }
+        @AfterEach
+        void cleanup() {
+            System.clearProperty("forage.agent.api.key");
+            System.clearProperty("forage.agent.model.name");
+            System.clearProperty("forage.agent.temperature");
+            System.clearProperty(CapturingChatModelProvider.PROPERTY_PREFIX + "api.key");
+            System.clearProperty(CapturingChatModelProvider.PROPERTY_PREFIX + "model.name");
+            CapturingChatModelProvider.reset();
+            ConfigStore.getInstance().reload();
         }
 
         @Test
-        @DisplayName(
-                "Embedding bridge sets forage.ollama.embedding.model.max.retries not forage.ollama.embedding.max.retries")
-        void embeddingBridgeUsesModelMaxRetriesKey() {
-            String correctKey = "forage.ollama.embedding.model.max.retries";
-            String wrongKey = "forage.ollama.embedding.max.retries";
-            try {
-                Map<String, String> snapshot = new LinkedHashMap<>();
-                AgentCreator.setSystemPropertyIfNotNull(snapshot, null, "ollama", "embedding.model.max.retries", 3);
+        @DisplayName("forage.agent.* properties are bridged to the provider's keys during create()")
+        void bridgesAgentPropertiesToProviderKeys() {
+            System.setProperty("forage.agent.api.key", "bridged-key");
+            System.setProperty("forage.agent.model.name", "bridged-model");
+            ConfigStore.getInstance().reload();
+            AgentConfig config = new AgentConfig();
+            CapturingChatModelProvider.reset();
 
-                assertThat(System.getProperty(correctKey)).isEqualTo("3");
-                assertThat(System.getProperty(wrongKey)).isNull();
+            AgentCreator.createChatModel(
+                    config, CapturingChatModelProvider.KIND, AgentCreator.DEFAULT_AGENT, classLoader);
 
-                AgentCreator.restoreSystemProperties(snapshot);
-            } finally {
-                System.clearProperty(correctKey);
-                System.clearProperty(wrongKey);
-            }
+            Map<String, String> seen = CapturingChatModelProvider.captured();
+            assertThat(seen)
+                    .containsEntry("forage.test.chat.api.key", "bridged-key")
+                    .containsEntry("forage.test.chat.model.name", "bridged-model");
+
+            // bridged properties are restored (cleared) once creation completes
+            assertThat(System.getProperty("forage.test.chat.api.key")).isNull();
+            assertThat(System.getProperty("forage.test.chat.model.name")).isNull();
+        }
+
+        @Test
+        @DisplayName("A malformed config value does not leak already-bridged system properties")
+        void malformedConfigValueDoesNotLeakBridgedProperties() {
+            // simulate a user-supplied -D value that must survive the failed bridge
+            System.setProperty("forage.test.chat.api.key", "user-supplied");
+            System.setProperty("forage.agent.api.key", "bridged-key");
+            System.setProperty("forage.agent.temperature", "not-a-number");
+            ConfigStore.getInstance().reload();
+            AgentConfig config = new AgentConfig();
+
+            // api.key is bridged before temperature is evaluated; parsing "not-a-number" throws
+            assertThatThrownBy(() -> AgentCreator.createChatModel(
+                            config, CapturingChatModelProvider.KIND, AgentCreator.DEFAULT_AGENT, classLoader))
+                    .isInstanceOf(NumberFormatException.class);
+
+            // the pre-existing user value must be restored, not clobbered by "bridged-key"
+            assertThat(System.getProperty("forage.test.chat.api.key")).isEqualTo("user-supplied");
+            assertThat(System.getProperty("forage.test.chat.model.name")).isNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("createEmbeddingModel() bridge — real call site")
+    class EmbeddingBridgeTests {
+
+        private final ClassLoader classLoader = getClass().getClassLoader();
+
+        @AfterEach
+        void cleanup() {
+            System.clearProperty("forage.agent.embedding.model.base.url");
+            System.clearProperty("forage.agent.embedding.model.name");
+            System.clearProperty("forage.agent.embedding.model.max.retries");
+            System.clearProperty("forage.agent.embedding.model.timeout");
+            CapturingEmbeddingModelProvider.reset();
+            ConfigStore.getInstance().reload();
+        }
+
+        @Test
+        @DisplayName("Embedding bridge sets embedding.model.* keys, not the shorter embedding.* keys")
+        void embeddingBridgePassesModelKeysToProvider() {
+            System.setProperty("forage.agent.embedding.model.base.url", "http://captured:1234");
+            System.setProperty("forage.agent.embedding.model.name", "bridged-embed-model");
+            System.setProperty("forage.agent.embedding.model.max.retries", "7");
+            System.setProperty("forage.agent.embedding.model.timeout", "PT30S");
+            ConfigStore.getInstance().reload();
+            AgentConfig config = new AgentConfig();
+            CapturingEmbeddingModelProvider.reset();
+
+            AgentCreator.createEmbeddingModel(
+                    config, CapturingEmbeddingModelProvider.KIND, AgentCreator.DEFAULT_AGENT, classLoader);
+
+            Map<String, String> seen = CapturingEmbeddingModelProvider.captured();
+            // the provider must observe the bridged embedding.model.* keys at creation time
+            assertThat(seen)
+                    .containsEntry("forage.test.embed.embedding.model.base.url", "http://captured:1234")
+                    .containsEntry("forage.test.embed.embedding.model.name", "bridged-embed-model")
+                    .containsEntry("forage.test.embed.embedding.model.max.retries", "7")
+                    .containsEntry("forage.test.embed.embedding.model.timeout", "PT30S");
+
+            // regression guard: the historically wrong (shorter) keys must NOT be set
+            assertThat(seen)
+                    .doesNotContainKey("forage.test.embed.embedding.base.url")
+                    .doesNotContainKey("forage.test.embed.embedding.name")
+                    .doesNotContainKey("forage.test.embed.embedding.max.retries")
+                    .doesNotContainKey("forage.test.embed.embedding.timeout");
+
+            // bridged properties are restored (cleared) once creation completes
+            assertThat(System.getProperty("forage.test.embed.embedding.model.base.url"))
+                    .isNull();
+            assertThat(System.getProperty("forage.test.embed.embedding.model.name"))
+                    .isNull();
         }
     }
 }
