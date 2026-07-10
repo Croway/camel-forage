@@ -15,11 +15,10 @@ public class ForageJmsRecorder {
     private static final Logger LOG = Logger.getLogger(ForageJmsRecorder.class);
 
     public RuntimeValue<ConnectionFactory> createIbmMQConnectionFactory(String id) {
-
         ConnectionFactory cf = new IbmMqJms().create(id);
-        if (cf != null) {
-            return new RuntimeValue<>(cf);
+        if (cf == null) {
+            throw new IllegalStateException("IBM MQ ConnectionFactory could not be created for id '%s'".formatted(id));
         }
-        return null;
+        return new RuntimeValue<>(cf);
     }
 }

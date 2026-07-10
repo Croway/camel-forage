@@ -66,13 +66,13 @@ public class JdbcModuleDescriptor implements ForageModuleDescriptor<DataSourceFa
         String effectivePrefix = prefix != null ? prefix : defaultBeanName();
         quarkusPrefix += "\"" + effectivePrefix + "\".";
 
-        props.put(quarkusPrefix + "db-kind", config.dbKind());
-        props.put(quarkusPrefix + "password", config.password());
-        props.put(quarkusPrefix + "username", config.username());
-        props.put(quarkusPrefix + "jdbc.url", config.jdbcUrl());
+        putIfNotEmpty(props, quarkusPrefix + "db-kind", config.dbKind());
+        putIfNotEmpty(props, quarkusPrefix + "password", config.password());
+        putIfNotEmpty(props, quarkusPrefix + "username", config.username());
+        putIfNotEmpty(props, quarkusPrefix + "jdbc.url", config.jdbcUrl());
         props.put(quarkusPrefix + "jdbc.initial-size", String.valueOf(config.initialSize()));
         props.put(quarkusPrefix + "jdbc.min-size", String.valueOf(config.minSize()));
-        props.put(quarkusPrefix + "jdbc.max-size", String.valueOf(config.minSize()));
+        props.put(quarkusPrefix + "jdbc.max-size", String.valueOf(config.maxSize()));
         props.put(quarkusPrefix + "jdbc.acquisition-timeout", config.acquisitionTimeoutSeconds() + "S");
         props.put(quarkusPrefix + "jdbc.validation-query-timeout", config.validationTimeoutSeconds() + "S");
         props.put(quarkusPrefix + "jdbc.leak-detection-interval", config.leakTimeoutMinutes() + "M");
@@ -82,31 +82,43 @@ public class JdbcModuleDescriptor implements ForageModuleDescriptor<DataSourceFa
             props.put(
                     "quarkus.transaction-manager.default-transaction-timeout",
                     config.transactionTimeoutSeconds() + "S");
-            if (config.transactionNodeId() != null) {
-                props.put("quarkus.transaction-manager.node-name", config.transactionNodeId());
-            }
+            putIfNotEmpty(props, "quarkus.transaction-manager.node-name", config.transactionNodeId());
             props.put(
                     "quarkus.transaction-manager.enable-recovery", String.valueOf(config.transactionEnableRecovery()));
-            props.put("quarkus.transaction-manager.recovery-modules", config.transactionRecoveryModules());
-            props.put(
+            putIfNotEmpty(props, "quarkus.transaction-manager.recovery-modules", config.transactionRecoveryModules());
+            putIfNotEmpty(
+                    props,
                     "quarkus.transaction-manager.xa-resource-orphan-filters",
                     config.transactionXaResourceOrphanFilters());
-            props.put("quarkus.transaction-manager.object-store.directory", config.transactionObjectStoreDirectory());
-            props.put("quarkus.transaction-manager.object-store.type", config.transactionObjectStoreType());
-            if (config.transactionObjectStoreDataSource() != null) {
-                props.put(
-                        "quarkus.transaction-manager.object-store.datasource",
-                        config.transactionObjectStoreDataSource());
-            }
+            putIfNotEmpty(
+                    props,
+                    "quarkus.transaction-manager.object-store.directory",
+                    config.transactionObjectStoreDirectory());
+            putIfNotEmpty(props, "quarkus.transaction-manager.object-store.type", config.transactionObjectStoreType());
+            putIfNotEmpty(
+                    props,
+                    "quarkus.transaction-manager.object-store.datasource",
+                    config.transactionObjectStoreDataSource());
             props.put(
                     "quarkus.transaction-manager.object-store.drop-table",
                     String.valueOf(config.transactionObjectStoreDropTable()));
-            props.put(
+            putIfNotEmpty(
+                    props,
                     "quarkus.transaction-manager.object-store.table-prefix",
                     config.transactionObjectStoreTablePrefix());
         }
 
         return props;
+    }
+
+    /**
+     * Puts the value only when it is non-null and non-empty, so unset optional configuration
+     * never leaks into the translated Quarkus properties as {@code null} or empty values.
+     */
+    private static void putIfNotEmpty(Map<String, String> props, String key, String value) {
+        if (value != null && !value.isEmpty()) {
+            props.put(key, value);
+        }
     }
 
     @Override

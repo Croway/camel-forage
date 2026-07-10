@@ -33,20 +33,26 @@ public class ForageCxfRecorder {
                 ServiceLoaderHelper.findProviderByClassName(providers, providerClass);
 
         if (provider == null) {
-            LOG.warnf("No CXF endpoint provider found for class %s", providerClass);
-            return null;
+            throw new IllegalStateException(
+                    ("CXF endpoint '%s' could not be created: no CxfEndpointProvider of type %s was found via "
+                                    + "ServiceLoader. Ensure the Forage CXF provider artifact for kind '%s' "
+                                    + "(e.g. forage-cxf-soap-client or forage-cxf-soap-service) is on the classpath.")
+                            .formatted(id, providerClass, config.cxfKind()));
         }
 
         Object endpoint = provider.get().create(id);
+        if (endpoint == null) {
+            throw new IllegalStateException(
+                    ("CXF endpoint '%s' could not be created: provider %s returned no endpoint. Verify the "
+                                    + "'forage.cxf.*' configuration for '%s' (service class, address, etc.).")
+                            .formatted(id, providerClass, id));
+        }
         if (endpoint instanceof ForageCxfEndpoint forageCxfEndpoint) {
             String cxfServletPath = ConfigProvider.getConfig()
                     .getOptionalValue("quarkus.cxf.path", String.class)
                     .orElse(DEFAULT_CXF_SERVLET_PATH);
             forageCxfEndpoint.setServletContainerCxfPath(cxfServletPath, RuntimeType.quarkus);
         }
-        if (endpoint != null) {
-            return new RuntimeValue<>(endpoint);
-        }
-        return null;
+        return new RuntimeValue<>(endpoint);
     }
 }
