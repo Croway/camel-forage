@@ -1,9 +1,9 @@
-package io.kaoto.forage.jdbc.common;
+package io.kaoto.forage.jms.common;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import io.kaoto.forage.jdbc.common.transactions.TransactionConfiguration;
+import io.kaoto.forage.jms.common.transactions.TransactionConfiguration;
 import com.arjuna.ats.arjuna.common.CoreEnvironmentBean;
 import com.arjuna.ats.arjuna.common.ObjectStoreEnvironmentBean;
 import com.arjuna.ats.jta.common.JTAEnvironmentBean;
@@ -18,12 +18,12 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.parallel.Resources.SYSTEM_PROPERTIES;
 
-@DisplayName("TransactionConfiguration Tests")
+@DisplayName("JMS TransactionConfiguration Tests")
 @ResourceLock(SYSTEM_PROPERTIES)
 class TransactionConfigurationTest {
 
-    private static final String NODE_ID_PROPERTY = "forage.jdbc.transaction.node.id";
-    private static final String OBJECT_STORE_DIR_PROPERTY = "forage.jdbc.transaction.object.store.directory";
+    private static final String NODE_ID_PROPERTY = "forage.jms.transaction.node.id";
+    private static final String OBJECT_STORE_DIR_PROPERTY = "forage.jms.transaction.object.store.directory";
 
     private String originalNodeId;
     private List<String> originalRecoveryNodes;
@@ -69,34 +69,16 @@ class TransactionConfigurationTest {
     }
 
     @Test
-    @DisplayName("Two datasources with different node IDs both accumulate in recovery nodes")
-    void twoDataSourcesAccumulateRecoveryNodes() {
-        System.setProperty(NODE_ID_PROPERTY, "node-a");
+    @DisplayName("Two connection factories with different node IDs both accumulate in recovery nodes")
+    void twoConnectionFactoriesAccumulateRecoveryNodes() {
+        System.setProperty(NODE_ID_PROPERTY, "jms-node-a");
+        new TransactionConfiguration(new ConnectionFactoryConfig(null), "cf-a").initializeNarayana();
 
-        DataSourceFactoryConfig configA = new DataSourceFactoryConfig(null);
-        new TransactionConfiguration(configA, "ds-a").initializeNarayana();
-
-        System.setProperty(NODE_ID_PROPERTY, "node-b");
-        DataSourceFactoryConfig configB = new DataSourceFactoryConfig(null);
-        new TransactionConfiguration(configB, "ds-b").initializeNarayana();
+        System.setProperty(NODE_ID_PROPERTY, "jms-node-b");
+        new TransactionConfiguration(new ConnectionFactoryConfig(null), "cf-b").initializeNarayana();
 
         JTAEnvironmentBean jtaBean = BeanPopulator.getDefaultInstance(JTAEnvironmentBean.class);
-        assertThat(jtaBean.getXaRecoveryNodes()).containsExactlyInAnyOrder("node-a", "node-b");
-    }
-
-    @Test
-    @DisplayName("Same node ID registered twice is not duplicated in recovery nodes")
-    void sameNodeIdNotDuplicated() {
-        System.setProperty(NODE_ID_PROPERTY, "shared-node");
-
-        DataSourceFactoryConfig configA = new DataSourceFactoryConfig(null);
-        new TransactionConfiguration(configA, "ds-a").initializeNarayana();
-
-        DataSourceFactoryConfig configB = new DataSourceFactoryConfig(null);
-        new TransactionConfiguration(configB, "ds-b").initializeNarayana();
-
-        JTAEnvironmentBean jtaBean = BeanPopulator.getDefaultInstance(JTAEnvironmentBean.class);
-        assertThat(jtaBean.getXaRecoveryNodes()).containsExactly("shared-node");
+        assertThat(jtaBean.getXaRecoveryNodes()).containsExactlyInAnyOrder("jms-node-a", "jms-node-b");
     }
 
     @Test
@@ -105,21 +87,21 @@ class TransactionConfigurationTest {
         CoreEnvironmentBean coreBean = BeanPopulator.getDefaultInstance(CoreEnvironmentBean.class);
         String nodeIdBefore = coreBean.getNodeIdentifier();
 
-        System.setProperty(NODE_ID_PROPERTY, "set-once-first");
-        new TransactionConfiguration(new DataSourceFactoryConfig(null), "ds-a").initializeNarayana();
+        System.setProperty(NODE_ID_PROPERTY, "jms-set-once-first");
+        new TransactionConfiguration(new ConnectionFactoryConfig(null), "cf-a").initializeNarayana();
 
         String activeNodeId = coreBean.getNodeIdentifier();
         if (nodeIdBefore == null || "1".equals(nodeIdBefore)) {
             // Node id was unset (Narayana default), so the first initialization claims it
-            assertThat(activeNodeId).isEqualTo("set-once-first");
+            assertThat(activeNodeId).isEqualTo("jms-set-once-first");
         } else {
             // Node id was already claimed earlier in this JVM, so it must be unchanged
             assertThat(activeNodeId).isEqualTo(nodeIdBefore);
         }
 
         // A second initialization with a different node id must not change the active one
-        System.setProperty(NODE_ID_PROPERTY, "set-once-second");
-        new TransactionConfiguration(new DataSourceFactoryConfig(null), "ds-b").initializeNarayana();
+        System.setProperty(NODE_ID_PROPERTY, "jms-set-once-second");
+        new TransactionConfiguration(new ConnectionFactoryConfig(null), "cf-b").initializeNarayana();
         assertThat(coreBean.getNodeIdentifier()).isEqualTo(activeNodeId);
     }
 
@@ -129,7 +111,7 @@ class TransactionConfigurationTest {
         String storeDir = tempDir.resolve("narayana-object-store").toString();
         System.setProperty(OBJECT_STORE_DIR_PROPERTY, storeDir);
 
-        new TransactionConfiguration(new DataSourceFactoryConfig(null), "ds-store").initializeNarayana();
+        new TransactionConfiguration(new ConnectionFactoryConfig(null), "cf-store").initializeNarayana();
 
         assertThat(BeanPopulator.getDefaultInstance(ObjectStoreEnvironmentBean.class)
                         .getObjectStoreDir())
