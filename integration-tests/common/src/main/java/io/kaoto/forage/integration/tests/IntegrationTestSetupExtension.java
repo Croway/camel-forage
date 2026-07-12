@@ -3,6 +3,7 @@ package io.kaoto.forage.integration.tests;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.citrusframework.TestActionBuilder;
 import org.citrusframework.camel.actions.CamelActionBuilder;
 import org.citrusframework.context.TestContext;
@@ -29,7 +30,6 @@ import org.junit.jupiter.api.extension.ParameterResolver;
  * <p>Test class should be annotated with:
  * <ul>
  *     <li>@CitrusSupport</li>
- *     <li>@Testcontainers</li>
  *     <li>@ExtendWith(IntegrationTestSetupExtension.class)</li>
  * </ul>
  * and should add args to the citrus runner similar to <pre>.withArg(System.getProperty(IntegrationTestSetupExtension.RUNTIME_PROPERTY))</pre>
@@ -40,6 +40,11 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
 
     public static final String RUNTIME_PROPERTY = "INTEGRATION_TEST_RUNTIME";
 
+    // The forage plugin installation is idempotent and JVM-wide (it touches the shared
+    // camel-jbang plugin registry), so run it once per JVM rather than once per test class
+    // per suite: each `camel plugin add` spawns a JBang JVM costing ~10s on CI runners (#434).
+    private static final AtomicBoolean PLUGIN_INSTALLED = new AtomicBoolean(false);
+
     private boolean runBeforeAll = false;
     private final List<AutoCloseable> closeables = new CopyOnWriteArrayList<>();
     private TestContext previousTestContext;
@@ -48,10 +53,12 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
     @Override
     public void beforeEach(ExtensionContext context) throws Exception {
         if (!runBeforeAll) {
-            CamelActionBuilder camel =
-                    (CamelActionBuilder) TestActionBuilder.lookup("camel").get();
             runBeforeAll = true;
-            internalBeforeAll(context, camel);
+            if (PLUGIN_INSTALLED.compareAndSet(false, true)) {
+                CamelActionBuilder camel =
+                        (CamelActionBuilder) TestActionBuilder.lookup("camel").get();
+                internalBeforeAll(context, camel);
+            }
             runBeforeAll(context);
         }
         // save test context variables

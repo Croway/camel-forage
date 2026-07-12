@@ -6,12 +6,6 @@ import java.util.regex.Matcher;
 import org.citrusframework.annotations.CitrusTest;
 import org.citrusframework.junit.jupiter.CitrusSupport;
 import org.citrusframework.spi.Resource;
-import org.eclipse.microprofile.config.ConfigProvider;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import io.kaoto.forage.integration.tests.ForageIntegrationTest;
 import io.kaoto.forage.integration.tests.ForageTestCaseRunner;
 import io.kaoto.forage.integration.tests.IntegrationTestSetupExtension;
@@ -24,28 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * Test class starts route only once, before all tests are executed.
  */
 @CitrusSupport
-@Testcontainers
 @ExtendWith(IntegrationTestSetupExtension.class)
 public class MultiTest implements ForageIntegrationTest {
-
-    static final String POSTGRES_IMAGE_NAME =
-            ConfigProvider.getConfig().getValue("postgres.container.image", String.class);
-    static final String MYSQL_IMAGE_NAME = ConfigProvider.getConfig().getValue("mysql.container.image", String.class);
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
-                    DockerImageName.parse(POSTGRES_IMAGE_NAME).asCompatibleSubstituteFor("postgres"))
-            .withExposedPorts(5432)
-            .withUsername("test")
-            .withPassword("test")
-            .withDatabaseName("postgresql")
-            .withInitScript("singleTest-postgresql-initScript.sql");
-
-    @Container
-    static MySQLContainer<?> mysql = new MySQLContainer<>(
-                    DockerImageName.parse(MYSQL_IMAGE_NAME).asCompatibleSubstituteFor("mysql"))
-            .withExposedPorts(3306)
-            .withInitScript("multiITest-mysql-initScript.sql");
 
     @Override
     public String runBeforeAll(ForageTestCaseRunner runner, Consumer<AutoCloseable> afterAll) {
@@ -54,9 +28,11 @@ public class MultiTest implements ForageIntegrationTest {
                 classResource("forage-datasource-factory.properties.template"),
                 Map.of(
                         "forage\\.ds1\\.jdbc\\.url=.*",
-                        Matcher.quoteReplacement("forage.ds1.jdbc.url=" + postgres.getJdbcUrl()),
+                        Matcher.quoteReplacement("forage.ds1.jdbc.url="
+                                + JdbcContainers.postgres().getJdbcUrl()),
                         "forage\\.ds2\\.jdbc\\.url=.*",
-                        Matcher.quoteReplacement("forage.ds2.jdbc.url=" + mysql.getJdbcUrl())),
+                        Matcher.quoteReplacement(
+                                "forage.ds2.jdbc.url=" + JdbcContainers.mysql().getJdbcUrl())),
                 afterAll);
 
         // running jbang forage run with dynamically modified properties
