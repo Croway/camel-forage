@@ -1,0 +1,16 @@
+# Producer application: models an independent external system publishing to the
+# broker. It uses a plain (non-XA) connection factory - no transaction settings -
+# so its sends commit normally, exactly like a producer that knows nothing about
+# the consumer's XA setup. See #427.
+forage.jms.kind=ibmmq
+forage.jms.broker.url=mq://localhost:1414/DEV.APP.SVRCONN/QM1  # Overridden by test with testcontainer URL
+forage.jms.username=app
+forage.jms.password=passw0rd
+
+# Connection pool settings
+forage.jms.pool.enabled=true
+forage.jms.pool.max.connections=5
+forage.jms.pool.max.sessions.per.connection=500
+forage.jms.pool.idle.timeout.millis=30000
+forage.jms.pool.connection.timeout.millis=30000
+forage.jms.pool.block.if.full=true
