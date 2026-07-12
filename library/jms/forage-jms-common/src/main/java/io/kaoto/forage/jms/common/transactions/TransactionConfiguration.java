@@ -125,7 +125,16 @@ public class TransactionConfiguration {
                         .map(String::trim)
                         .toList());
 
-        LOG.info("Transaction recovery configured with modules: {}", config.transactionRecoveryModules());
+        recoveryEnvironmentBean.setPeriodicRecoveryPeriod(config.transactionRecoveryPeriodSeconds());
+        recoveryEnvironmentBean.setRecoveryBackoffPeriod(config.transactionRecoveryBackoffSeconds());
+        // The recovery manager is driven in-process by ForageRecoveryService; never open the
+        // legacy recovery listener socket.
+        recoveryEnvironmentBean.setRecoveryListener(false);
+
+        LOG.info(
+                "Transaction recovery configured with modules: {} (scan period {}s)",
+                config.transactionRecoveryModules(),
+                config.transactionRecoveryPeriodSeconds());
     }
 
     private void configureJTA() {

@@ -4,11 +4,13 @@ import jakarta.jms.ConnectionFactory;
 import jakarta.jms.XAConnectionFactory;
 import jakarta.transaction.TransactionManager;
 
+import org.jboss.narayana.jta.jms.JmsXAResourceRecoveryHelper;
 import org.messaginghub.pooled.jms.JmsPoolConnectionFactory;
 import org.messaginghub.pooled.jms.JmsPoolXAConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.jms.ConnectionFactoryProvider;
+import io.kaoto.forage.core.jta.recovery.ForageRecoveryService;
 import io.kaoto.forage.jms.common.transactions.TransactionConfiguration;
 
 /**
@@ -66,8 +68,19 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
 
         if (config.transactionEnabled()) {
             LOG.info("Creating XA ConnectionFactory for transactional support");
-            new TransactionConfiguration(config, id == null ? "connectionFactory" : id).initializeNarayana();
+            String instanceId = id == null ? "connectionFactory" : id;
+            new TransactionConfiguration(config, instanceId).initializeNarayana();
             XAConnectionFactory xaConnectionFactory = createXAConnectionFactory(config);
+
+            if (config.transactionEnableRecovery()) {
+                // Recovery needs fresh XA connections to the broker after a crash, obtained
+                // from the raw (unpooled) XAConnectionFactory. See issue #432.
+                ForageRecoveryService.getInstance()
+                        .registerHelper(
+                                recoveryKey(instanceId),
+                                new JmsXAResourceRecoveryHelper(
+                                        xaConnectionFactory, config.username(), config.password()));
+            }
 
             if (!config.poolEnabled()) {
                 LOG.info("Connection pooling is disabled, returning underlying XAConnectionFactory");
@@ -133,6 +146,14 @@ public abstract class PooledConnectionFactory implements ConnectionFactoryProvid
         if (config.blockIfFull() && config.blockIfFullTimeoutMillis() > 0) {
             pooledConnectionFactory.setBlockIfSessionPoolIsFullTimeout(config.blockIfFullTimeoutMillis());
         }
+    }
+
+    /**
+     * Key under which a broker instance's XA recovery helper is registered with
+     * {@link ForageRecoveryService}. Used by the bean factories to deregister on reload/stop.
+     */
+    public static String recoveryKey(String instanceId) {
+        return "jms:" + instanceId;
     }
 
     protected ConnectionFactoryConfig getConfig() {
