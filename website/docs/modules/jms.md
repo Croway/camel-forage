@@ -54,3 +54,12 @@ Setting `forage.jms.transaction.enabled=true` switches the module to XA mode:
     transaction on an XA connection is rejected by brokers such as IBM MQ
     (`MQRC_SYNCPOINT_NOT_AVAILABLE`, reason code 2072). Use `cacheLevelName: CACHE_NONE` on
     transactional consumers.
+
+!!! warning "Producers need a transaction too"
+    Any route that *sends* to a `jms:` endpoint must also run inside a JTA transaction (add a
+    `transacted` step before the send). The XA pool always hands out XA sessions, and a send
+    outside a JTA transaction is never enlisted: on IBM MQ it lands in a local syncpoint unit
+    of work that is never committed, so the message is **silently discarded**. ActiveMQ Artemis
+    auto-commits such sends, which can mask the problem until you switch brokers. Consumers are
+    covered automatically — the JTA transaction manager on the component starts a transaction
+    around each delivery.

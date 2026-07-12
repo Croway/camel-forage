@@ -9,6 +9,13 @@
         repeatCount: 3
         timerName: producer
       steps:
+        # Sends must also run inside a JTA transaction with XA: the pooled XA
+        # connection factory always hands out XA sessions, and IBM MQ puts
+        # unenlisted sends in a local syncpoint unit of work that is never
+        # committed - the messages are silently discarded. See #427.
+        - transacted:
+            id: producer-xa-transaction
+            ref: PROPAGATION_REQUIRED
         - setBody:
             id: set-message
             simple:
