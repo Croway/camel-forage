@@ -36,7 +36,7 @@ import org.junit.jupiter.api.extension.ParameterResolver;
  */
 public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterAllCallback, ParameterResolver {
 
-    private final Logger LOG = LoggerFactory.getLogger(IntegrationTestSetupExtension.class);
+    private static final Logger LOG = LoggerFactory.getLogger(IntegrationTestSetupExtension.class);
 
     public static final String RUNTIME_PROPERTY = "INTEGRATION_TEST_RUNTIME";
 
@@ -115,7 +115,13 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
                         "forage-test-cleanup"));
     }
 
-    private void destroyProcess(String integrationName, long pid) {
+    /**
+     * Destroys a Camel integration process tree. Public so tests that start additional
+     * integrations beyond the one returned from
+     * {@link ForageIntegrationTest#runBeforeAll(ForageTestCaseRunner, java.util.function.Consumer)}
+     * can register their cleanup via the {@code afterAll} consumer.
+     */
+    public static void destroyProcess(String integrationName, long pid) {
         ProcessHandle.of(pid)
                 .ifPresentOrElse(
                         handle -> {

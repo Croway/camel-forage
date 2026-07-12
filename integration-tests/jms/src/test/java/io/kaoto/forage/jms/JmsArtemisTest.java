@@ -3,6 +3,7 @@ package io.kaoto.forage.jms;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
+import org.citrusframework.TestAction;
 import org.citrusframework.annotations.CitrusTest;
 import org.citrusframework.junit.jupiter.CitrusSupport;
 import org.citrusframework.spi.Resource;
@@ -30,6 +31,7 @@ public class JmsArtemisTest implements ForageIntegrationTest {
     static final String ARTEMIS_IMAGE_NAME =
             ConfigProvider.getConfig().getValue("activemq.artemis.container.image", String.class);
     public static final String INTEGRATION_NAME = "jms-routes";
+    public static final String PRODUCER_INTEGRATION_NAME = "jms-producer";
 
     @Container
     static ArtemisContainer artemis = new ArtemisContainer(
@@ -43,20 +45,39 @@ public class JmsArtemisTest implements ForageIntegrationTest {
     public String runBeforeAll(ForageTestCaseRunner runner, Consumer<AutoCloseable> afterAll) {
         // Load template properties and replace testcontainer-specific values
         String brokerUrl = "tcp://" + artemis.getHost() + ":" + artemis.getMappedPort(61616);
-        Resource dynamicProperties = PropertiesTemplateHelper.createFromTemplate(
-                classResource("forage-connectionfactory.properties.template"),
-                Map.of(
-                        "forage\\.jms\\.broker\\.url=.*",
-                        Matcher.quoteReplacement("forage.jms.broker.url=" + brokerUrl)),
-                afterAll);
+        Map<String, String> replacements = Map.of(
+                "forage\\.jms\\.broker\\.url=.*", Matcher.quoteReplacement("forage.jms.broker.url=" + brokerUrl));
+        Resource consumerProperties = PropertiesTemplateHelper.createFromTemplate(
+                classResource("forage-connectionfactory.properties.template"), replacements, afterAll);
+        Resource producerProperties = PropertiesTemplateHelper.createFromTemplate(
+                classResource("producer/forage-connectionfactory.properties.template"), replacements, afterAll);
 
-        // running jbang forage run with dynamically modified properties
+        // consumer application (the system under test): XA transactions enabled
         runner.when(camel().jbang()
                 .custom("forage", "run")
                 .processName(INTEGRATION_NAME)
-                .addResource(dynamicProperties)
+                .addResource(consumerProperties)
                 .addResource(classResource("route-artemis.camel.yaml"))
                 .dumpIntegrationOutput(true));
+
+        // producer application: an independent process with a plain (non-XA) connection
+        // factory, modeling an external system publishing to the broker (#427)
+        runner.when(camel().jbang()
+                .custom("forage", "run")
+                .processName(PRODUCER_INTEGRATION_NAME)
+                .addResource(producerProperties)
+                .addResource(classResource("producer/route-artemis-producer.camel.yaml"))
+                .dumpIntegrationOutput(true));
+
+        // the extension only stops the integration returned below; register the
+        // producer application's cleanup manually
+        runner.run((TestAction) context -> {
+            Object pidValue = context.getVariables().get(PRODUCER_INTEGRATION_NAME + ":pid");
+            if (pidValue != null) {
+                long pid = Long.parseLong(pidValue.toString());
+                afterAll.accept(() -> IntegrationTestSetupExtension.destroyProcess(PRODUCER_INTEGRATION_NAME, pid));
+            }
+        });
 
         return INTEGRATION_NAME;
     }
