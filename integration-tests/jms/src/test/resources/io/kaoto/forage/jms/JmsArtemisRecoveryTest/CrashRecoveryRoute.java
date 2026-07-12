@@ -24,6 +24,10 @@ public class CrashRecoveryRoute extends RouteBuilder {
     @Override
     public void configure() throws Exception {
         String markerFile = getContext().resolvePropertyPlaceholders("{{crash.marker.file}}");
+        // The test creates the go file only after the run action has verified the integration is
+        // up; a startup-relative timer would race the verification on slow machines (the process
+        // dying mid-verification fails the run action with exit code 137).
+        Path goFile = Path.of(markerFile + ".go");
         boolean restartRun = Files.exists(Path.of(markerFile));
 
         // In the restarted run this consumer receives the message committed by crash recovery.
@@ -36,9 +40,12 @@ public class CrashRecoveryRoute extends RouteBuilder {
             return;
         }
 
-        from("timer:crash?repeatCount=1&delay=3000")
+        from("timer:crash?period=500")
                 .routeId("crash-producer-route")
+                // transacted must precede all other steps in the route; the filter therefore sits
+                // inside the transaction (an empty tick's transaction is a cheap no-op commit)
                 .transacted("PROPAGATION_REQUIRED")
+                .filter(exchange -> Files.exists(goFile) && !Files.exists(Path.of(markerFile)))
                 .process(exchange -> {
                     Files.createFile(Path.of(markerFile));
                     TransactionManager transactionManager =

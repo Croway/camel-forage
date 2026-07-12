@@ -93,10 +93,17 @@ public class JmsArtemisRecoveryTest implements ForageIntegrationTest {
                 .dumpIntegrationOutput(true));
         registerIntegrationCleanup(runner, CRASH_RUN, afterAll);
 
-        // The crash is the integration halting itself: wait for the process to die.
+        // The crash is the integration halting itself: trigger it only now that the run action
+        // has verified the integration is up (a startup-relative timer races that verification
+        // on slow machines), then wait for the process to die.
         runner.run((TestAction) context -> {
             long pid = Long.parseLong(
                     context.getVariables().get(CRASH_RUN + ":pid").toString());
+            try {
+                Files.createFile(Path.of(crashMarker + ".go"));
+            } catch (IOException e) {
+                throw new UncheckedIOException("Failed to create the crash go file", e);
+            }
             awaitProcessDeath(pid);
             if (!Files.exists(crashMarker)) {
                 throw new IllegalStateException(
