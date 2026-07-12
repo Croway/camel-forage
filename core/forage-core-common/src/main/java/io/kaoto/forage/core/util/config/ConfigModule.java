@@ -163,7 +163,8 @@ public class ConfigModule {
             return this;
         }
 
-        return new ConfigModule(config, name, prefix);
+        return new ConfigModule(
+                config, name, prefix, description, label, defaultValue, type, required, configTag, selectsFrom);
     }
 
     /**
@@ -210,7 +211,7 @@ public class ConfigModule {
         String propertyName = buildPrefixedName();
 
         if (propertyName != null && !propertyName.isBlank()) {
-            return propertyName.replace("_", ".");
+            return propertyName;
         }
 
         return null;
