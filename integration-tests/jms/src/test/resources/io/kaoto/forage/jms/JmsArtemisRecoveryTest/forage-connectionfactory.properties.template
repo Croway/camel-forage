@@ -1,0 +1,25 @@
+# ActiveMQ Artemis JMS with XA transactions and crash recovery (#432)
+forage.jms.kind=artemis
+forage.jms.broker.url=tcp://localhost:61616  # Overridden by test with testcontainer URL
+forage.jms.username=artemis
+forage.jms.password=artemis
+
+# Connection pool settings
+forage.jms.pool.enabled=true
+forage.jms.pool.max.connections=10
+
+# XA transaction settings with recovery. The object store directory is replaced by the
+# test with an absolute path shared by the pre-crash and post-restart runs: Narayana can
+# only replay the in-doubt branch if it sees the same transaction log after the restart.
+forage.jms.transaction.enabled=true
+forage.jms.transaction.timeout.seconds=30
+forage.jms.transaction.node.id=recovery-node
+forage.jms.transaction.enable.recovery=true
+forage.jms.transaction.recovery.period.seconds=5
+forage.jms.transaction.recovery.backoff.seconds=1
+forage.jms.transaction.object.store.directory=OBJECT_STORE_DIR_PLACEHOLDER
+forage.jms.transaction.object.store.type=file-system
+
+# Consumed by the route: the first run creates this file right before crashing, the
+# restarted run sees it and skips the crash-producer route.
+crash.marker.file=CRASH_MARKER_PLACEHOLDER

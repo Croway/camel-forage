@@ -21,11 +21,13 @@ import io.kaoto.forage.core.jta.NotSupportedJtaTransactionPolicy;
 import io.kaoto.forage.core.jta.RequiredJtaTransactionPolicy;
 import io.kaoto.forage.core.jta.RequiresNewJtaTransactionPolicy;
 import io.kaoto.forage.core.jta.SupportsJtaTransactionPolicy;
+import io.kaoto.forage.core.jta.recovery.ForageRecoveryService;
 import io.kaoto.forage.core.util.config.ConfigHelper;
 import io.kaoto.forage.core.util.config.ConfigStore;
 import io.kaoto.forage.jdbc.common.DataSourceCommonExportHelper;
 import io.kaoto.forage.jdbc.common.DataSourceFactoryConfig;
 import io.kaoto.forage.jdbc.common.ForageDataSource;
+import io.kaoto.forage.jdbc.common.PooledDataSource;
 import io.kaoto.forage.jdbc.common.aggregation.ForageAggregationRepository;
 import io.kaoto.forage.jdbc.common.idempotent.ForageIdRepository;
 import io.kaoto.forage.jdbc.common.idempotent.ForageJdbcMessageIdRepository;
@@ -109,6 +111,11 @@ public class DataSourceBeanFactory implements BeanFactory {
         }
         closeAndUnbind(DEFAULT_DATASOURCE);
 
+        // Drop stale XA recovery integrations; configure() registers fresh ones right after.
+        // Needed here because closeAndUnbind() intentionally does not close the pool, so Agroal
+        // never fires its own recovery-registry removal on reload.
+        deregisterRecoveryIntegrations(prefixes);
+
         // Unbind JTA transaction policies if they were registered
         if (anyTransactionEnabled(config, prefixes)) {
             for (String name : List.of(
@@ -125,6 +132,24 @@ public class DataSourceBeanFactory implements BeanFactory {
             DataSourceFactoryConfig prefixConfig = new DataSourceFactoryConfig(name);
             unbindRepositories(prefixConfig);
         }
+    }
+
+    @Override
+    public void stop() {
+        DataSourceFactoryConfig config = new DataSourceFactoryConfig();
+        Set<String> prefixes =
+                ConfigStore.getInstance().readPrefixes(config, ConfigHelper.getNamedPropertyRegexp("jdbc"));
+
+        deregisterRecoveryIntegrations(prefixes);
+        // The recovery manager is shared with the JMS module: the last module out terminates it.
+        ForageRecoveryService.getInstance().stopIfNoRegistrations();
+    }
+
+    private void deregisterRecoveryIntegrations(Set<String> prefixes) {
+        for (String name : prefixes) {
+            ForageRecoveryService.getInstance().deregisterHelpers(PooledDataSource.recoveryKey(name));
+        }
+        ForageRecoveryService.getInstance().deregisterHelpers(PooledDataSource.recoveryKey(DEFAULT_DATASOURCE));
     }
 
     private void unbindRepositories(DataSourceFactoryConfig dsConfig) {

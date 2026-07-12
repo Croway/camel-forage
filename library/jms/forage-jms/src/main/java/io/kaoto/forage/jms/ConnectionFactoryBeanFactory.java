@@ -22,10 +22,12 @@ import io.kaoto.forage.core.jta.NotSupportedJtaTransactionPolicy;
 import io.kaoto.forage.core.jta.RequiredJtaTransactionPolicy;
 import io.kaoto.forage.core.jta.RequiresNewJtaTransactionPolicy;
 import io.kaoto.forage.core.jta.SupportsJtaTransactionPolicy;
+import io.kaoto.forage.core.jta.recovery.ForageRecoveryService;
 import io.kaoto.forage.core.util.config.ConfigHelper;
 import io.kaoto.forage.core.util.config.ConfigStore;
 import io.kaoto.forage.jms.common.ConnectionFactoryCommonExportHelper;
 import io.kaoto.forage.jms.common.ConnectionFactoryConfig;
+import io.kaoto.forage.jms.common.PooledConnectionFactory;
 import io.kaoto.forage.jms.common.transactions.JmsJtaTransactionSupport;
 
 @ForageFactory(
@@ -103,6 +105,10 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
         }
         closeAndUnbind(DEFAULT_CONNECTION_FACTORY);
 
+        // Drop stale XA recovery helpers; configure() registers fresh ones right after,
+        // so the recovery manager itself keeps running across dev-mode reloads.
+        deregisterRecoveryHelpers(prefixes);
+
         // Unbind JTA transaction policies and transaction manager wiring if they were registered
         if (anyTransactionEnabled(config, prefixes)) {
             for (String name : List.of(
@@ -117,6 +123,25 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
                 camelContext.getRegistry().unbind(name);
             }
         }
+    }
+
+    @Override
+    public void stop() {
+        ConnectionFactoryConfig config = new ConnectionFactoryConfig();
+        Set<String> prefixes =
+                ConfigStore.getInstance().readPrefixes(config, ConfigHelper.getNamedPropertyRegexp("jms"));
+
+        deregisterRecoveryHelpers(prefixes);
+        // The recovery manager is shared with the JDBC module: the last module out terminates it.
+        ForageRecoveryService.getInstance().stopIfNoRegistrations();
+    }
+
+    private void deregisterRecoveryHelpers(Set<String> prefixes) {
+        for (String name : prefixes) {
+            ForageRecoveryService.getInstance().deregisterHelpers(PooledConnectionFactory.recoveryKey(name));
+        }
+        ForageRecoveryService.getInstance()
+                .deregisterHelpers(PooledConnectionFactory.recoveryKey(DEFAULT_CONNECTION_FACTORY));
     }
 
     private void closeAndUnbind(String name) {

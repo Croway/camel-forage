@@ -16,6 +16,7 @@ import io.agroal.api.security.SimplePassword;
 import io.agroal.api.transaction.TransactionIntegration;
 import io.agroal.narayana.NarayanaTransactionIntegration;
 import io.kaoto.forage.core.jdbc.DataSourceProvider;
+import io.kaoto.forage.core.jta.recovery.ForageRecoveryService;
 import io.kaoto.forage.jdbc.common.idempotent.ForageIdRepository;
 import io.kaoto.forage.jdbc.common.transactions.TransactionConfiguration;
 
@@ -93,11 +94,27 @@ public abstract class PooledDataSource implements DataSourceProvider, ForageIdRe
                 .connectionValidator(ConnectionValidator.defaultValidator());
 
         if (config.transactionEnabled()) {
-            new TransactionConfiguration(config, id == null ? "dataSource" : id).initializeNarayana();
+            String instanceId = id == null ? "dataSource" : id;
+            new TransactionConfiguration(config, instanceId).initializeNarayana();
 
-            poolConfig.transactionIntegration(new NarayanaTransactionIntegration(
-                    com.arjuna.ats.jta.TransactionManager.transactionManager(),
-                    new com.arjuna.ats.internal.jta.transaction.arjunacore.TransactionSynchronizationRegistryImple()));
+            jakarta.transaction.TransactionManager transactionManager =
+                    com.arjuna.ats.jta.TransactionManager.transactionManager();
+            var synchronizationRegistry =
+                    new com.arjuna.ats.internal.jta.transaction.arjunacore.TransactionSynchronizationRegistryImple();
+            if (config.transactionEnableRecovery()) {
+                // The recovery-aware integration registers the datasource's XAResource with the
+                // recovery registry (and removes it when the datasource closes), so Narayana can
+                // resolve in-doubt branches after a crash. See issue #432.
+                poolConfig.transactionIntegration(new NarayanaTransactionIntegration(
+                        transactionManager,
+                        synchronizationRegistry,
+                        "forage-jdbc-" + instanceId,
+                        false,
+                        ForageRecoveryService.getInstance().scopedRegistry(recoveryKey(instanceId))));
+            } else {
+                poolConfig.transactionIntegration(
+                        new NarayanaTransactionIntegration(transactionManager, synchronizationRegistry));
+            }
         } else {
             poolConfig.transactionIntegration(TransactionIntegration.none());
         }
@@ -112,6 +129,14 @@ public abstract class PooledDataSource implements DataSourceProvider, ForageIdRe
             LOG.error("Failed to create DataSource for id: {}", id, e);
             throw new RuntimeException("Failed to create DataSource", e);
         }
+    }
+
+    /**
+     * Key under which a datasource instance's XA recovery integration is registered with
+     * {@link ForageRecoveryService}. Used by the bean factories to deregister on reload/stop.
+     */
+    public static String recoveryKey(String instanceId) {
+        return "jdbc:" + instanceId;
     }
 
     protected DataSourceFactoryConfig getConfig() {
