@@ -39,6 +39,19 @@ public interface BeanFactory extends CamelContextAware {
     }
 
     /**
+     * Releases resources held by this factory when the CamelContext is stopping.
+     *
+     * <p>Unlike {@link #cleanup()}, this is called exactly once at the end of the context
+     * lifecycle and no {@link #configure()} follows. Factories holding JVM-global resources
+     * (e.g. XA recovery registrations) should release them here.
+     *
+     * <p>The default implementation is a no-op.
+     */
+    default void stop() {
+        // no-op by default
+    }
+
+    /**
      * Utility method to find service providers of a specific type using ServiceLoader.
      *
      * @param <K> the type of service to find

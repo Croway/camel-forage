@@ -279,6 +279,26 @@ public final class ConnectionFactoryConfigEntries extends ConfigEntries {
             false,
             ConfigTag.ADVANCED);
 
+    public static final ConfigModule TRANSACTION_RECOVERY_PERIOD_SECONDS = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.transaction.recovery.period.seconds",
+            "Interval between periodic transaction recovery scans, in seconds",
+            "Recovery Period",
+            "120",
+            "integer",
+            false,
+            ConfigTag.ADVANCED);
+
+    public static final ConfigModule TRANSACTION_RECOVERY_BACKOFF_SECONDS = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.transaction.recovery.backoff.seconds",
+            "Delay between the first and second pass of a recovery scan, in seconds",
+            "Recovery Backoff",
+            "10",
+            "integer",
+            false,
+            ConfigTag.ADVANCED);
+
     public static final ConfigModule TRANSACTION_RECOVERY_MODULES = ConfigModule.of(
             ConnectionFactoryConfig.class,
             "forage.jms.transaction.recovery.modules",
@@ -362,6 +382,8 @@ public final class ConnectionFactoryConfigEntries extends ConfigEntries {
                 TRANSACTION_NODE_ID,
                 TRANSACTION_OBJECT_STORE_ID,
                 TRANSACTION_ENABLE_RECOVERY,
+                TRANSACTION_RECOVERY_PERIOD_SECONDS,
+                TRANSACTION_RECOVERY_BACKOFF_SECONDS,
                 TRANSACTION_RECOVERY_MODULES,
                 TRANSACTION_EXPIRY_SCANNERS,
                 TRANSACTION_XA_RESOURCE_ORPHAN_FILTERS,
