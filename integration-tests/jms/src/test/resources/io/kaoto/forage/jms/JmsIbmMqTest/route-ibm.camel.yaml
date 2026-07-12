@@ -1,7 +1,6 @@
 # Consumer application (the system under test): XA transactions enabled. The
-# messages on input.queue are produced by a SEPARATE producer application with a
-# plain connection factory (see producer/), proving producer and consumer are
-# fully decoupled. Sends from this XA application happen only inside the JTA
+# messages on input.queue are produced by a plain JMS client in the test JVM
+# (TestJmsProducer), proving producer and consumer are fully decoupled. Sends from this XA application happen only inside the JTA
 # transaction (forward to output.queue, dead-letter to DLQ), where the XA
 # session is enlisted automatically. See #427.
 - route:

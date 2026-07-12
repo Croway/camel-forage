@@ -47,6 +47,14 @@
             <version>${ibmmq-client.version}</version>
         </dependency>
 
+        <!-- plain JMS client publishing the test messages from the test JVM (#434);
+             version managed by the Camel BOM, matching its artemis transitives -->
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>artemis-jakarta-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

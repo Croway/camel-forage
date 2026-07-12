@@ -1,9 +1,9 @@
 # Consumer application (the system under test): XA transactions enabled. The
-# messages on input.queue are produced by a SEPARATE producer application with a
-# plain connection factory (see producer/), proving producer and consumer are
-# fully decoupled. Only the rollback-producer below sends from this XA app, and
-# it must run inside a JTA transaction (see #427): the XA pool always hands out
-# XA sessions and unenlisted sends are silently discarded by brokers like IBM MQ.
+# messages on input.queue are produced by a plain JMS client in the test JVM
+# (TestJmsProducer), proving producer and consumer are fully decoupled. Only the
+# rollback-producer below sends from this XA app, and it must run inside a JTA
+# transaction (see #427): the XA pool always hands out XA sessions and
+# unenlisted sends are silently discarded by brokers like IBM MQ.
 - route:
     id: transactional-consumer-route
     from:
