@@ -8,6 +8,7 @@ import java.util.Set;
 import org.apache.camel.CamelContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.jta.JtaTransactionManager;
 import io.kaoto.forage.core.annotations.ConditionalBean;
 import io.kaoto.forage.core.annotations.ConditionalBeanGroup;
 import io.kaoto.forage.core.annotations.FactoryType;
@@ -25,6 +26,7 @@ import io.kaoto.forage.core.util.config.ConfigHelper;
 import io.kaoto.forage.core.util.config.ConfigStore;
 import io.kaoto.forage.jms.common.ConnectionFactoryCommonExportHelper;
 import io.kaoto.forage.jms.common.ConnectionFactoryConfig;
+import io.kaoto.forage.jms.common.transactions.JmsJtaTransactionSupport;
 
 @ForageFactory(
         value = "JMS Connection",
@@ -67,7 +69,13 @@ import io.kaoto.forage.jms.common.ConnectionFactoryConfig;
                         @ConditionalBean(
                                 name = "SUPPORTS",
                                 javaType = "org.apache.camel.spi.TransactedPolicy",
-                                description = "Joins existing transaction if present, otherwise runs without one")
+                                description = "Joins existing transaction if present, otherwise runs without one"),
+                        @ConditionalBean(
+                                name = "jtaTransactionManager",
+                                javaType = "org.springframework.transaction.jta.JtaTransactionManager",
+                                description = "Spring JtaTransactionManager wrapping the Narayana transaction manager, "
+                                        + "set on the Camel JMS component so consumers receive within a JTA "
+                                        + "transaction and XA sessions enlist")
                     }),
             @ConditionalBeanGroup(
                     id = "jms-connection-pool",
@@ -81,6 +89,8 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
 
     private CamelContext camelContext;
     private static final String DEFAULT_CONNECTION_FACTORY = "connectionFactory";
+    private static final String JTA_TRANSACTION_MANAGER = "jtaTransactionManager";
+    private static final String JMS_TRANSACTION_MANAGER_CUSTOMIZER = "forageJmsTransactionManagerCustomizer";
 
     @Override
     public void cleanup() {
@@ -93,10 +103,17 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
         }
         closeAndUnbind(DEFAULT_CONNECTION_FACTORY);
 
-        // Unbind JTA transaction policies if they were registered
+        // Unbind JTA transaction policies and transaction manager wiring if they were registered
         if (anyTransactionEnabled(config, prefixes)) {
             for (String name : List.of(
-                    "PROPAGATION_REQUIRED", "MANDATORY", "NEVER", "NOT_SUPPORTED", "REQUIRES_NEW", "SUPPORTS")) {
+                    "PROPAGATION_REQUIRED",
+                    "MANDATORY",
+                    "NEVER",
+                    "NOT_SUPPORTED",
+                    "REQUIRES_NEW",
+                    "SUPPORTS",
+                    JTA_TRANSACTION_MANAGER,
+                    JMS_TRANSACTION_MANAGER_CUSTOMIZER)) {
                 camelContext.getRegistry().unbind(name);
             }
         }
@@ -125,6 +142,17 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
             camelContext.getRegistry().bind("NOT_SUPPORTED", new NotSupportedJtaTransactionPolicy());
             camelContext.getRegistry().bind("REQUIRES_NEW", new RequiresNewJtaTransactionPolicy());
             camelContext.getRegistry().bind("SUPPORTS", new SupportsJtaTransactionPolicy());
+
+            // Wire JTA into the Camel JMS component so the listener container starts a JTA
+            // transaction around receive() and XA sessions enlist in it (#427). The customizer
+            // is applied by Camel core to every JmsComponent added to the context.
+            JtaTransactionManager jtaTransactionManager = JmsJtaTransactionSupport.createJtaTransactionManager();
+            camelContext.getRegistry().bind(JTA_TRANSACTION_MANAGER, jtaTransactionManager);
+            camelContext
+                    .getRegistry()
+                    .bind(
+                            JMS_TRANSACTION_MANAGER_CUSTOMIZER,
+                            JmsJtaTransactionSupport.jmsComponentCustomizer(jtaTransactionManager));
         }
 
         if (!prefixes.isEmpty()) {
