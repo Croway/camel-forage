@@ -38,3 +38,46 @@ forage.ordersDb.jdbc.url=jdbc:postgresql://db1:5432/orders
 forage.analyticsDb.jdbc.db.kind=mysql
 forage.analyticsDb.jdbc.url=jdbc:mysql://db2:3306/analytics
 ```
+
+## XA Transactions
+
+Setting `forage.jdbc.transaction.enabled=true` switches the module to XA mode: the Agroal pool
+enlists connections in the Narayana transaction manager (initialized from the
+`forage.jdbc.transaction.*` properties), and JTA transaction policies (`PROPAGATION_REQUIRED`,
+`REQUIRES_NEW`, ...) are registered for use with the `transacted` EIP.
+
+## Crash Recovery
+
+If the application crashes between the prepare and commit phase of an XA transaction, the
+transaction branch is left *in doubt* on the database until someone resolves it. Setting
+`forage.jdbc.transaction.enable.recovery=true` makes Forage run Narayana's periodic recovery
+in-process:
+
+- A recovery manager is started once per JVM (shared with the JMS module) as soon as the first
+  XA-enabled datasource is created, and stopped when the Camel context stops (or the Spring
+  application context closes).
+- Every XA-enabled datasource — including named/prefixed ones — is registered with the recovery
+  manager through Agroal's Narayana integration, so Narayana can obtain fresh connections and
+  resolve in-doubt branches after a restart.
+- Every `forage.jdbc.transaction.recovery.period.seconds` (default 120) a recovery scan replays
+  the transaction log: branches whose commit decision was recorded are committed, unresolved
+  prepared branches are rolled back once the orphan filters approve.
+
+For recovery to work across restarts:
+
+- **The object store must be persistent and stable.** `forage.jdbc.transaction.object.store.directory`
+  defaults to `ObjectStore`, resolved against the process working directory — in production point
+  it to an absolute path on durable storage, and make sure the restarted instance uses the same
+  directory.
+- **`forage.jdbc.transaction.node.id` must be stable and unique per node.** Narayana tags every
+  transaction branch with it; a restarted instance only recovers branches created under the same
+  node id, and two nodes sharing an id would steal each other's transactions.
+
+With `forage.jdbc.transaction.enable.recovery=false` (the default) no recovery thread is started.
+
+!!! note "Quarkus"
+    On Quarkus, recovery is owned by the `quarkus-narayana-jta` extension: Forage translates
+    `enable.recovery`, the object store settings, and the node id to the corresponding
+    `quarkus.transaction-manager.*` properties. The recovery scan interval is not configurable
+    through Quarkus properties — use the Narayana system property
+    `-DRecoveryEnvironmentBean.periodicRecoveryPeriod=<seconds>` if you need to change it.

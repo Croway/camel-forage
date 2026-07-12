@@ -38,6 +38,23 @@ public class ForageContextServicePlugin implements ContextServicePlugin {
     }
 
     /**
+     * Called by Camel when the context is stopping. Lets factories release resources that must
+     * only be freed at end of life (unlike {@link BeanFactory#cleanup()}, which is followed by a
+     * re-{@link BeanFactory#configure()} during dev-mode reload).
+     */
+    @Override
+    public void unload(CamelContext camelContext) {
+        for (BeanFactory factory : factories) {
+            try {
+                factory.stop();
+            } catch (Exception e) {
+                LOG.warn("Failed to stop bean factory: {}", factory.getClass().getName(), e);
+            }
+        }
+        factories.clear();
+    }
+
+    /**
      * Called by Camel's route watcher reload strategy before routes are reloaded in dev mode.
      * Refreshes Forage beans so they pick up updated property values from disk.
      *
