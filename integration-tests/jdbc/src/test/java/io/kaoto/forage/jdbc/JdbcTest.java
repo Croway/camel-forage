@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import org.citrusframework.GherkinTestActionRunner;
@@ -15,13 +16,8 @@ import org.citrusframework.annotations.CitrusTest;
 import org.citrusframework.junit.jupiter.CitrusSupport;
 import org.citrusframework.spi.Resource;
 import org.citrusframework.spi.Resources;
-import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import io.kaoto.forage.integration.tests.ForageIntegrationTest;
 import io.kaoto.forage.integration.tests.ForageTestCaseRunner;
 import io.kaoto.forage.integration.tests.IntegrationTestSetupExtension;
@@ -33,24 +29,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @CitrusSupport
-@Testcontainers
 @ExtendWith(IntegrationTestSetupExtension.class)
 public class JdbcTest implements ForageIntegrationTest {
     private static final Logger LOG = LoggerFactory.getLogger(JdbcTest.class);
 
     static final Path INPUT_FOLDER = Paths.get("target", "data", "in");
-    static final String POSTGRES_IMAGE_NAME =
-            ConfigProvider.getConfig().getValue("postgres.container.image", String.class);
     public static final String INTEGRATION_NAME = "jdbc-routes";
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
-                    DockerImageName.parse(POSTGRES_IMAGE_NAME).asCompatibleSubstituteFor("postgres"))
-            .withExposedPorts(5432)
-            .withUsername("test")
-            .withPassword("test")
-            .withDatabaseName("postgresql")
-            .withInitScripts("singleTest-postgresql-initScript.sql", "aggregationTest-postgresql-InitScript.sql");
 
     @BeforeAll
     static void populateTemplate() throws IOException {
@@ -73,7 +57,10 @@ public class JdbcTest implements ForageIntegrationTest {
         // Load template properties and replace testcontainer-specific values
         Resource dynamicProperties = PropertiesTemplateHelper.createFromTemplate(
                 classResource("forage-datasource-factory.properties.template"),
-                Map.of("forage\\.jdbc\\.url=.*", Matcher.quoteReplacement("forage.jdbc.url=" + postgres.getJdbcUrl())),
+                Map.of(
+                        "forage\\.jdbc\\.url=.*",
+                        Matcher.quoteReplacement(
+                                "forage.jdbc.url=" + JdbcContainers.postgres().getJdbcUrl())),
                 afterAll);
 
         // running jbang forage run with dynamically modified properties
@@ -140,23 +127,27 @@ public class JdbcTest implements ForageIntegrationTest {
     public void idempotentTest(@CitrusResource GherkinTestActionRunner runner) throws IOException {
         Files.createDirectories(INPUT_FOLDER);
 
+        // the idempotent repository lives in the shared Postgres container and keeps its state
+        // across the three runtime suites, so the file name must be unique per invocation
+        String fileName = "test-" + UUID.randomUUID() + ".txt";
+
         // create a temp file with content `A`
         Path fileA = Files.write(Files.createTempFile("tempFile", ".txt"), "A".getBytes(), StandardOpenOption.WRITE);
 
-        // copy test.txt to input folder
-        Files.move(fileA, INPUT_FOLDER.resolve("test.txt"));
+        // copy the file to input folder
+        Files.move(fileA, INPUT_FOLDER.resolve(fileName));
 
         // validation of logged message
         runner.then(camel().jbang()
                 .verify()
                 .integration(INTEGRATION_NAME)
-                .waitForLogMessage("Processed file: test.txt with content: A"));
+                .waitForLogMessage("Processed file: " + fileName + " with content: A"));
 
-        // create a temp file with content `A`
+        // create a temp file with content `B`
         Path fileB = Files.write(Files.createTempFile("tempFile", ".txt"), "B".getBytes(), StandardOpenOption.WRITE);
 
-        // copy test.txt to input folder
-        Files.move(fileB, INPUT_FOLDER.resolve("test.txt"));
+        // copy the file to input folder
+        Files.move(fileB, INPUT_FOLDER.resolve(fileName));
 
         String error = null;
         try {
@@ -166,7 +157,7 @@ public class JdbcTest implements ForageIntegrationTest {
                     .integration(INTEGRATION_NAME)
                     .maxAttempts(3)
                     .delayBetweenAttempts(2000)
-                    .waitForLogMessage("Processed file: test.txt with content: B"));
+                    .waitForLogMessage("Processed file: " + fileName + " with content: B"));
         } catch (Exception e) {
             error = e.getMessage();
         }

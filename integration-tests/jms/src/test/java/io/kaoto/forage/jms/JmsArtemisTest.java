@@ -6,13 +6,9 @@ import java.util.regex.Matcher;
 import org.citrusframework.annotations.CitrusTest;
 import org.citrusframework.junit.jupiter.CitrusSupport;
 import org.citrusframework.spi.Resource;
-import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.activemq.ArtemisContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import io.kaoto.forage.integration.tests.ForageIntegrationTest;
 import io.kaoto.forage.integration.tests.ForageTestCaseRunner;
 import io.kaoto.forage.integration.tests.IntegrationTestSetupExtension;
@@ -22,27 +18,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @CitrusSupport
-@Testcontainers
 @ExtendWith(IntegrationTestSetupExtension.class)
 public class JmsArtemisTest implements ForageIntegrationTest {
     private static final Logger LOG = LoggerFactory.getLogger(JmsArtemisTest.class);
 
-    static final String ARTEMIS_IMAGE_NAME =
-            ConfigProvider.getConfig().getValue("activemq.artemis.container.image", String.class);
     public static final String INTEGRATION_NAME = "jms-routes";
     public static final String PRODUCER_INTEGRATION_NAME = "jms-producer";
-
-    @Container
-    static ArtemisContainer artemis = new ArtemisContainer(
-                    DockerImageName.parse(ARTEMIS_IMAGE_NAME).asCompatibleSubstituteFor("apache/activemq-artemis"))
-            .withExposedPorts(61616, 8161)
-            .withUser("artemis")
-            .withPassword("artemis")
-            .withEnv("JAVA_ARGS", "-Dbrokerconfig.maxDiskUsage=-1");
 
     @Override
     public String runBeforeAll(ForageTestCaseRunner runner, Consumer<AutoCloseable> afterAll) {
         // Load template properties and replace testcontainer-specific values
+        ArtemisContainer artemis = JmsContainers.artemis();
         String brokerUrl = "tcp://" + artemis.getHost() + ":" + artemis.getMappedPort(61616);
         Map<String, String> replacements = Map.of(
                 "forage\\.jms\\.broker\\.url=.*", Matcher.quoteReplacement("forage.jms.broker.url=" + brokerUrl));

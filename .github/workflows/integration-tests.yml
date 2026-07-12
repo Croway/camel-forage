@@ -1,0 +1,72 @@
+# Reusable integration test workflow (#434).
+#
+# Builds the project once (unit tests, no ITs), shares the built io.kaoto.forage
+# SNAPSHOT artifacts with a module × runtime matrix, and runs each integration
+# test module against each runtime in parallel. This replaces the former single
+# sequential job that took ~45 minutes; wall clock is now roughly the build job
+# plus the slowest matrix cell.
+
+name: Integration Tests
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up JDK 21
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+      - name: Build with Maven (unit tests, skip integration tests)
+        run: mvn -B --no-transfer-progress '-Dsurefire.rerunFailingTestsCount=2' '-Dci.env.name=github.com' -DskipITs install --file pom.xml
+      - name: Package built SNAPSHOT artifacts
+        run: tar -czf ${{ runner.temp }}/forage-m2.tgz -C ~/.m2/repository io/kaoto
+      - name: Share built SNAPSHOT artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: forage-m2
+          path: ${{ runner.temp }}/forage-m2.tgz
+          retention-days: 1
+
+  integration-tests:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [ jdbc, jms, messaging, cxf ]
+        runtime: [ main, quarkus, spring-boot ]
+    env:
+      INTEGRATION_TEST_RUNTIME: ${{ matrix.runtime }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up JDK 21
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+      - name: Restore built SNAPSHOT artifacts
+        uses: actions/download-artifact@d8dd90b3339d0bb79f7ff2fa8b30ec9b3e6b6a37 # v6.0.1
+        with:
+          name: forage-m2
+          path: ${{ runner.temp }}
+      - name: Install built SNAPSHOT artifacts into local repository
+        run: mkdir -p ~/.m2/repository && tar -xzf ${{ runner.temp }}/forage-m2.tgz -C ~/.m2/repository
+      - name: Run integration tests (${{ matrix.module }} / ${{ matrix.runtime }})
+        run: mvn -B --no-transfer-progress '-Dsurefire.rerunFailingTestsCount=2' '-Dci.env.name=github.com' verify failsafe:verify --file integration-tests/${{ matrix.module }}
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-reports-${{ matrix.module }}-${{ matrix.runtime }}
+          path: |
+            **/target/failsafe-reports/
+            **/target/surefire-reports/
+            **/target/.run/
+          retention-days: 7
