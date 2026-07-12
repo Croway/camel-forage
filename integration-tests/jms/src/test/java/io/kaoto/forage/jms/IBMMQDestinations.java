@@ -7,6 +7,7 @@ import com.ibm.mq.MQException;
 import com.ibm.mq.MQQueueManager;
 import com.ibm.mq.constants.MQConstants;
 import com.ibm.mq.headers.MQDataException;
+import com.ibm.mq.headers.pcf.PCFException;
 import com.ibm.mq.headers.pcf.PCFMessage;
 import com.ibm.mq.headers.pcf.PCFMessageAgent;
 
@@ -60,20 +61,22 @@ public class IBMMQDestinations {
         }
     }
 
-    private void sendRequest(PCFMessage request) {
-        try {
-            agent.send(request);
-        } catch (Exception e) {
-            throw new RuntimeException("Unable to send PCFMessage:", e);
-        }
-    }
-
     public void createQueue(String queueName) {
         if (!createdQueues.contains(queueName)) {
             PCFMessage request = new PCFMessage(MQConstants.MQCMD_CREATE_Q);
             request.addParameter(MQConstants.MQCA_Q_NAME, queueName);
             request.addParameter(MQConstants.MQIA_Q_TYPE, MQConstants.MQQT_LOCAL);
-            sendRequest(request);
+            try {
+                agent.send(request);
+            } catch (PCFException e) {
+                // the broker container is shared across the runtime suites, so the queue may
+                // have been created by a previous suite in another JVM
+                if (e.getReason() != MQConstants.MQRCCF_OBJECT_ALREADY_EXISTS) {
+                    throw new RuntimeException("Unable to create queue '" + queueName + "':", e);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Unable to create queue '" + queueName + "':", e);
+            }
             createdQueues.add(queueName);
         }
     }
