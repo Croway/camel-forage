@@ -57,12 +57,20 @@ Setting `transaction.enabled=true` changes Forage's behavior: it creates an `XAC
 !!! warning "Do not set `transacted=true` on JMS endpoints when XA is enabled"
     With `transaction.enabled=true` the JTA transaction manager wired into the JMS component drives the transaction. Setting `transacted: "true"` on an endpoint would additionally start a *local* JMS transaction on the XA connection, which brokers such as IBM MQ reject (`MQRC_SYNCPOINT_NOT_AVAILABLE`, reason code 2072). Leave `transacted` at its default (`false`).
 
+!!! warning "Producers must send inside a JTA transaction"
+    With XA enabled the pool always hands out XA sessions. A send that runs outside a JTA
+    transaction is never enlisted: on IBM MQ it lands in a local syncpoint unit of work that is
+    never committed, so the message is **silently discarded** (ActiveMQ Artemis auto-commits
+    such sends, masking the problem). Start every producer route with a `transacted` step, as
+    the producer route below does.
+
 ## Route
 
 === "YAML"
 
     ```yaml
-    # Producer — sends a message to input.queue every 5 seconds
+    # Producer — sends a message to input.queue every 5 seconds,
+    # inside a JTA transaction so the XA send is committed
     - route:
         id: producer-route
         from:
@@ -70,6 +78,8 @@ Setting `transaction.enabled=true` changes Forage's behavior: it creates an `XAC
           parameters:
             period: "5000"
           steps:
+            - transacted:
+                ref: PROPAGATION_REQUIRED
             - setBody:
                 simple:
                   expression: Transactional message
@@ -149,8 +159,10 @@ Setting `transaction.enabled=true` changes Forage's behavior: it creates an `XAC
         @Override
         public void configure() throws Exception {
 
-            // Producer - sends messages to input queue
+            // Producer - sends messages to input queue inside a JTA
+            // transaction so the XA send is committed
             from("timer:producer?period=10000")
+                    .transacted("PROPAGATION_REQUIRED")
                     .setBody(constant("Transactional message"))
                     .to("jms:queue:input.queue")
                     .log("Sent message to input queue");
@@ -182,7 +194,7 @@ Setting `transaction.enabled=true` changes Forage's behavior: it creates an `XAC
 
 The example has four routes:
 
-1. **Producer** -- a timer sends messages to `input.queue` at a fixed interval.
+1. **Producer** -- a timer sends messages to `input.queue` at a fixed interval, inside its own JTA transaction so the XA send commits.
 2. **Transactional consumer** -- consumes from `input.queue` within an XA transaction. Roughly 30% of messages trigger a simulated error, causing the transaction to roll back. Successful messages are forwarded to `output.queue`.
 3. **Output consumer** -- logs messages that completed the transaction successfully.
 4. **DLQ consumer** -- logs messages that exhausted the broker's maximum redelivery attempts.

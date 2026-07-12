@@ -152,7 +152,10 @@ The critical detail is the shared `transaction.node.id=xa-node1` across both JMS
                     message: End transaction with message ${body}
 
 # Message generator — produces test messages every 5 seconds,
-# ~40% are ROLLBACK messages to demonstrate rollback behavior
+# ~40% are ROLLBACK messages to demonstrate rollback behavior.
+# The transacted step is required: with XA enabled, sends outside a JTA
+# transaction are never enlisted and brokers such as IBM MQ silently
+# discard them (Artemis auto-commits them, masking the problem)
 - route:
     id: message-generator-route
     from:
@@ -160,6 +163,8 @@ The critical detail is the shared `transaction.node.id=xa-node1` across both JMS
       parameters:
         period: "5000"
       steps:
+        - transacted:
+            ref: PROPAGATION_REQUIRED
         - setHeader:
             name: eventId
             simple:
