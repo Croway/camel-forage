@@ -1,35 +1,9 @@
-- route:
-    id: producer-route
-    from:
-      id: timer-producer
-      uri: timer
-      parameters:
-        includeMetadata: true
-        period: "5000"
-        repeatCount: 3
-        timerName: producer
-      steps:
-        - setBody:
-            id: set-message
-            simple:
-              expression: Transactional message ${exchangeProperty.CamelTimerCounter}
-        - setHeader:
-            id: setHeader-5933
-            name: counter
-            simple:
-              expression: ${exchangeProperty.CamelTimerCounter}
-        - log:
-            id: log-1795
-            message: "Message sent: ${body}"
-        - to:
-            id: send-to-input
-            uri: jms
-            parameters:
-              destinationName: input.queue
-              destinationType: queue
-        - log:
-            id: log-sent
-            message: Sent message to input queue
+# Consumer application (the system under test): XA transactions enabled. The
+# messages on input.queue are produced by a SEPARATE producer application with a
+# plain connection factory (see producer/), proving producer and consumer are
+# fully decoupled. Only the rollback-producer below sends from this XA app, and
+# it must run inside a JTA transaction (see #427): the XA pool always hands out
+# XA sessions and unenlisted sends are silently discarded by brokers like IBM MQ.
 - route:
     id: transactional-consumer-route
     from:
@@ -38,7 +12,9 @@
       parameters:
         destinationName: input.queue
         destinationType: queue
-        transacted: "true"
+        # transacted must stay false with XA: the JTA transaction manager wired into the
+        # JMS component drives the transaction; a local JMS transaction on an XA
+        # connection is rejected by brokers such as IBM MQ (MQRC 2072). See #427.
         cacheLevelName: CACHE_NONE
       steps:
         - transacted:
@@ -93,12 +69,70 @@
       id: dlq-consumer
       uri: jms
       parameters:
-        destinationName: DLQ2
+        destinationName: DLQ
         destinationType: queue
       steps:
         - log:
             id: log-dlq
             message: "Message sent to DLQ after max redeliveries: ${body}"
+# Rollback assertion (#427): the first delivery throws so the JTA transaction rolls
+# back; only a real XA rollback returns the message to the broker, which redelivers it
+# with JMSRedelivered=true. With broken XA enlistment the message would be lost
+# (auto-acked) and the redelivered log line would never appear.
+- route:
+    id: rollback-producer-route
+    from:
+      id: timer-rollback-producer
+      uri: timer
+      parameters:
+        period: "5000"
+        repeatCount: 1
+        timerName: rollbackProducer
+      steps:
+        - transacted:
+            id: rollback-producer-xa-transaction
+            ref: PROPAGATION_REQUIRED
+        - setBody:
+            id: set-rollback-message
+            simple:
+              expression: Rollback test message
+        - to:
+            id: send-to-rollback
+            uri: jms
+            parameters:
+              destinationName: rollback.queue
+              destinationType: queue
+- route:
+    id: rollback-consumer-route
+    errorHandler:
+      noErrorHandler: {}
+    from:
+      id: rollback-consumer
+      uri: jms
+      parameters:
+        destinationName: rollback.queue
+        destinationType: queue
+        cacheLevelName: CACHE_NONE
+      steps:
+        - choice:
+            id: rollback-check
+            otherwise:
+              id: redelivered-path
+              steps:
+                - log:
+                    id: log-redelivered
+                    message: "Message redelivered after XA rollback: ${body}"
+            when:
+              - steps:
+                  - log:
+                      id: log-first-delivery
+                      message: "First delivery - forcing XA rollback: ${body}"
+                  - throwException:
+                      id: throw-rollback
+                      exceptionType: java.lang.RuntimeException
+                      message: Forcing XA rollback
+                simple:
+                  expression: ${header.JMSRedelivered} == false
 - errorHandler:
     deadLetterChannel:
       deadLetterUri: jms:DLQ

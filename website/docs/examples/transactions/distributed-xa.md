@@ -16,17 +16,34 @@ A single XA transaction spanning both JMS and JDBC, demonstrating two-phase comm
 - Java 17 or later
 - [Camel JBang](https://camel.apache.org/manual/camel-jbang.html) with the Forage plugin installed
 
-Start PostgreSQL and ActiveMQ Artemis:
+Start ActiveMQ Artemis:
 
 ```bash
-camel infra run postgres
 camel infra run artemis
 ```
+
+Start PostgreSQL with prepared transactions enabled:
+
+```bash
+docker run -d --name camel-postgres -p 5432:5432 \
+  -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=postgres \
+  postgres:16 -c max_prepared_transactions=100
+```
+
+!!! warning "PostgreSQL must allow prepared transactions"
+    A transaction spanning two resources uses two-phase commit: Narayana issues
+    `PREPARE TRANSACTION` against PostgreSQL, which fails with
+    `ERROR: prepared transactions are disabled` when `max_prepared_transactions` is `0` —
+    and `0` is both the PostgreSQL default and what `camel infra run postgres` starts with.
+    Start PostgreSQL with `-c max_prepared_transactions=100` as shown above, or on an
+    existing server run `ALTER SYSTEM SET max_prepared_transactions = 100;` and restart it.
+    The single-resource JDBC examples don't need this: with only one participant, Narayana
+    uses the one-phase-commit optimization and never issues `PREPARE TRANSACTION`.
 
 Create the database schema:
 
 ```bash
-docker exec -i camel-postgres psql -U postgres -c \
+docker exec -i camel-postgres psql -U test -d postgres -c \
   "CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY, action VARCHAR(255));"
 ```
 
@@ -97,7 +114,9 @@ The critical detail is the shared `transaction.node.id=xa-node1` across both JMS
       uri: jms
       parameters:
         destinationName: in
-        transacted: true
+        # transacted stays false with XA: the JTA transaction manager wired into the
+        # JMS component drives the transaction (a local JMS transaction on an XA
+        # connection is rejected by brokers such as IBM MQ)
         cacheLevelName: CACHE_NONE
       steps:
         - transacted:
@@ -133,7 +152,10 @@ The critical detail is the shared `transaction.node.id=xa-node1` across both JMS
                     message: End transaction with message ${body}
 
 # Message generator — produces test messages every 5 seconds,
-# ~40% are ROLLBACK messages to demonstrate rollback behavior
+# ~40% are ROLLBACK messages to demonstrate rollback behavior.
+# The transacted step is required: with XA enabled, sends outside a JTA
+# transaction are never enlisted and brokers such as IBM MQ silently
+# discard them (Artemis auto-commits them, masking the problem)
 - route:
     id: message-generator-route
     from:
@@ -141,6 +163,8 @@ The critical detail is the shared `transaction.node.id=xa-node1` across both JMS
       parameters:
         period: "5000"
       steps:
+        - transacted:
+            ref: PROPAGATION_REQUIRED
         - setHeader:
             name: eventId
             simple:

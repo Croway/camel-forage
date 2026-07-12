@@ -2,6 +2,7 @@ package io.kaoto.forage.integration.tests;
 
 import java.util.function.Consumer;
 import org.apache.camel.tooling.model.Strings;
+import org.citrusframework.TestAction;
 import org.citrusframework.TestActionSupport;
 import org.citrusframework.actions.camel.CamelIntegrationRunCustomizedActionBuilder;
 import org.citrusframework.spi.Resource;
@@ -59,6 +60,24 @@ public interface ForageIntegrationTest extends TestActionSupport {
 
     default Resource classResource(String resourceRelativePath) {
         return Resources.fromClasspath(getClass().getSimpleName() + "/" + resourceRelativePath, getClass());
+    }
+
+    /**
+     * Registers process cleanup for an integration started in {@link #runBeforeAll}. Call this right
+     * after each run action: the extension only registers cleanup for the integration name returned
+     * from {@code runBeforeAll}, and only when it returns normally — an integration started before a
+     * later action fails would otherwise keep running (and, on Quarkus, keep its HTTP port bound)
+     * into the following tests.
+     */
+    default void registerIntegrationCleanup(
+            ForageTestCaseRunner runner, String integrationName, Consumer<AutoCloseable> afterAll) {
+        runner.run((TestAction) context -> {
+            Object pidValue = context.getVariables().get(integrationName + ":pid");
+            if (pidValue != null) {
+                long pid = Long.parseLong(pidValue.toString());
+                afterAll.accept(() -> IntegrationTestSetupExtension.destroyProcess(integrationName, pid));
+            }
+        });
     }
 
     /**

@@ -35,6 +35,7 @@ public class JmsIbmMqTest implements ForageIntegrationTest {
     private static final String IBMMQ_IMAGE_NAME =
             ConfigProvider.getConfig().getValue("ibmmq.container.image", String.class);
     public static final String INTEGRATION_NAME = "jms-routes";
+    public static final String PRODUCER_INTEGRATION_NAME = "jms-producer";
     private static final int IBMMQ_PORT = 1414;
     private static final String QUEUE_MANAGER_NAME = "QM1";
     private static final String USER = "app";
@@ -77,25 +78,39 @@ public class JmsIbmMqTest implements ForageIntegrationTest {
         destinations.createQueue("input.queue");
         destinations.createQueue("output.queue");
         destinations.createQueue("DLQ");
-        destinations.createQueue("DLQ2");
 
         // Load template properties and replace testcontainer-specific values
         String brokerUrl = "mq://%s:%d/%s/%s"
                 .formatted(ibmmq.getHost(), ibmmq.getMappedPort(1414), MESSAGING_CHANNEL, QUEUE_MANAGER_NAME);
-        Resource dynamicProperties = PropertiesTemplateHelper.createFromTemplate(
-                classResource("forage-connectionfactory.properties.template"),
-                Map.of(
-                        "forage\\.jms\\.broker\\.url=.*",
-                        Matcher.quoteReplacement("forage.jms.broker.url=" + brokerUrl)),
-                afterAll);
+        Map<String, String> replacements = Map.of(
+                "forage\\.jms\\.broker\\.url=.*", Matcher.quoteReplacement("forage.jms.broker.url=" + brokerUrl));
+        Resource consumerProperties = PropertiesTemplateHelper.createFromTemplate(
+                classResource("forage-connectionfactory.properties.template"), replacements, afterAll);
+        Resource producerProperties = PropertiesTemplateHelper.createFromTemplate(
+                classResource("producer/forage-connectionfactory.properties.template"), replacements, afterAll);
+        // must be in the working directory (not passed as a resource) to act as camel-jbang run
+        // config: it moves the producer's Quarkus HTTP server off 8080, which the consumer app owns
+        PropertiesTemplateHelper.copyIntoSameDirectory(
+                producerProperties, classResource("producer/application.properties"), afterAll);
 
-        // running jbang forage run with dynamically modified properties
+        // consumer application (the system under test): XA transactions enabled
         runner.when(camel().jbang()
                 .custom("forage", "run")
                 .processName(INTEGRATION_NAME)
-                .addResource(dynamicProperties)
+                .addResource(consumerProperties)
                 .addResource(classResource("route-ibm.camel.yaml"))
                 .dumpIntegrationOutput(true));
+        registerIntegrationCleanup(runner, INTEGRATION_NAME, afterAll);
+
+        // producer application: an independent process with a plain (non-XA) connection
+        // factory, modeling an external system publishing to the broker (#427)
+        runner.when(camel().jbang()
+                .custom("forage", "run")
+                .processName(PRODUCER_INTEGRATION_NAME)
+                .addResource(producerProperties)
+                .addResource(classResource("producer/route-ibm-producer.camel.yaml"))
+                .dumpIntegrationOutput(true));
+        registerIntegrationCleanup(runner, PRODUCER_INTEGRATION_NAME, afterAll);
 
         return INTEGRATION_NAME;
     }
@@ -103,10 +118,16 @@ public class JmsIbmMqTest implements ForageIntegrationTest {
     @Test
     @CitrusTest()
     public void ibmMqTransactional(ForageTestCaseRunner runner) {
-        // validation of logged message
+        // the successful message commits through to the output queue via XA
         runner.then(camel().jbang()
                 .verify()
                 .integration(INTEGRATION_NAME)
                 .waitForLogMessage("Successfully processed message: Transactional message"));
+
+        // the failing messages are dead-lettered to DLQ within the XA transaction
+        runner.then(camel().jbang()
+                .verify()
+                .integration(INTEGRATION_NAME)
+                .waitForLogMessage("Message sent to DLQ after max redeliveries"));
     }
 }

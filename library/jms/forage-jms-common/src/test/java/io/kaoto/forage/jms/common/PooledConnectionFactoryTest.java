@@ -9,7 +9,6 @@ import jakarta.jms.XAJMSContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.messaginghub.pooled.jms.JmsPoolConnectionFactory;
 import org.messaginghub.pooled.jms.JmsPoolXAConnectionFactory;
 import io.kaoto.forage.core.util.config.ConfigStore;
 import com.arjuna.ats.arjuna.common.CoreEnvironmentBean;
@@ -60,18 +59,18 @@ class PooledConnectionFactoryTest {
     }
 
     @Test
-    @DisplayName("XA branch returns a plain pooled factory: JTA enlistment is not wired yet (#427)")
-    void xaBranchReturnsPlainPooledFactory() {
+    @DisplayName("XA branch returns a pooled XA factory enlisting sessions with the Narayana TM (#427)")
+    void xaBranchReturnsPooledXaFactoryWithTransactionManager() {
         System.setProperty(TRANSACTION_ENABLED_PROPERTY, "true");
 
         ConnectionFactory connectionFactory =
                 new StubPooledConnectionFactory(new StubDualConnectionFactory()).create(null);
 
-        // A JmsPoolXAConnectionFactory alone breaks consumption on brokers that reject
-        // local transactions on XA connections (IBM MQ MQRC 2072); switching to it must
-        // come together with Camel JMS component JTA wiring — tracked in #427
-        assertThat(connectionFactory).isInstanceOf(JmsPoolConnectionFactory.class);
-        assertThat(connectionFactory).isNotInstanceOf(JmsPoolXAConnectionFactory.class);
+        assertThat(connectionFactory).isInstanceOf(JmsPoolXAConnectionFactory.class);
+        JmsPoolXAConnectionFactory pooled = (JmsPoolXAConnectionFactory) connectionFactory;
+        assertThat(pooled.getTransactionManager())
+                .as("XA pool must enlist sessions with the JVM-global Narayana transaction manager")
+                .isSameAs(com.arjuna.ats.jta.TransactionManager.transactionManager());
     }
 
     @Test
