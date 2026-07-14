@@ -27,8 +27,9 @@ import org.slf4j.LoggerFactory;
  * <p><strong>Filesystem resolution order:</strong>
  * <ol>
  *   <li>Current working directory</li>
- *   <li>{@code forage.config.dir} system property</li>
- *   <li>{@code FORAGE_CONFIG_DIR} environment variable</li>
+ *   <li>{@code forage.config.dir} system property / {@code FORAGE_CONFIG_DIR} environment variable</li>
+ *   <li>User home directory ({@code $HOME/.forage/} by default, override with {@code forage.home.dir} or {@code FORAGE_HOME_DIR})</li>
+ *   <li>Classpath resources</li>
  *   <li>Pluggable sources discovered via {@link PluggablePropertyFileSourceLoader}</li>
  * </ol>
  *
@@ -45,12 +46,16 @@ public final class PropertyFileLocator {
     static final String CONFIG_DIR_PROPERTY = "forage.config.dir";
     static final String CONFIG_DIR_ENV = "FORAGE_CONFIG_DIR";
 
+    private static final java.util.concurrent.ConcurrentHashMap<String, Pattern> PATTERN_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     private static final List<PropertyFileSource> BUILT_IN_SOURCES;
 
     static {
         List<PropertyFileSource> sources = new ArrayList<>();
         sources.add(new WorkingDirectoryPropertyFileSource());
         sources.add(new ConfigDirPropertyFileSource());
+        sources.add(new HomeDirectoryPropertyFileSource());
         sources.add(new ClassPathPropertyFileSource());
         sources.sort(Comparator.comparingInt(PropertyFileSource::priority).reversed());
         BUILT_IN_SOURCES = List.copyOf(sources);
@@ -78,7 +83,7 @@ public final class PropertyFileLocator {
      * Attempts to open a properties file by consulting all registered
      * {@link PropertyFileSource} instances (built-in and pluggable) in priority order.
      *
-     * <p>Built-in sources (working directory, config directory, classpath) are tried first,
+     * <p>Built-in sources (working directory, config directory, user home directory, classpath) are tried first,
      * followed by any {@link PluggablePropertyFileSource} implementations discovered via
      * {@link java.util.ServiceLoader}.
      *
@@ -173,16 +178,27 @@ public final class PropertyFileLocator {
      * @return the set of matched prefixes, never {@code null}
      */
     public static Set<String> readPrefixes(Properties props, String regexp) {
-        Pattern pattern = Pattern.compile(regexp);
+        Pattern pattern = pattern(regexp);
         return Collections.list(props.keys()).stream()
                 .map(key -> {
                     Matcher m = pattern.matcher((String) key);
-                    if (m.find()) {
+                    if (m.matches()) {
                         return m.group(1);
                     }
                     return null;
                 })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+    }
+
+    /**
+     * Compiles a regular expression, caching the compiled {@link Pattern} so prefix-discovery
+     * regexes (built once per module) are not recompiled on every scan.
+     *
+     * @param regexp the regular expression
+     * @return the compiled (possibly cached) pattern
+     */
+    public static Pattern pattern(String regexp) {
+        return PATTERN_CACHE.computeIfAbsent(regexp, Pattern::compile);
     }
 }

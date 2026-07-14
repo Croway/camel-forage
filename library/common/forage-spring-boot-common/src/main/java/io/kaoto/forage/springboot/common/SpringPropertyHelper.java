@@ -38,7 +38,7 @@ public final class SpringPropertyHelper {
                 .flatMap(ps -> java.util.Arrays.stream(((EnumerablePropertySource<?>) ps).getPropertyNames()))
                 .map(key -> {
                     Matcher m = pattern.matcher(key);
-                    if (m.find()) {
+                    if (m.matches()) {
                         return m.group(1);
                     }
                     return null;
@@ -62,6 +62,6 @@ public final class SpringPropertyHelper {
         return StreamSupport.stream(configurableEnv.getPropertySources().spliterator(), false)
                 .filter(ps -> ps instanceof EnumerablePropertySource<?>)
                 .flatMap(ps -> java.util.Arrays.stream(((EnumerablePropertySource<?>) ps).getPropertyNames()))
-                .anyMatch(key -> pattern.matcher(key).find());
+                .anyMatch(key -> pattern.matcher(key).matches());
     }
 }

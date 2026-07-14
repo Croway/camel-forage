@@ -51,6 +51,8 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <maven.version>3.9.16</maven.version>
+        <jboss-logging.version>3.6.3.Final</jboss-logging.version>
+        <jboss-transaction-spi.version>8.0.0.Final</jboss-transaction-spi.version>
         <microprofile.version>3.1.1</microprofile.version>
         <mysql.version>9.5.0</mysql.version>
         <narayana.version>7.3.3.Final</narayana.version>

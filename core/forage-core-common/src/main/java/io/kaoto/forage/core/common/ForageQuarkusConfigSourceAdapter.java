@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.util.config.Config;
 import io.kaoto.forage.core.util.config.ConfigHelper;
 import io.kaoto.forage.core.util.config.ConfigStore;
+import io.kaoto.forage.core.util.config.PropertyFileLocator;
 import io.smallrye.config.ConfigSourceContext;
 import io.smallrye.config.ConfigSourceFactory;
 import io.smallrye.config.ConfigValue;
@@ -90,7 +91,7 @@ public abstract class ForageQuarkusConfigSourceAdapter<C extends Config> impleme
      */
     private static Set<String> discoverPrefixesFromContext(ConfigSourceContext context, String regexp) {
         Set<String> prefixes = new HashSet<>();
-        Pattern pattern = Pattern.compile(regexp);
+        Pattern pattern = PropertyFileLocator.pattern(regexp);
         Iterator<String> names = context.iterateNames();
         while (names.hasNext()) {
             String name = names.next();

@@ -99,33 +99,41 @@ public class JmsModuleDescriptor implements ForageModuleDescriptor<ConnectionFac
 
             if (config.transactionEnabled()) {
                 addIfNotEmpty(props, "quarkus.pooled-jms.transaction", "xa");
-                addIfNotEmpty(
-                        props,
-                        "quarkus.transaction-manager.default-transaction-timeout",
-                        config.transactionTimeoutSeconds() + "S");
-                addIfNotEmpty(props, "quarkus.transaction-manager.node-name", config::transactionNodeId);
-                addIfNotEmpty(
-                        props,
-                        "quarkus.transaction-manager.xa-resource-orphan-filters",
-                        config::transactionXaResourceOrphanFilters);
-                addIfNotEmpty(
-                        props, "quarkus.transaction-manager.recovery-modules", config::transactionRecoveryModules);
-                addIfNotEmpty(props, "quarkus.transaction-manager.expiry-scanners", config::transactionExpiryScanners);
-                addIfNotEmpty(
-                        props,
-                        "quarkus.transaction-manager.object-store.directory",
-                        config::transactionObjectStoreDirectory);
-                addIfNotEmpty(
-                        props, "quarkus.transaction-manager.object-store.type", config::transactionObjectStoreType);
-                addIfNotEmpty(props, "quarkus.transaction-manager.enable-recovery", config::transactionEnableRecovery);
+                addTransactionManagerProperties(props, config);
             }
-        } else if (!"ibmmq".equals(config.jmsKind())) {
-            // IBM MQ configuration is created via recorder, no property translation needed
+        } else if ("ibmmq".equals(config.jmsKind())) {
+            // The IBM MQ ConnectionFactory is created via recorder, so no connection properties
+            // are translated. The Narayana transaction manager is still owned by
+            // quarkus-narayana-jta, so the transaction-manager properties must be translated:
+            // without enable-recovery the Quarkus recovery service never starts and the recovery
+            // helper registered by the recorder path would stay buffered forever (#432).
+            if (config.transactionEnabled()) {
+                addTransactionManagerProperties(props, config);
+            }
+        } else {
             throw new IllegalArgumentException(
                     "`%s` Jms kind is not supported by Quarkus runtime.".formatted(config.jmsKind()));
         }
 
         return props;
+    }
+
+    private static void addTransactionManagerProperties(Map<String, String> props, ConnectionFactoryConfig config) {
+        addIfNotEmpty(
+                props,
+                "quarkus.transaction-manager.default-transaction-timeout",
+                config.transactionTimeoutSeconds() + "S");
+        addIfNotEmpty(props, "quarkus.transaction-manager.node-name", config::transactionNodeId);
+        addIfNotEmpty(
+                props,
+                "quarkus.transaction-manager.xa-resource-orphan-filters",
+                config::transactionXaResourceOrphanFilters);
+        addIfNotEmpty(props, "quarkus.transaction-manager.recovery-modules", config::transactionRecoveryModules);
+        addIfNotEmpty(props, "quarkus.transaction-manager.expiry-scanners", config::transactionExpiryScanners);
+        addIfNotEmpty(
+                props, "quarkus.transaction-manager.object-store.directory", config::transactionObjectStoreDirectory);
+        addIfNotEmpty(props, "quarkus.transaction-manager.object-store.type", config::transactionObjectStoreType);
+        addIfNotEmpty(props, "quarkus.transaction-manager.enable-recovery", config::transactionEnableRecovery);
     }
 
     private static void addIfNotEmpty(Map<String, String> config, String key, String value) {

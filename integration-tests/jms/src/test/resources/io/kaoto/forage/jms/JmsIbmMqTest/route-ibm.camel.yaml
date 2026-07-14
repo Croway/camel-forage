@@ -1,35 +1,8 @@
-- route:
-    id: producer-route
-    from:
-      id: timer-producer
-      uri: timer
-      parameters:
-        includeMetadata: true
-        period: "5000"
-        repeatCount: 3
-        timerName: producer
-      steps:
-        - setBody:
-            id: set-message
-            simple:
-              expression: Transactional message ${exchangeProperty.CamelTimerCounter}
-        - setHeader:
-            id: setHeader-5933
-            name: counter
-            simple:
-              expression: ${exchangeProperty.CamelTimerCounter}
-        - log:
-            id: log-1795
-            message: "Message sent: ${body}"
-        - to:
-            id: send-to-input
-            uri: jms
-            parameters:
-              destinationName: input.queue
-              destinationType: queue
-        - log:
-            id: log-sent
-            message: Sent message to input queue
+# Consumer application (the system under test): XA transactions enabled. The
+# messages on input.queue are produced by a plain JMS client in the test JVM
+# (TestJmsProducer), proving producer and consumer are fully decoupled. Sends from this XA application happen only inside the JTA
+# transaction (forward to output.queue, dead-letter to DLQ), where the XA
+# session is enlisted automatically. See #427.
 - route:
     id: transactional-consumer-route
     from:
@@ -38,7 +11,9 @@
       parameters:
         destinationName: input.queue
         destinationType: queue
-        transacted: "true"
+        # transacted must stay false with XA: the JTA transaction manager wired into the
+        # JMS component drives the transaction; a local JMS transaction on an XA
+        # connection is rejected by IBM MQ (MQRC_SYNCPOINT_NOT_AVAILABLE, 2072). See #427.
         cacheLevelName: CACHE_NONE
       steps:
         - transacted:
@@ -93,7 +68,7 @@
       id: dlq-consumer
       uri: jms
       parameters:
-        destinationName: DLQ2
+        destinationName: DLQ
         destinationType: queue
       steps:
         - log:
