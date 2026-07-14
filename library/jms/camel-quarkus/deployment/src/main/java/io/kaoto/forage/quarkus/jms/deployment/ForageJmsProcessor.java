@@ -13,6 +13,7 @@ import org.jboss.logging.Logger;
 import io.kaoto.forage.core.annotations.FactoryType;
 import io.kaoto.forage.core.annotations.FactoryVariant;
 import io.kaoto.forage.core.annotations.ForageFactory;
+import io.kaoto.forage.core.common.ForageQuarkusConfigSourceAdapter;
 import io.kaoto.forage.core.util.config.ConfigHelper;
 import io.kaoto.forage.core.util.config.ConfigStore;
 import io.kaoto.forage.jms.common.ConnectionFactoryConfig;
@@ -93,6 +94,9 @@ public class ForageJmsProcessor {
         ConnectionFactoryConfig defaultConfig = DESCRIPTOR.createConfig(null);
         Set<String> named = ConfigStore.getInstance()
                 .readPrefixes(defaultConfig, ConfigHelper.getNamedPropertyRegexp(DESCRIPTOR.modulePrefix()));
+        if (named.isEmpty()) {
+            named = ForageQuarkusConfigSourceAdapter.getDiscoveredPrefixes(DESCRIPTOR.modulePrefix());
+        }
 
         if (!named.isEmpty()) {
             return named.stream().collect(Collectors.toMap(n -> n, DESCRIPTOR::createConfig));

@@ -11,6 +11,7 @@ import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import io.kaoto.forage.core.annotations.FactoryType;
 import io.kaoto.forage.core.annotations.FactoryVariant;
 import io.kaoto.forage.core.annotations.ForageFactory;
+import io.kaoto.forage.core.common.ForageQuarkusConfigSourceAdapter;
 import io.kaoto.forage.core.util.config.ConfigHelper;
 import io.kaoto.forage.core.util.config.ConfigStore;
 import io.kaoto.forage.messaging.spring.rabbitmq.common.SpringRabbitMQConfig;
@@ -60,6 +61,9 @@ public class ForageSpringRabbitMQProcessor {
         SpringRabbitMQConfig defaultConfig = DESCRIPTOR.createConfig(null);
         Set<String> named = ConfigStore.getInstance()
                 .readPrefixes(defaultConfig, ConfigHelper.getNamedPropertyRegexp(DESCRIPTOR.modulePrefix()));
+        if (named.isEmpty()) {
+            named = ForageQuarkusConfigSourceAdapter.getDiscoveredPrefixes(DESCRIPTOR.modulePrefix());
+        }
 
         Map<String, SpringRabbitMQConfig> configs;
         if (!named.isEmpty()) {
