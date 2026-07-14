@@ -18,6 +18,7 @@ import io.kaoto.forage.core.util.config.ConfigStore;
 import io.kaoto.forage.core.util.config.PropertyFileLocator;
 import io.smallrye.config.ConfigSourceContext;
 import io.smallrye.config.ConfigSourceFactory;
+import io.smallrye.config.ConfigValue;
 
 /**
  * Generic SmallRye {@link ConfigSourceFactory} adapter that translates Forage properties
@@ -59,24 +60,20 @@ public abstract class ForageQuarkusConfigSourceAdapter<C extends Config> impleme
         Map<String, String> configuration = new HashMap<>();
 
         String defaultRegexp = ConfigHelper.getDefaultPropertyRegexp(desc.modulePrefix());
-        boolean hasDefault = false;
         if (!prefixes.isEmpty()) {
             for (String name : prefixes) {
                 C config = desc.createConfig(name);
                 configuration.putAll(desc.translateProperties(name, config));
+                registerContextProperties(context, config, desc.modulePrefix(), name);
             }
         } else if (!ConfigStore.getInstance()
                         .readPrefixes(defaultConfig, defaultRegexp)
                         .isEmpty()
                 || !discoverPrefixesFromContext(context, defaultRegexp).isEmpty()) {
-            hasDefault = true;
             configuration.putAll(desc.translateProperties(null, defaultConfig));
+            registerContextProperties(context, defaultConfig, desc.modulePrefix(), null);
         } else {
             LOG.trace("No {} config found.", desc.modulePrefix());
-        }
-
-        if (prefixes.isEmpty() && hasDefault) {
-            DISCOVERED_PREFIXES.put(desc.modulePrefix(), Set.of("__default__"));
         }
 
         if (configuration.isEmpty()) {
@@ -111,6 +108,45 @@ public abstract class ForageQuarkusConfigSourceAdapter<C extends Config> impleme
             }
         }
         return prefixes;
+    }
+
+    /**
+     * Registers property values from the SmallRye {@link ConfigSourceContext} into the
+     * {@link ConfigStore} so that deployment processors can read them during augmentation.
+     *
+     * <p>Newer Quarkus versions no longer expose {@code application.properties} through
+     * {@code ConfigProvider.getConfig()} at augmentation time, but the {@link ConfigSourceContext}
+     * (available during config bootstrap) still sees all config sources. This method bridges
+     * that gap by eagerly storing the values into the singleton {@link ConfigStore}.
+     */
+    private void registerContextProperties(
+            ConfigSourceContext context, C config, String modulePrefix, String namedPrefix) {
+
+        String foragePrefixDot;
+        if (namedPrefix != null) {
+            foragePrefixDot = "forage." + namedPrefix + "." + modulePrefix + ".";
+        } else {
+            foragePrefixDot = "forage." + modulePrefix + ".";
+        }
+
+        Iterator<String> names = context.iterateNames();
+        while (names.hasNext()) {
+            String rawName = names.next();
+            String name = rawName;
+            if (rawName.startsWith("%")) {
+                int dot = rawName.indexOf('.');
+                if (dot < 0) {
+                    continue;
+                }
+                name = rawName.substring(dot + 1);
+            }
+            if (name.startsWith(foragePrefixDot)) {
+                ConfigValue cv = context.getValue(rawName);
+                if (cv != null && cv.getValue() != null) {
+                    config.register(name, cv.getValue());
+                }
+            }
+        }
     }
 
     /**
