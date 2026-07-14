@@ -9,6 +9,7 @@ import org.jboss.logging.Logger;
 import io.kaoto.forage.core.annotations.FactoryType;
 import io.kaoto.forage.core.annotations.FactoryVariant;
 import io.kaoto.forage.core.annotations.ForageFactory;
+import io.kaoto.forage.core.common.ForageQuarkusConfigSourceAdapter;
 import io.kaoto.forage.core.util.config.ConfigEntries;
 import io.kaoto.forage.core.util.config.ConfigEntry;
 import io.kaoto.forage.core.util.config.ConfigHelper;
@@ -60,6 +61,10 @@ public class ForageCxfProcessor {
         CxfConfig defaultConfig = DESCRIPTOR.createConfig(null);
         Set<String> named = ConfigStore.getInstance()
                 .readPrefixes(defaultConfig, ConfigHelper.getNamedPropertyRegexp(DESCRIPTOR.modulePrefix()));
+
+        if (named.isEmpty()) {
+            named = ForageQuarkusConfigSourceAdapter.getDiscoveredPrefixes(DESCRIPTOR.modulePrefix());
+        }
 
         if (!named.isEmpty()) {
             for (String name : named) {

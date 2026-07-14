@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.eclipse.microprofile.config.spi.ConfigSource;
@@ -17,6 +18,7 @@ import io.kaoto.forage.core.util.config.ConfigStore;
 import io.kaoto.forage.core.util.config.PropertyFileLocator;
 import io.smallrye.config.ConfigSourceContext;
 import io.smallrye.config.ConfigSourceFactory;
+import io.smallrye.config.ConfigValue;
 
 /**
  * Generic SmallRye {@link ConfigSourceFactory} adapter that translates Forage properties
@@ -36,6 +38,8 @@ public abstract class ForageQuarkusConfigSourceAdapter<C extends Config> impleme
 
     private static final Logger LOG = LoggerFactory.getLogger(ForageQuarkusConfigSourceAdapter.class);
 
+    private static final Map<String, Set<String>> DISCOVERED_PREFIXES = new ConcurrentHashMap<>();
+
     /**
      * Returns the module descriptor that provides module-specific knowledge.
      */
@@ -51,6 +55,8 @@ public abstract class ForageQuarkusConfigSourceAdapter<C extends Config> impleme
         Set<String> prefixes = new HashSet<>(ConfigStore.getInstance().readPrefixes(defaultConfig, namedRegexp));
         prefixes.addAll(discoverPrefixesFromContext(context, namedRegexp));
 
+        DISCOVERED_PREFIXES.put(desc.modulePrefix(), Set.copyOf(prefixes));
+
         Map<String, String> configuration = new HashMap<>();
 
         String defaultRegexp = ConfigHelper.getDefaultPropertyRegexp(desc.modulePrefix());
@@ -58,12 +64,14 @@ public abstract class ForageQuarkusConfigSourceAdapter<C extends Config> impleme
             for (String name : prefixes) {
                 C config = desc.createConfig(name);
                 configuration.putAll(desc.translateProperties(name, config));
+                registerContextProperties(context, config, desc.modulePrefix(), name);
             }
         } else if (!ConfigStore.getInstance()
                         .readPrefixes(defaultConfig, defaultRegexp)
                         .isEmpty()
                 || !discoverPrefixesFromContext(context, defaultRegexp).isEmpty()) {
             configuration.putAll(desc.translateProperties(null, defaultConfig));
+            registerContextProperties(context, defaultConfig, desc.modulePrefix(), null);
         } else {
             LOG.trace("No {} config found.", desc.modulePrefix());
         }
@@ -100,6 +108,58 @@ public abstract class ForageQuarkusConfigSourceAdapter<C extends Config> impleme
             }
         }
         return prefixes;
+    }
+
+    /**
+     * Registers property values from the SmallRye {@link ConfigSourceContext} into the
+     * {@link ConfigStore} so that deployment processors can read them during augmentation.
+     *
+     * <p>Newer Quarkus versions no longer expose {@code application.properties} through
+     * {@code ConfigProvider.getConfig()} at augmentation time, but the {@link ConfigSourceContext}
+     * (available during config bootstrap) still sees all config sources. This method bridges
+     * that gap by eagerly storing the values into the singleton {@link ConfigStore}.
+     */
+    private void registerContextProperties(
+            ConfigSourceContext context, C config, String modulePrefix, String namedPrefix) {
+
+        String foragePrefixDot;
+        if (namedPrefix != null) {
+            foragePrefixDot = "forage." + namedPrefix + "." + modulePrefix + ".";
+        } else {
+            foragePrefixDot = "forage." + modulePrefix + ".";
+        }
+
+        Iterator<String> names = context.iterateNames();
+        while (names.hasNext()) {
+            String rawName = names.next();
+            String name = rawName;
+            if (rawName.startsWith("%")) {
+                int dot = rawName.indexOf('.');
+                if (dot < 0) {
+                    continue;
+                }
+                name = rawName.substring(dot + 1);
+            }
+            if (name.startsWith(foragePrefixDot)) {
+                ConfigValue cv = context.getValue(rawName);
+                if (cv != null && cv.getValue() != null) {
+                    config.register(name, cv.getValue());
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns prefixes discovered during config source assembly for the given module.
+     * Deployment processors call this to find prefixes that were discovered from
+     * the SmallRye {@link ConfigSourceContext} during the config bootstrap phase,
+     * which runs before augmentation build steps.
+     *
+     * @param modulePrefix the module prefix (e.g., "cxf", "agent")
+     * @return discovered prefixes, or empty set if none found
+     */
+    public static Set<String> getDiscoveredPrefixes(String modulePrefix) {
+        return DISCOVERED_PREFIXES.getOrDefault(modulePrefix, Collections.emptySet());
     }
 
     private static String capitalize(String s) {
