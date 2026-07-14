@@ -1,9 +1,14 @@
 package io.kaoto.forage.integration.tests;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.citrusframework.TestActionBuilder;
 import org.citrusframework.camel.actions.CamelActionBuilder;
 import org.citrusframework.context.TestContext;
@@ -173,6 +178,9 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
     }
 
     private void internalBeforeAll(ExtensionContext context, CamelActionBuilder camel) {
+        ensureCamelCliVersion();
+        deleteForagePlugin();
+
         String projectVersion = ExportHelper.getProjectVersion();
         // ensure, that forage plugin is installed
         CitrusExtensionHelper.getTestRunner(context)
@@ -184,6 +192,125 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
                         .withArg("--groupId", "io.kaoto.forage")
                         .withArg("--version", projectVersion)
                         .withArg("--gav", "io.kaoto.forage:camel-jbang-plugin-forage:" + projectVersion));
+    }
+
+    private static final Pattern CAMEL_VERSION_PATTERN = Pattern.compile("Camel (?:CLI|JBang) version:\\s*(\\S+)");
+
+    /**
+     * Validates the installed Camel CLI major.minor matches the project's expected version.
+     * Auto-installs the correct version via JBang if there is a mismatch.
+     */
+    private void ensureCamelCliVersion() {
+        String expectedVersion = ExportHelper.getCamelVersion();
+        String expectedMajorMinor = majorMinor(expectedVersion);
+        if (expectedMajorMinor == null) {
+            LOG.warn("Could not determine expected Camel version from build properties, skipping CLI version check");
+            return;
+        }
+
+        String installedVersion = getInstalledCamelVersion();
+        if (installedVersion == null) {
+            throw new IllegalStateException(
+                    "Camel CLI is not installed. Install it with: jbang app install camel@apache/camel");
+        }
+
+        String installedMajorMinor = majorMinor(installedVersion);
+        if (expectedMajorMinor.equals(installedMajorMinor)) {
+            LOG.info("Camel CLI version {} matches expected major.minor {}", installedVersion, expectedMajorMinor);
+            return;
+        }
+
+        LOG.warn(
+                "Camel CLI version mismatch: installed {}, expected {}. Auto-installing the correct version...",
+                installedVersion,
+                expectedVersion);
+        installCamelCli(expectedVersion);
+    }
+
+    private String getInstalledCamelVersion() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("camel", "version");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            String output;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                output = reader.lines().collect(Collectors.joining("\n"));
+            }
+            process.waitFor(15, TimeUnit.SECONDS);
+
+            Matcher matcher = CAMEL_VERSION_PATTERN.matcher(output);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+            LOG.warn("Could not parse Camel CLI version from output: {}", output);
+            return null;
+        } catch (Exception e) {
+            LOG.warn("Failed to check Camel CLI version: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private void installCamelCli(String version) {
+        try {
+            String alias = "camel@apache/camel/camel-" + version;
+            LOG.info("Running: jbang app install --force {}", alias);
+            ProcessBuilder pb = new ProcessBuilder("jbang", "app", "install", "--force", alias);
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            String output;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                output = reader.lines().collect(Collectors.joining("\n"));
+            }
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                LOG.info("Camel CLI installed successfully: {}", output);
+            } else {
+                throw new IllegalStateException(
+                        "Failed to install Camel CLI version " + version + " (exit code " + exitCode + "): " + output);
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "Failed to install Camel CLI. Run manually: jbang app install --force camel@apache/camel/camel-"
+                            + version,
+                    e);
+        }
+    }
+
+    private static String majorMinor(String version) {
+        if (version == null) {
+            return null;
+        }
+        String[] parts = version.split("\\.");
+        if (parts.length >= 2) {
+            return parts[0] + "." + parts[1];
+        }
+        return null;
+    }
+
+    /**
+     * Removes any previously installed forage plugin to ensure a clean install
+     * with the current build's version.
+     */
+    private void deleteForagePlugin() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("camel", "plugin", "delete", "forage");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            String output;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                output = reader.lines().collect(Collectors.joining("\n"));
+            }
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                LOG.info("Deleted existing forage plugin: {}", output);
+            } else {
+                LOG.debug("No existing forage plugin to delete (exit code {})", exitCode);
+            }
+        } catch (Exception e) {
+            LOG.debug("Could not delete forage plugin (may not exist): {}", e.getMessage());
+        }
     }
 
     @Override
