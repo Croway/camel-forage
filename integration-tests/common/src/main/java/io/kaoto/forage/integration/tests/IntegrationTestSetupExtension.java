@@ -210,8 +210,8 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
 
         String installedVersion = getInstalledCamelVersion();
         if (installedVersion == null) {
-            throw new IllegalStateException(
-                    "Camel CLI is not installed. Install it with: jbang app install camel@apache/camel");
+            LOG.info("Camel CLI app is not installed — Citrus invokes JBang directly, skipping version check");
+            return;
         }
 
         String installedMajorMinor = majorMinor(installedVersion);
