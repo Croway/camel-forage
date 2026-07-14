@@ -1,6 +1,7 @@
 package io.kaoto.forage.integration.tests;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -231,19 +232,29 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
         try {
             ProcessBuilder pb = new ProcessBuilder("camel", "version");
             pb.redirectErrorStream(true);
-            Process process = pb.start();
+            Process process;
+            try {
+                process = pb.start();
+            } catch (IOException notFound) {
+                LOG.info("Camel CLI executable not found on PATH: {}", notFound.getMessage());
+                return null;
+            }
             String output;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 output = reader.lines().collect(Collectors.joining("\n"));
             }
-            process.waitFor(15, TimeUnit.SECONDS);
+            if (!process.waitFor(15, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                LOG.warn("Camel CLI version check timed out");
+                return null;
+            }
 
             Matcher matcher = CAMEL_VERSION_PATTERN.matcher(output);
             if (matcher.find()) {
                 return matcher.group(1);
             }
             LOG.warn("Could not parse Camel CLI version from output: {}", output);
-            return null;
+            return "BROKEN";
         } catch (Exception e) {
             LOG.warn("Failed to check Camel CLI version: {}", e.getMessage());
             return null;
@@ -252,16 +263,21 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
 
     private void installCamelCli(String version) {
         try {
-            String alias = "camel@apache/camel/camel-" + version;
-            LOG.info("Running: jbang app install --force {}", alias);
-            ProcessBuilder pb = new ProcessBuilder("jbang", "app", "install", "--force", alias);
+            LOG.info("Running: jbang app install --force -Dcamel.jbang.version={} camel@apache/camel", version);
+            ProcessBuilder pb = new ProcessBuilder(
+                    "jbang", "app", "install", "--force",
+                    "-Dcamel.jbang.version=" + version, "camel@apache/camel");
             pb.redirectErrorStream(true);
             Process process = pb.start();
             String output;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 output = reader.lines().collect(Collectors.joining("\n"));
             }
-            int exitCode = process.waitFor();
+            if (!process.waitFor(120, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                throw new IllegalStateException("Camel CLI installation timed out after 120 seconds");
+            }
+            int exitCode = process.exitValue();
             if (exitCode == 0) {
                 LOG.info("Camel CLI installed successfully: {}", output);
             } else {
@@ -272,8 +288,8 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException(
-                    "Failed to install Camel CLI. Run manually: jbang app install --force camel@apache/camel/camel-"
-                            + version,
+                    "Failed to install Camel CLI. Run manually: jbang app install --force -Dcamel.jbang.version="
+                            + version + " camel@apache/camel",
                     e);
         }
     }
@@ -302,7 +318,12 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 output = reader.lines().collect(Collectors.joining("\n"));
             }
-            int exitCode = process.waitFor();
+            if (!process.waitFor(30, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                LOG.warn("Forage plugin delete timed out");
+                return;
+            }
+            int exitCode = process.exitValue();
             if (exitCode == 0) {
                 LOG.info("Deleted existing forage plugin: {}", output);
             } else {
