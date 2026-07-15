@@ -68,15 +68,19 @@ jobs:
           if [ "$BRANCH" = "main" ]; then
             sed -i "s/forage_version: \".*\"/forage_version: \"${VERSION}\"/" website/mkdocs.yml
             git add website/mkdocs.yml
-            git commit -m "docs: update LTS version to ${VERSION}"
-            git push
+            if ! git diff --cached --quiet; then
+              git commit -m "docs: update LTS version to ${VERSION}"
+              git push
+            fi
           else
             git fetch origin main
             git checkout main -- website/mkdocs.yml
             sed -i "s/forage_latest_version: \".*\"/forage_latest_version: \"${VERSION}\"/" website/mkdocs.yml
             git add website/mkdocs.yml
-            git commit -m "docs: update latest version to ${VERSION}"
-            git push origin HEAD:main
+            if ! git diff --cached --quiet; then
+              git commit -m "docs: update latest version to ${VERSION}"
+              git push origin HEAD:main
+            fi
           fi
 
       # Create a release
