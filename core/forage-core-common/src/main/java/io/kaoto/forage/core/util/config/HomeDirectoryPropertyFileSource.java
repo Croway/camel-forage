@@ -29,11 +29,20 @@ final class HomeDirectoryPropertyFileSource implements PropertyFileSource {
     public InputStream locate(String fileName) {
         String homeDir = homeDirSupplier.get();
         if (homeDir != null) {
-            Path file = Path.of(homeDir, fileName).toAbsolutePath();
-            if (file.toFile().exists()) {
+            Path resolvedPath = Path.of(homeDir, fileName).toAbsolutePath().normalize();
+            Path homeDirPath = Path.of(homeDir).toAbsolutePath().normalize();
+            if (!resolvedPath.startsWith(homeDirPath)) {
+                LOG.warn(
+                        "Rejected path traversal attempt for file '{}': resolved path '{}' escapes home dir '{}'",
+                        fileName,
+                        resolvedPath,
+                        homeDirPath);
+                return null;
+            }
+            if (resolvedPath.toFile().exists()) {
                 try {
                     LOG.info("Loading {} from home directory ({})", fileName, homeDir);
-                    return new FileInputStream(file.toFile());
+                    return new FileInputStream(resolvedPath.toFile());
                 } catch (IOException e) {
                     LOG.debug("Failed to load {} from home directory ({})", fileName, homeDir, e);
                 }
