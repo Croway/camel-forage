@@ -22,6 +22,8 @@ import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_STORE_MAX_SIZE;
 import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_STORE_OVERLAP_SIZE;
 import static io.kaoto.forage.agent.AgentConfigEntries.ENDPOINT;
 import static io.kaoto.forage.agent.AgentConfigEntries.FEATURES;
+import static io.kaoto.forage.agent.AgentConfigEntries.GUARDRAILS_INPUT;
+import static io.kaoto.forage.agent.AgentConfigEntries.GUARDRAILS_OUTPUT;
 import static io.kaoto.forage.agent.AgentConfigEntries.LOG_REQUESTS;
 import static io.kaoto.forage.agent.AgentConfigEntries.LOG_RESPONSES;
 import static io.kaoto.forage.agent.AgentConfigEntries.MAX_TOKENS;
@@ -192,5 +194,25 @@ public class AgentConfig extends AbstractConfig {
 
     public Double defaultRagMinScore() {
         return get(DEFAULT_RAG_MIN_SCORE).map(Double::parseDouble).orElse(null);
+    }
+
+    // Guardrails
+
+    public List<String> guardrailsInput() {
+        return get(GUARDRAILS_INPUT)
+                .map(s -> Arrays.stream(s.split(","))
+                        .map(String::trim)
+                        .filter(token -> !token.isEmpty())
+                        .toList())
+                .orElse(Collections.emptyList());
+    }
+
+    public List<String> guardrailsOutput() {
+        return get(GUARDRAILS_OUTPUT)
+                .map(s -> Arrays.stream(s.split(","))
+                        .map(String::trim)
+                        .filter(token -> !token.isEmpty())
+                        .toList())
+                .orElse(Collections.emptyList());
     }
 }

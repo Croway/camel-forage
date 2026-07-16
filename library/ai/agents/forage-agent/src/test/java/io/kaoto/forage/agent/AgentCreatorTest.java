@@ -1,10 +1,12 @@
 package io.kaoto.forage.agent;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import io.kaoto.forage.core.exceptions.RuntimeForageException;
 import io.kaoto.forage.core.util.config.ConfigEntries;
 import io.kaoto.forage.core.util.config.ConfigModule;
 import io.kaoto.forage.core.util.config.ConfigStore;
@@ -19,6 +21,7 @@ import io.kaoto.forage.models.chat.mistralai.MistralAiConfigEntries;
 import io.kaoto.forage.models.chat.ollama.OllamaConfigEntries;
 import io.kaoto.forage.models.chat.openai.OpenAIConfigEntries;
 import io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries;
+import dev.langchain4j.guardrail.InputGuardrail;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -275,6 +278,70 @@ class AgentCreatorTest {
                     .isNull();
             assertThat(System.getProperty("forage.test.embed.embedding.model.name"))
                     .isNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("loadInputGuardrails() — opt-in selection")
+    class GuardrailLoadingTests {
+
+        private final ClassLoader classLoader = getClass().getClassLoader();
+
+        @AfterEach
+        void cleanup() {
+            System.clearProperty("forage.agent.guardrails.input");
+            TestInputGuardrailProvider.reset();
+            ConfigStore.getInstance().reload();
+        }
+
+        @Test
+        @DisplayName("No config → no guardrails loaded")
+        void noConfigReturnsEmpty() {
+            ConfigStore.getInstance().reload();
+            AgentConfig config = new AgentConfig();
+
+            List<InputGuardrail> result =
+                    AgentCreator.loadInputGuardrails(config, AgentCreator.DEFAULT_AGENT, classLoader);
+
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Selected guardrail is loaded by @ForageBean value")
+        void selectedGuardrailIsLoadedByName() {
+            System.setProperty("forage.agent.guardrails.input", TestInputGuardrailProvider.NAME);
+            ConfigStore.getInstance().reload();
+            AgentConfig config = new AgentConfig();
+
+            List<InputGuardrail> result =
+                    AgentCreator.loadInputGuardrails(config, AgentCreator.DEFAULT_AGENT, classLoader);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0)).isInstanceOf(NoopInputGuardrail.class);
+        }
+
+        @Test
+        @DisplayName("Unknown guardrail name throws RuntimeForageException")
+        void unknownNameThrows() {
+            System.setProperty("forage.agent.guardrails.input", "nonexistent-guardrail");
+            ConfigStore.getInstance().reload();
+            AgentConfig config = new AgentConfig();
+
+            assertThatThrownBy(() -> AgentCreator.loadInputGuardrails(config, AgentCreator.DEFAULT_AGENT, classLoader))
+                    .isInstanceOf(RuntimeForageException.class)
+                    .hasMessageContaining("nonexistent-guardrail");
+        }
+
+        @Test
+        @DisplayName("Failing provider creation propagates exception (fail closed)")
+        void failingProviderPropagatesException() {
+            System.setProperty("forage.agent.guardrails.input", FailingInputGuardrailProvider.NAME);
+            ConfigStore.getInstance().reload();
+            AgentConfig config = new AgentConfig();
+
+            assertThatThrownBy(() -> AgentCreator.loadInputGuardrails(config, AgentCreator.DEFAULT_AGENT, classLoader))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Simulated guardrail creation failure");
         }
     }
 }
