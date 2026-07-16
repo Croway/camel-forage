@@ -133,6 +133,18 @@ public class JmsModuleDescriptor implements ForageModuleDescriptor<ConnectionFac
         addIfNotEmpty(
                 props, "quarkus.transaction-manager.object-store.directory", config::transactionObjectStoreDirectory);
         addIfNotEmpty(props, "quarkus.transaction-manager.object-store.type", config::transactionObjectStoreType);
+        addIfNotEmpty(
+                props, "quarkus.transaction-manager.object-store.datasource", config::transactionObjectStoreDataSource);
+        addIfNotEmpty(
+                props,
+                "quarkus.transaction-manager.object-store.create-table",
+                config::transactionObjectStoreCreateTable);
+        addIfNotEmpty(
+                props, "quarkus.transaction-manager.object-store.drop-table", config::transactionObjectStoreDropTable);
+        addIfNotEmpty(
+                props,
+                "quarkus.transaction-manager.object-store.table-prefix",
+                config::transactionObjectStoreTablePrefix);
         addIfNotEmpty(props, "quarkus.transaction-manager.enable-recovery", config::transactionEnableRecovery);
     }
 

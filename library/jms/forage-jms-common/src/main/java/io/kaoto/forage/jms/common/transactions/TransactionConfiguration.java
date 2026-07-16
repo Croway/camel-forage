@@ -5,6 +5,10 @@ import java.util.Arrays;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.agroal.api.AgroalDataSource;
+import io.kaoto.forage.core.jta.ObjectStoreJdbcSupport;
+import io.kaoto.forage.core.util.config.MissingConfigException;
+import io.kaoto.forage.jdbc.common.DataSourceFactoryConfig;
 import io.kaoto.forage.jms.common.ConnectionFactoryConfig;
 import com.arjuna.ats.arjuna.common.CoordinatorEnvironmentBean;
 import com.arjuna.ats.arjuna.common.CoreEnvironmentBean;
@@ -89,6 +93,24 @@ public class TransactionConfiguration {
                         : BeanPopulator.getNamedInstance(ObjectStoreEnvironmentBean.class, storeName);
                 bean.setObjectStoreType(VolatileStore.class.getName());
             }
+        } else if ("jdbc".equalsIgnoreCase(objectStoreType)) {
+            String dsPrefix = config.transactionObjectStoreDataSource();
+            if (dsPrefix == null || dsPrefix.isBlank()) {
+                throw new MissingConfigException(
+                        "object.store.type=jdbc requires object.store.datasource to reference a non-XA datasource configuration");
+            }
+            DataSourceFactoryConfig dsConfig = new DataSourceFactoryConfig(dsPrefix);
+            if (dsConfig.transactionEnabled()) {
+                throw new IllegalStateException("Object store datasource '" + dsPrefix
+                        + "' must not have transaction.enabled=true — the store's datasource must be non-XA");
+            }
+            AgroalDataSource ds = ObjectStoreJdbcSupport.createObjectStoreDataSource(
+                    dsConfig.jdbcUrl(), dsConfig.username(), dsConfig.password());
+            ObjectStoreJdbcSupport.configureJdbcObjectStore(
+                    ds,
+                    config.transactionObjectStoreCreateTable(),
+                    config.transactionObjectStoreDropTable(),
+                    config.transactionObjectStoreTablePrefix());
         } else {
             BeanPopulator.getDefaultInstance(ObjectStoreEnvironmentBean.class).setObjectStoreDir(objectStoreDir);
             BeanPopulator.getNamedInstance(ObjectStoreEnvironmentBean.class, "stateStore")

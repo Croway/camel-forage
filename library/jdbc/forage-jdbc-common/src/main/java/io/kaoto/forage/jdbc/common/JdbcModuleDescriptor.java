@@ -100,6 +100,9 @@ public class JdbcModuleDescriptor implements ForageModuleDescriptor<DataSourceFa
                     "quarkus.transaction-manager.object-store.datasource",
                     config.transactionObjectStoreDataSource());
             props.put(
+                    "quarkus.transaction-manager.object-store.create-table",
+                    String.valueOf(config.transactionObjectStoreCreateTable()));
+            props.put(
                     "quarkus.transaction-manager.object-store.drop-table",
                     String.valueOf(config.transactionObjectStoreDropTable()));
             putIfNotEmpty(
