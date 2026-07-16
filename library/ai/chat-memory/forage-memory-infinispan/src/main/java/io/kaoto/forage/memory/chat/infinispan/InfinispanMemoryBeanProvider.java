@@ -107,13 +107,14 @@ public class InfinispanMemoryBeanProvider implements ChatMemoryBeanProvider, Max
                 config.serverList(),
                 config.cacheName());
 
+        final ConfigurationBuilder builder = config.toConfigurationBuilder();
+        RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());
         try {
-            final ConfigurationBuilder builder = config.toConfigurationBuilder();
-            RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());
             cacheManager.start();
             LOG.info("Successfully connected to Infinispan cluster at {}", config.serverList());
             return cacheManager;
         } catch (Exception e) {
+            cacheManager.close();
             LOG.error("Failed to initialize Infinispan connection for chat memory", e);
             throw new RuntimeException("Failed to connect to Infinispan for chat memory storage", e);
         }
