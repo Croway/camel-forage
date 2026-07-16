@@ -8,6 +8,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.camel.quarkus.core.deployment.spi.CamelRuntimeBeanBuildItem;
+import org.apache.camel.quarkus.core.deployment.spi.RuntimeCamelContextCustomizerBuildItem;
+import org.apache.camel.spi.CamelContextCustomizer;
 import org.apache.camel.spi.ComponentCustomizer;
 import org.jboss.logging.Logger;
 import io.kaoto.forage.core.annotations.FactoryType;
@@ -70,9 +72,9 @@ public class ForageJmsProcessor {
     }
 
     /**
-     * Wires a JTA transaction manager into the Camel JMS component when any Forage JMS
-     * configuration enables transactions, so the message listener container starts a JTA
-     * transaction around receive() and XA sessions enlist in it (#427).
+     * Wires a JTA transaction manager into the default Camel JMS component when any Forage
+     * JMS configuration enables transactions (#427). Named components are pre-configured
+     * with per-broker JTA scoping (#433).
      */
     @BuildStep
     @Record(value = ExecutionTime.RUNTIME_INIT)
@@ -87,6 +89,27 @@ public class ForageJmsProcessor {
                     "forageJmsTransactionManagerCustomizer",
                     ComponentCustomizer.class.getName(),
                     recorder.createJmsTransactionManagerCustomizer()));
+        }
+    }
+
+    /**
+     * Registers per-broker {@code JmsComponent} instances so routes using
+     * {@code mq1:queue:...} get the correct ConnectionFactory and JTA scoping (#433).
+     */
+    @BuildStep
+    @Record(value = ExecutionTime.RUNTIME_INIT)
+    void registerPerBrokerJmsComponents(
+            ForageJmsRecorder recorder, BuildProducer<RuntimeCamelContextCustomizerBuildItem> customizers) {
+
+        Map<String, ConnectionFactoryConfig> configs = discoverConfigs();
+        Map<String, Boolean> namedPrefixes = configs.entrySet().stream()
+                .filter(e -> e.getKey() != null)
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().transactionEnabled()));
+
+        if (!namedPrefixes.isEmpty()) {
+            RuntimeValue<CamelContextCustomizer> customizer =
+                    recorder.createPerBrokerJmsComponentCustomizer(namedPrefixes);
+            customizers.produce(new RuntimeCamelContextCustomizerBuildItem(customizer));
         }
     }
 

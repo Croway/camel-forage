@@ -7,6 +7,7 @@ import org.apache.camel.component.jms.JmsComponent;
 import org.apache.camel.spi.ComponentCustomizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.jta.JtaTransactionManager;
 import com.arjuna.ats.internal.jta.transaction.arjunacore.TransactionSynchronizationRegistryImple;
 import com.arjuna.ats.internal.jta.transaction.arjunacore.UserTransactionImple;
@@ -44,14 +45,37 @@ public final class JmsJtaTransactionSupport {
     }
 
     /**
-     * Creates a {@link ComponentCustomizer} that sets the given transaction manager on every
-     * {@link JmsComponent} added to the CamelContext (unless one is already configured).
-     * Camel core applies customizers found in the registry on all runtimes.
+     * Creates a pre-configured {@link JmsComponent} with the given connection factory
+     * and optional transaction manager. Used to register per-named-broker components
+     * so each broker has its own JTA scoping (#433).
+     */
+    public static JmsComponent createJmsComponent(
+            ConnectionFactory connectionFactory, PlatformTransactionManager transactionManager) {
+        JmsComponent component = new JmsComponent();
+        component.setConnectionFactory(connectionFactory);
+        if (transactionManager != null) {
+            component.setTransactionManager(transactionManager);
+        }
+        return component;
+    }
+
+    /**
+     * Creates a {@link ComponentCustomizer} that sets the given transaction manager on the
+     * default {@code jms} {@link JmsComponent}. Named components (registered per broker by
+     * {@link #createJmsComponent}) are skipped because they are pre-configured with the
+     * correct transaction manager (or none) at creation time (#433).
      */
     public static ComponentCustomizer jmsComponentCustomizer(JtaTransactionManager transactionManager) {
         return ComponentCustomizer.builder(JmsComponent.class).build((name, component) -> {
             if (component.getConfiguration().getTransactionManager() != null) {
                 LOG.debug("Camel JMS component '{}' already has a transaction manager, leaving it untouched", name);
+                return;
+            }
+            if (!"jms".equals(name)) {
+                LOG.debug(
+                        "Skipping JTA wiring for named JMS component '{}' — "
+                                + "per-broker components are pre-configured at creation time",
+                        name);
                 return;
             }
             LOG.info("Configuring Camel JMS component '{}' with the Forage JTA transaction manager", name);
