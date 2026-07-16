@@ -265,8 +265,7 @@ public class IntegrationTestSetupExtension implements BeforeEachCallback, AfterA
         try {
             LOG.info("Running: jbang app install --force -Dcamel.jbang.version={} camel@apache/camel", version);
             ProcessBuilder pb = new ProcessBuilder(
-                    "jbang", "app", "install", "--force",
-                    "-Dcamel.jbang.version=" + version, "camel@apache/camel");
+                    "jbang", "app", "install", "--force", "-Dcamel.jbang.version=" + version, "camel@apache/camel");
             pb.redirectErrorStream(true);
             Process process = pb.start();
             String output;

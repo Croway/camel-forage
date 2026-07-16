@@ -46,6 +46,17 @@ public class SimpleAgent implements Agent, ConfigurationAware {
     @Override
     public void configure(AgentConfiguration configuration) {
         this.configuration = configuration;
+
+        if (configuration.getCustomTools() != null
+                && !configuration.getCustomTools().isEmpty()) {
+            LOG.warn(
+                    "customTools configured on AgentConfiguration but not yet supported by Forage SimpleAgent (see issue #83)");
+        }
+        if (configuration.getMcpClients() != null
+                && !configuration.getMcpClients().isEmpty()) {
+            LOG.warn(
+                    "mcpClients configured on AgentConfiguration but not yet supported by Forage SimpleAgent (see issue #83)");
+        }
     }
 
     private boolean hasMemory() {
@@ -56,16 +67,26 @@ public class SimpleAgent implements Agent, ConfigurationAware {
     public String chat(AiAgentBody<?> aiAgentBody, ToolProvider toolProvider) {
         LOG.debug("Chatting using ForageAgent");
 
+        Content content = aiAgentBody.getContent();
+        String systemMessage = aiAgentBody.getSystemMessage();
+        String userMessage = aiAgentBody.getUserMessage();
+
         if (hasMemory()) {
             LOG.debug("Chatting with memory");
             ForageAgentWithMemory agentService = getOrCreateService(toolProvider, ForageAgentWithMemory.class);
+            Object memoryId = aiAgentBody.getMemoryId();
 
             ToolProvider previous = delegatingToolProvider.swapDelegate(toolProvider);
             try {
-                return aiAgentBody.getSystemMessage() != null
-                        ? agentService.chat(
-                                aiAgentBody.getMemoryId(), aiAgentBody.getUserMessage(), aiAgentBody.getSystemMessage())
-                        : agentService.chat(aiAgentBody.getMemoryId(), aiAgentBody.getUserMessage());
+                if (content != null && systemMessage != null) {
+                    return agentService.chat(memoryId, userMessage, List.of(content), systemMessage);
+                } else if (content != null) {
+                    return agentService.chat(memoryId, userMessage, List.of(content));
+                } else if (systemMessage != null) {
+                    return agentService.chat(memoryId, userMessage, systemMessage);
+                } else {
+                    return agentService.chat(memoryId, userMessage);
+                }
             } finally {
                 delegatingToolProvider.restoreDelegate(previous);
             }
@@ -75,14 +96,15 @@ public class SimpleAgent implements Agent, ConfigurationAware {
 
             ToolProvider previous = delegatingToolProvider.swapDelegate(toolProvider);
             try {
-                if (aiAgentBody.getContent() != null) {
-                    Content content = aiAgentBody.getContent();
-                    return agentService.chat(aiAgentBody.getUserMessage(), List.of(content));
+                if (content != null && systemMessage != null) {
+                    return agentService.chat(userMessage, List.of(content), systemMessage);
+                } else if (content != null) {
+                    return agentService.chat(userMessage, List.of(content));
+                } else if (systemMessage != null) {
+                    return agentService.chat(userMessage, systemMessage);
+                } else {
+                    return agentService.chat(userMessage);
                 }
-
-                return aiAgentBody.getSystemMessage() != null
-                        ? agentService.chat(aiAgentBody.getUserMessage(), aiAgentBody.getSystemMessage())
-                        : agentService.chat(aiAgentBody.getUserMessage());
             } finally {
                 delegatingToolProvider.restoreDelegate(previous);
             }
