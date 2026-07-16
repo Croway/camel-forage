@@ -249,6 +249,15 @@ public final class AgentConfigEntries extends ConfigEntries {
 
     // EMBEDDING STORE
 
+    public static final ConfigModule EMBEDDING_STORE_KIND = ConfigModule.ofBeanName(
+            AgentConfig.class,
+            "forage.agent.embedding.store.kind",
+            "The embedding store provider kind (e.g., in-memory-store, qdrant, pgvector, redis, milvus)",
+            "Embedding Store Kind",
+            false,
+            ConfigTag.COMMON,
+            "Embedding Store");
+
     public static final ConfigModule EMBEDDING_STORE_FILE_SOURCE = ConfigModule.of(
             AgentConfig.class,
             "forage.agent.in.memory.store.file.source",
@@ -375,6 +384,7 @@ public final class AgentConfigEntries extends ConfigEntries {
                 MEMORY_REDIS_PASSWORD,
                 MEMORY_INFINISPAN_SERVER_LIST,
                 MEMORY_INFINISPAN_CACHE_NAME,
+                EMBEDDING_STORE_KIND,
                 EMBEDDING_STORE_FILE_SOURCE,
                 EMBEDDING_STORE_MAX_SIZE,
                 EMBEDDING_STORE_OVERLAP_SIZE,

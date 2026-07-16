@@ -1,6 +1,9 @@
 package io.kaoto.forage.memory.chat.redis;
 
 import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.ai.ChatMemoryBeanProvider;
@@ -54,128 +57,111 @@ public class RedisMemoryBeanProvider implements ChatMemoryBeanProvider, MaxMessa
     private static final int DEFAULT_MAX_MESSAGES = 100;
     private volatile Integer maxMessagesOverride;
 
-    private static final RedisConfig CONFIG = new RedisConfig();
-    private static final JedisPool JEDIS_POOL;
-    private static final PersistentRedisStore REDIS_STORE;
+    private final ReentrantLock initLock = new ReentrantLock();
+    private volatile JedisPool defaultPool;
+    private volatile PersistentRedisStore defaultStore;
+    private final Map<String, JedisPool> namedPools = new ConcurrentHashMap<>();
+    private final Map<String, PersistentRedisStore> namedStores = new ConcurrentHashMap<>();
 
-    static {
-        LOG.info(
-                "Initializing Redis chat memory provider with host: {}, port: {}, database: {}",
-                CONFIG.host(),
-                CONFIG.port(),
-                CONFIG.database());
+    public RedisMemoryBeanProvider() {}
 
-        try {
-            // Initialize Redis connection pool with configuration from RedisConfig
-            JedisPoolConfig poolConfig = new JedisPoolConfig();
-            poolConfig.setMaxTotal(CONFIG.poolMaxTotal());
-            poolConfig.setMaxIdle(CONFIG.poolMaxIdle());
-            poolConfig.setMinIdle(CONFIG.poolMinIdle());
-            poolConfig.setTestOnBorrow(CONFIG.poolTestOnBorrow());
-            poolConfig.setTestOnReturn(CONFIG.poolTestOnReturn());
-            poolConfig.setTestWhileIdle(CONFIG.poolTestWhileIdle());
-            poolConfig.setMaxWait(Duration.ofMillis(CONFIG.poolMaxWaitMillis()));
-
-            LOG.debug(
-                    "Redis pool configuration: maxTotal={}, maxIdle={}, minIdle={}, testOnBorrow={}, testOnReturn={}, testWhileIdle={}, maxWaitMillis={}",
-                    poolConfig.getMaxTotal(),
-                    poolConfig.getMaxIdle(),
-                    poolConfig.getMinIdle(),
-                    poolConfig.getTestOnBorrow(),
-                    poolConfig.getTestOnReturn(),
-                    poolConfig.getTestWhileIdle(),
-                    poolConfig.getMaxWaitDuration().toMillis());
-
-            JEDIS_POOL = new JedisPool(
-                    poolConfig, CONFIG.host(), CONFIG.port(), CONFIG.timeout(), CONFIG.password(), CONFIG.database());
-
-            // Test the connection
-            try (var jedis = JEDIS_POOL.getResource()) {
-                jedis.ping();
-                LOG.info(
-                        "Successfully connected to Redis at {}:{}/{} with pool configuration",
-                        CONFIG.host(),
-                        CONFIG.port(),
-                        CONFIG.database());
-            }
-
-            REDIS_STORE = new PersistentRedisStore(JEDIS_POOL);
-
-        } catch (JedisException e) {
-            LOG.error("Failed to initialize Redis connection pool for chat memory", e);
-            throw new RuntimeException("Failed to connect to Redis for chat memory storage", e);
-        }
-    }
-
-    /**
-     * Creates a new Redis memory factory.
-     *
-     * <p>The factory uses the statically initialized Redis connection pool that was
-     * configured during class loading using the {@link RedisConfig} settings.
-     */
-    public RedisMemoryBeanProvider() {
-        // Redis pool and store are initialized statically
-    }
-
-    /** {@inheritDoc} */
     @Override
     public void withMaxMessages(int maxMessages) {
         this.maxMessagesOverride = maxMessages;
     }
 
-    /**
-     * Creates a new chat memory provider that uses Redis for persistent storage.
-     *
-     * <p>This method returns a {@link ChatMemoryProvider} that creates message window-based
-     * chat memory instances backed by Redis storage. Each memory instance can store up to
-     * the configured maximum number of messages per conversation.
-     *
-     * <p>The returned provider is thread-safe and can be used to create multiple chat
-     * memory instances for different conversations. All instances will share the same
-     * Redis connection pool for optimal performance.
-     *
-     * <p><strong>Memory Lifecycle:</strong>
-     * The chat memories created by the returned provider will automatically persist
-     * messages to Redis and retrieve them on subsequent access. The message window
-     * will automatically manage the conversation size by removing oldest messages
-     * when the maximum is exceeded.
-     *
-     * @return a new chat memory provider backed by Redis storage, never {@code null}
-     * @throws RuntimeException if Redis connection cannot be established or configured
-     */
     @Override
     public ChatMemoryProvider create() {
+        return create(null);
+    }
+
+    @Override
+    public ChatMemoryProvider create(String id) {
+        PersistentRedisStore store = getOrCreateStore(id);
         int maxMessages = maxMessagesOverride != null ? maxMessagesOverride : DEFAULT_MAX_MESSAGES;
         return memoryId -> {
             LOG.debug("Creating message window chat memory for ID: {} with maxMessages={}", memoryId, maxMessages);
             return MessageWindowChatMemory.builder()
                     .id(memoryId)
                     .maxMessages(maxMessages)
-                    .chatMemoryStore(REDIS_STORE)
+                    .chatMemoryStore(store)
                     .build();
         };
     }
 
-    @Override
-    public ChatMemoryProvider create(String id) {
-        throw new UnsupportedOperationException("Named chat memory stores are not yet supported for Redis");
+    private PersistentRedisStore getOrCreateStore(String id) {
+        if (id == null) {
+            if (defaultStore != null) {
+                return defaultStore;
+            }
+            initLock.lock();
+            try {
+                if (defaultStore != null) {
+                    return defaultStore;
+                }
+                RedisConfig config = new RedisConfig();
+                defaultPool = createPool(config);
+                defaultStore = new PersistentRedisStore(defaultPool);
+                return defaultStore;
+            } finally {
+                initLock.unlock();
+            }
+        }
+
+        return namedStores.computeIfAbsent(id, prefix -> {
+            RedisConfig config = new RedisConfig(prefix);
+            JedisPool pool = createPool(config);
+            namedPools.put(prefix, pool);
+            return new PersistentRedisStore(pool);
+        });
     }
 
-    /**
-     * Closes the Redis connection pool and releases all associated resources.
-     *
-     * <p>This method should be called during application shutdown to ensure proper
-     * cleanup of Redis connections. After calling this method, the factory should
-     * not be used to create new memory providers.
-     *
-     * <p><strong>Note:</strong> This method is not automatically called and must be
-     * explicitly invoked by the application or container during shutdown. Since the
-     * Redis pool is static, this affects all instances of this factory class.
-     */
-    public static void close() {
-        if (JEDIS_POOL != null && !JEDIS_POOL.isClosed()) {
-            LOG.info("Closing Redis connection pool for chat memory");
-            JEDIS_POOL.close();
+    private JedisPool createPool(RedisConfig config) {
+        LOG.info(
+                "Initializing Redis chat memory provider with host: {}, port: {}, database: {}",
+                config.host(),
+                config.port(),
+                config.database());
+
+        try {
+            JedisPoolConfig poolConfig = new JedisPoolConfig();
+            poolConfig.setMaxTotal(config.poolMaxTotal());
+            poolConfig.setMaxIdle(config.poolMaxIdle());
+            poolConfig.setMinIdle(config.poolMinIdle());
+            poolConfig.setTestOnBorrow(config.poolTestOnBorrow());
+            poolConfig.setTestOnReturn(config.poolTestOnReturn());
+            poolConfig.setTestWhileIdle(config.poolTestWhileIdle());
+            poolConfig.setMaxWait(Duration.ofMillis(config.poolMaxWaitMillis()));
+
+            JedisPool pool = new JedisPool(
+                    poolConfig, config.host(), config.port(), config.timeout(), config.password(), config.database());
+
+            try (var jedis = pool.getResource()) {
+                jedis.ping();
+                LOG.info(
+                        "Successfully connected to Redis at {}:{}/{}", config.host(), config.port(), config.database());
+            }
+
+            return pool;
+        } catch (JedisException e) {
+            LOG.error("Failed to initialize Redis connection pool for chat memory", e);
+            throw new RuntimeException("Failed to connect to Redis for chat memory storage", e);
         }
+    }
+
+    public void close() {
+        if (defaultPool != null && !defaultPool.isClosed()) {
+            LOG.info("Closing default Redis connection pool for chat memory");
+            defaultPool.close();
+        }
+        for (Map.Entry<String, JedisPool> entry : namedPools.entrySet()) {
+            JedisPool pool = entry.getValue();
+            if (pool != null && !pool.isClosed()) {
+                LOG.info("Closing Redis connection pool for prefix '{}'", entry.getKey());
+                pool.close();
+            }
+        }
+        namedPools.clear();
+        namedStores.clear();
     }
 }
