@@ -26,12 +26,10 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Note: Dashscope integration will be available in future LangChain4J versions -->
-        <!-- For now, we use the core dependency and create a custom implementation -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>${langchain4j.version}</version>
+            <artifactId>langchain4j-community-dashscope</artifactId>
+            <version>${langchain4j-community.version}</version>
         </dependency>
     </dependencies>
 
