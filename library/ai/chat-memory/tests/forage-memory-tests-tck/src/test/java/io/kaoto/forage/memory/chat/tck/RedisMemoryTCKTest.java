@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 class RedisMemoryTCKTest extends ChatMemoryBeanProviderTCK {
 
     private static final int REDIS_PORT = 6379;
+    private static RedisMemoryBeanProvider provider;
 
     @Container
     static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
@@ -42,11 +43,9 @@ class RedisMemoryTCKTest extends ChatMemoryBeanProviderTCK {
 
     @BeforeAll
     static void setUpRedis() {
-        // Configure Redis connection for the test
         String redisHost = redis.getHost();
         Integer redisPort = redis.getMappedPort(REDIS_PORT);
 
-        // Set system properties for Redis configuration
         System.setProperty("forage.redis.host", redisHost);
         System.setProperty("forage.redis.port", redisPort.toString());
         System.setProperty("forage.redis.database", "0");
@@ -54,11 +53,16 @@ class RedisMemoryTCKTest extends ChatMemoryBeanProviderTCK {
         System.setProperty("forage.redis.pool.max.total", "8");
         System.setProperty("forage.redis.pool.max.idle", "8");
         System.setProperty("forage.redis.pool.min.idle", "0");
+
+        provider = new RedisMemoryBeanProvider();
     }
 
     @AfterAll
     static void tearDownRedis() {
-        // Clean up Redis configuration
+        if (provider != null) {
+            provider.close();
+        }
+
         System.clearProperty("forage.redis.host");
         System.clearProperty("forage.redis.port");
         System.clearProperty("forage.redis.database");
@@ -66,14 +70,11 @@ class RedisMemoryTCKTest extends ChatMemoryBeanProviderTCK {
         System.clearProperty("forage.redis.pool.max.total");
         System.clearProperty("forage.redis.pool.max.idle");
         System.clearProperty("forage.redis.pool.min.idle");
-
-        // Close Redis connection pool
-        RedisMemoryBeanProvider.close();
     }
 
     @Override
     protected ChatMemoryBeanProvider createChatMemoryFactory() {
-        return new RedisMemoryBeanProvider();
+        return provider;
     }
 
     @Test

@@ -17,8 +17,6 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 public class MessageWindowChatMemoryBeanProvider implements ChatMemoryBeanProvider, MaxMessagesAware {
     private static final Logger LOG = LoggerFactory.getLogger(MessageWindowChatMemoryBeanProvider.class);
 
-    private static final PersistentChatMemoryStore PERSISTENT_CHAT_MEMORY_STORE = new PersistentChatMemoryStore();
-    private static final MessageWindowConfig CONFIG = new MessageWindowConfig();
     private volatile Integer maxMessagesOverride;
 
     public MessageWindowChatMemoryBeanProvider() {}
@@ -30,18 +28,19 @@ public class MessageWindowChatMemoryBeanProvider implements ChatMemoryBeanProvid
 
     @Override
     public ChatMemoryProvider create() {
-        int maxMessages = maxMessagesOverride != null ? maxMessagesOverride : CONFIG.maxMessages();
-        LOG.trace("Creating MessageWindowChatMemoryFactory with maxMessages={}", maxMessages);
-        return memoryId -> MessageWindowChatMemory.builder()
-                .id(memoryId)
-                .maxMessages(maxMessages)
-                .chatMemoryStore(PERSISTENT_CHAT_MEMORY_STORE)
-                .build();
+        return create(null);
     }
 
     @Override
     public ChatMemoryProvider create(String id) {
-        throw new UnsupportedOperationException(
-                "Named chat memory stores are not yet supported for the memory chat window");
+        MessageWindowConfig config = new MessageWindowConfig(id);
+        int maxMessages = maxMessagesOverride != null ? maxMessagesOverride : config.maxMessages();
+        LOG.trace("Creating MessageWindowChatMemoryFactory with prefix={}, maxMessages={}", id, maxMessages);
+        PersistentChatMemoryStore store = new PersistentChatMemoryStore();
+        return memoryId -> MessageWindowChatMemory.builder()
+                .id(memoryId)
+                .maxMessages(maxMessages)
+                .chatMemoryStore(store)
+                .build();
     }
 }

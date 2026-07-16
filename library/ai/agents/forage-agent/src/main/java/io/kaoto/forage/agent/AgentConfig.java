@@ -17,6 +17,7 @@ import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_MODEL_MAX_RETRI
 import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_MODEL_MODEL_NAME;
 import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_MODEL_TIMEOUT;
 import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_STORE_FILE_SOURCE;
+import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_STORE_KIND;
 import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_STORE_MAX_SIZE;
 import static io.kaoto.forage.agent.AgentConfigEntries.EMBEDDING_STORE_OVERLAP_SIZE;
 import static io.kaoto.forage.agent.AgentConfigEntries.ENDPOINT;
@@ -141,6 +142,10 @@ public class AgentConfig extends AbstractConfig {
     }
 
     // EmbeddingStore
+
+    public String embeddingStoreKind() {
+        return get(EMBEDDING_STORE_KIND).orElse(null);
+    }
 
     public boolean hasEmbeddingConfig() {
         return get(EMBEDDING_MODEL_MODEL_NAME).isPresent()
