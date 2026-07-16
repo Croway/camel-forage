@@ -332,6 +332,46 @@ public final class ConnectionFactoryConfigEntries extends ConfigEntries {
             false,
             ConfigTag.ADVANCED);
 
+    public static final ConfigModule TRANSACTION_OBJECT_STORE_DATASOURCE = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.transaction.object.store.datasource",
+            "DataSource name for JDBC object store",
+            "Object Store DataSource",
+            null,
+            "string",
+            false,
+            ConfigTag.ADVANCED);
+
+    public static final ConfigModule TRANSACTION_OBJECT_STORE_CREATE_TABLE = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.transaction.object.store.create.table",
+            "Create object store table if not exists",
+            "Create Table",
+            "false",
+            "boolean",
+            false,
+            ConfigTag.ADVANCED);
+
+    public static final ConfigModule TRANSACTION_OBJECT_STORE_DROP_TABLE = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.transaction.object.store.drop.table",
+            "Drop object store table on shutdown",
+            "Drop Table",
+            "false",
+            "boolean",
+            false,
+            ConfigTag.ADVANCED);
+
+    public static final ConfigModule TRANSACTION_OBJECT_STORE_TABLE_PREFIX = ConfigModule.of(
+            ConnectionFactoryConfig.class,
+            "forage.jms.transaction.object.store.table.prefix",
+            "Prefix for object store tables",
+            "Table Prefix",
+            "forage_",
+            "string",
+            false,
+            ConfigTag.ADVANCED);
+
     static {
         initModules(
                 ConnectionFactoryConfigEntries.class,
@@ -366,6 +406,10 @@ public final class ConnectionFactoryConfigEntries extends ConfigEntries {
                 TRANSACTION_EXPIRY_SCANNERS,
                 TRANSACTION_XA_RESOURCE_ORPHAN_FILTERS,
                 TRANSACTION_OBJECT_STORE_DIRECTORY,
-                TRANSACTION_OBJECT_STORE_TYPE);
+                TRANSACTION_OBJECT_STORE_TYPE,
+                TRANSACTION_OBJECT_STORE_DATASOURCE,
+                TRANSACTION_OBJECT_STORE_CREATE_TABLE,
+                TRANSACTION_OBJECT_STORE_DROP_TABLE,
+                TRANSACTION_OBJECT_STORE_TABLE_PREFIX);
     }
 }

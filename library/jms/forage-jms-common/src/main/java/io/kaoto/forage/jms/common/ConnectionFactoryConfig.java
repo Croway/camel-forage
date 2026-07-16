@@ -27,8 +27,12 @@ import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACT
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_ENABLE_RECOVERY;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_EXPIRY_SCANNERS;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_NODE_ID;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_OBJECT_STORE_CREATE_TABLE;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_OBJECT_STORE_DATASOURCE;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_OBJECT_STORE_DIRECTORY;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_OBJECT_STORE_DROP_TABLE;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_OBJECT_STORE_ID;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_OBJECT_STORE_TABLE_PREFIX;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_OBJECT_STORE_TYPE;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_RECOVERY_MODULES;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_TIMEOUT_SECONDS;
@@ -207,5 +211,25 @@ public class ConnectionFactoryConfig extends AbstractConfig {
 
     public String transactionObjectStoreType() {
         return get(TRANSACTION_OBJECT_STORE_TYPE).orElse(TRANSACTION_OBJECT_STORE_TYPE.defaultValue());
+    }
+
+    public String transactionObjectStoreDataSource() {
+        return get(TRANSACTION_OBJECT_STORE_DATASOURCE).orElse(null);
+    }
+
+    public boolean transactionObjectStoreCreateTable() {
+        return get(TRANSACTION_OBJECT_STORE_CREATE_TABLE)
+                .map(Boolean::parseBoolean)
+                .orElse(Boolean.parseBoolean(TRANSACTION_OBJECT_STORE_CREATE_TABLE.defaultValue()));
+    }
+
+    public boolean transactionObjectStoreDropTable() {
+        return get(TRANSACTION_OBJECT_STORE_DROP_TABLE)
+                .map(Boolean::parseBoolean)
+                .orElse(Boolean.parseBoolean(TRANSACTION_OBJECT_STORE_DROP_TABLE.defaultValue()));
+    }
+
+    public String transactionObjectStoreTablePrefix() {
+        return get(TRANSACTION_OBJECT_STORE_TABLE_PREFIX).orElse(TRANSACTION_OBJECT_STORE_TABLE_PREFIX.defaultValue());
     }
 }
