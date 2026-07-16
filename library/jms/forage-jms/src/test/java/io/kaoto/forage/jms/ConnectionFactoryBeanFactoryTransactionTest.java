@@ -28,8 +28,9 @@ class ConnectionFactoryBeanFactoryTransactionTest {
     @Test
     void prefixedTransactionEnabledBindsJtaPolicies() {
         CamelContext camelContext = new DefaultCamelContext();
-        // Pre-bind the prefixed ConnectionFactory so configure() does not need a broker provider
+        // Pre-bind the prefixed ConnectionFactories so configure() does not need a broker provider
         camelContext.getRegistry().bind("mq1", dummyConnectionFactory());
+        camelContext.getRegistry().bind("mq2", dummyConnectionFactory());
 
         ConnectionFactoryBeanFactory beanFactory = new ConnectionFactoryBeanFactory();
         beanFactory.setCamelContext(camelContext);
@@ -43,10 +44,11 @@ class ConnectionFactoryBeanFactoryTransactionTest {
     }
 
     @Test
-    void transactionEnabledWiresJtaTransactionManagerIntoJmsComponent() {
+    void transactionEnabledWiresJtaTransactionManagerIntoNamedComponent() {
         CamelContext camelContext = new DefaultCamelContext();
         ConnectionFactory connectionFactory = dummyConnectionFactory();
         camelContext.getRegistry().bind("mq1", connectionFactory);
+        camelContext.getRegistry().bind("mq2", dummyConnectionFactory());
 
         ConnectionFactoryBeanFactory beanFactory = new ConnectionFactoryBeanFactory();
         beanFactory.setCamelContext(camelContext);
@@ -58,19 +60,73 @@ class ConnectionFactoryBeanFactoryTransactionTest {
                 .as("A JtaTransactionManager should be bound when transactions are enabled")
                 .isNotNull();
 
-        // Resolving the component fires onComponentAdd, which applies the registered
-        // ComponentCustomizer — the mechanism used at runtime when routes create the component
+        // The named component (mq1) should have the JTA transaction manager set
+        // directly at creation time (#427, #433)
+        JmsComponent mq1Component = (JmsComponent) camelContext.getComponent("mq1");
+        assertThat(mq1Component.getConfiguration().getTransactionManager())
+                .as("Named JmsComponent 'mq1' should receive the Forage JTA transaction manager (#427)")
+                .isSameAs(jtaTransactionManager);
+        assertThat(mq1Component.getConfiguration().getConnectionFactory())
+                .as("Named JmsComponent 'mq1' should use its own ConnectionFactory")
+                .isSameAs(connectionFactory);
+    }
+
+    @Test
+    void perBrokerJmsComponentHasScopedTransactionManager() {
+        CamelContext camelContext = new DefaultCamelContext();
+        ConnectionFactory mq1Cf = dummyConnectionFactory();
+        ConnectionFactory mq2Cf = dummyConnectionFactory();
+        camelContext.getRegistry().bind("mq1", mq1Cf);
+        camelContext.getRegistry().bind("mq2", mq2Cf);
+
+        ConnectionFactoryBeanFactory beanFactory = new ConnectionFactoryBeanFactory();
+        beanFactory.setCamelContext(camelContext);
+        beanFactory.configure();
+
+        JtaTransactionManager jtaTransactionManager =
+                camelContext.getRegistry().lookupByNameAndType("jtaTransactionManager", JtaTransactionManager.class);
+
+        // mq1 has transactions enabled — its JmsComponent should have a TM
+        JmsComponent mq1Component = (JmsComponent) camelContext.getComponent("mq1");
+        assertThat(mq1Component)
+                .as("A JmsComponent should be registered for prefix 'mq1'")
+                .isNotNull();
+        assertThat(mq1Component.getConfiguration().getTransactionManager())
+                .as("mq1 JmsComponent should have the JTA transaction manager (transactions enabled)")
+                .isSameAs(jtaTransactionManager);
+        assertThat(mq1Component.getConfiguration().getConnectionFactory())
+                .as("mq1 JmsComponent should use the mq1 ConnectionFactory")
+                .isSameAs(mq1Cf);
+
+        // mq2 has transactions disabled — its JmsComponent should NOT have a TM
+        JmsComponent mq2Component = (JmsComponent) camelContext.getComponent("mq2");
+        assertThat(mq2Component)
+                .as("A JmsComponent should be registered for prefix 'mq2'")
+                .isNotNull();
+        assertThat(mq2Component.getConfiguration().getTransactionManager())
+                .as("mq2 JmsComponent should NOT have a transaction manager (transactions disabled, #433)")
+                .isNull();
+        assertThat(mq2Component.getConfiguration().getConnectionFactory())
+                .as("mq2 JmsComponent should use the mq2 ConnectionFactory")
+                .isSameAs(mq2Cf);
+    }
+
+    @Test
+    void defaultJmsComponentNotAffectedByNamedPrefixTransactions() {
+        CamelContext camelContext = new DefaultCamelContext();
+        camelContext.getRegistry().bind("mq1", dummyConnectionFactory());
+        camelContext.getRegistry().bind("mq2", dummyConnectionFactory());
+
+        ConnectionFactoryBeanFactory beanFactory = new ConnectionFactoryBeanFactory();
+        beanFactory.setCamelContext(camelContext);
+        beanFactory.configure();
+
+        // Default (unnamed) config does NOT have transactions enabled, so the default
+        // "jms" component should NOT receive the JtaTransactionManager
         JmsComponent jmsComponent = camelContext.getComponent("jms", JmsComponent.class);
         assertThat(jmsComponent.getConfiguration().getTransactionManager())
-                .as("The Camel JMS component should receive the Forage JTA transaction manager (#427)")
-                .isSameAs(jtaTransactionManager);
-
-        // Setting a transaction manager disables JmsComponent's own ConnectionFactory
-        // auto-discovery, so the customizer must replicate it
-        assertThat(jmsComponent.getConfiguration().getConnectionFactory())
-                .as("The single registry ConnectionFactory should still be auto-discovered when a "
-                        + "transaction manager is set (#427)")
-                .isSameAs(connectionFactory);
+                .as("Default 'jms' component should NOT have TM when only a named prefix enables transactions (#433)")
+                .isNull();
     }
 
     private static ConnectionFactory dummyConnectionFactory() {

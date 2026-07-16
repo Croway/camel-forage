@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
 import org.apache.camel.CamelContext;
+import org.apache.camel.component.jms.JmsComponent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.jta.JtaTransactionManager;
@@ -102,6 +103,7 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
 
         for (String name : prefixes) {
             closeAndUnbind(name);
+            camelContext.removeComponent(name);
         }
         closeAndUnbind(DEFAULT_CONNECTION_FACTORY);
 
@@ -158,8 +160,9 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
         Set<String> prefixes =
                 ConfigStore.getInstance().readPrefixes(config, ConfigHelper.getNamedPropertyRegexp("jms"));
 
-        // Bind JTA policies when the default config OR any discovered prefixed config
-        // has transactions enabled (e.g., forage.mq1.jms.transaction.enabled=true)
+        // Bind JTA policies and transaction manager when the default config OR any
+        // discovered prefixed config has transactions enabled (#427)
+        JtaTransactionManager jtaTransactionManager = null;
         if (anyTransactionEnabled(config, prefixes)) {
             camelContext.getRegistry().bind("PROPAGATION_REQUIRED", new RequiredJtaTransactionPolicy());
             camelContext.getRegistry().bind("MANDATORY", new MandatoryJtaTransactionPolicy());
@@ -168,29 +171,42 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
             camelContext.getRegistry().bind("REQUIRES_NEW", new RequiresNewJtaTransactionPolicy());
             camelContext.getRegistry().bind("SUPPORTS", new SupportsJtaTransactionPolicy());
 
-            // Wire JTA into the Camel JMS component so the listener container starts a JTA
-            // transaction around receive() and XA sessions enlist in it (#427). The customizer
-            // is applied by Camel core to every JmsComponent added to the context.
-            JtaTransactionManager jtaTransactionManager = JmsJtaTransactionSupport.createJtaTransactionManager();
+            jtaTransactionManager = JmsJtaTransactionSupport.createJtaTransactionManager();
             camelContext.getRegistry().bind(JTA_TRANSACTION_MANAGER, jtaTransactionManager);
-            camelContext
-                    .getRegistry()
-                    .bind(
-                            JMS_TRANSACTION_MANAGER_CUSTOMIZER,
-                            JmsJtaTransactionSupport.jmsComponentCustomizer(jtaTransactionManager));
+
+            // Apply the ComponentCustomizer to the default "jms" component ONLY when
+            // the default (unprefixed) config enables transactions. Named per-broker
+            // components are pre-configured at creation time (#433).
+            if (config.transactionEnabled()) {
+                camelContext
+                        .getRegistry()
+                        .bind(
+                                JMS_TRANSACTION_MANAGER_CUSTOMIZER,
+                                JmsJtaTransactionSupport.jmsComponentCustomizer(jtaTransactionManager));
+            }
         }
 
         if (!prefixes.isEmpty()) {
             for (String name : prefixes) {
-                if (camelContext.getRegistry().lookupByNameAndType(name, ConnectionFactory.class) == null) {
+                ConnectionFactory connectionFactory =
+                        camelContext.getRegistry().lookupByNameAndType(name, ConnectionFactory.class);
+                if (connectionFactory == null) {
                     ConnectionFactoryConfig cfConfig = new ConnectionFactoryConfig(name);
-                    ConnectionFactory connectionFactory = newConnectionFactory(cfConfig, name);
+                    connectionFactory = newConnectionFactory(cfConfig, name);
                     if (connectionFactory != null) {
                         camelContext.getRegistry().bind(name, connectionFactory);
                     } else {
                         LOG.warn("Skipping binding for '{}' because ConnectionFactory creation returned null", name);
+                        continue;
                     }
                 }
+
+                // Register a per-broker JmsComponent so routes using "name:queue:..."
+                // get the correct ConnectionFactory and JTA scoping (#433)
+                ConnectionFactoryConfig cfConfig = new ConnectionFactoryConfig(name);
+                JtaTransactionManager perBrokerTm = cfConfig.transactionEnabled() ? jtaTransactionManager : null;
+                JmsComponent jmsComponent = JmsJtaTransactionSupport.createJmsComponent(connectionFactory, perBrokerTm);
+                camelContext.addComponent(name, jmsComponent);
             }
         } else {
             try {
