@@ -1,8 +1,6 @@
 package io.kaoto.forage.memory.chat.redis;
 
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,8 +58,6 @@ public class RedisMemoryBeanProvider implements ChatMemoryBeanProvider, MaxMessa
     private final ReentrantLock initLock = new ReentrantLock();
     private volatile JedisPool defaultPool;
     private volatile PersistentRedisStore defaultStore;
-    private final Map<String, JedisPool> namedPools = new ConcurrentHashMap<>();
-    private final Map<String, PersistentRedisStore> namedStores = new ConcurrentHashMap<>();
 
     public RedisMemoryBeanProvider() {}
 
@@ -90,30 +86,19 @@ public class RedisMemoryBeanProvider implements ChatMemoryBeanProvider, MaxMessa
     }
 
     private PersistentRedisStore getOrCreateStore(String id) {
-        if (id == null) {
-            if (defaultStore != null) {
-                return defaultStore;
-            }
+        if (defaultStore == null) {
             initLock.lock();
             try {
-                if (defaultStore != null) {
-                    return defaultStore;
+                if (defaultStore == null) {
+                    RedisConfig config = new RedisConfig();
+                    defaultPool = createPool(config);
+                    defaultStore = new PersistentRedisStore(defaultPool);
                 }
-                RedisConfig config = new RedisConfig();
-                defaultPool = createPool(config);
-                defaultStore = new PersistentRedisStore(defaultPool);
-                return defaultStore;
             } finally {
                 initLock.unlock();
             }
         }
-
-        return namedStores.computeIfAbsent(id, prefix -> {
-            RedisConfig config = new RedisConfig(prefix);
-            JedisPool pool = createPool(config);
-            namedPools.put(prefix, pool);
-            return new PersistentRedisStore(pool);
-        });
+        return defaultStore;
     }
 
     private JedisPool createPool(RedisConfig config) {
@@ -151,17 +136,8 @@ public class RedisMemoryBeanProvider implements ChatMemoryBeanProvider, MaxMessa
 
     public void close() {
         if (defaultPool != null && !defaultPool.isClosed()) {
-            LOG.info("Closing default Redis connection pool for chat memory");
+            LOG.info("Closing Redis connection pool for chat memory");
             defaultPool.close();
         }
-        for (Map.Entry<String, JedisPool> entry : namedPools.entrySet()) {
-            JedisPool pool = entry.getValue();
-            if (pool != null && !pool.isClosed()) {
-                LOG.info("Closing Redis connection pool for prefix '{}'", entry.getKey());
-                pool.close();
-            }
-        }
-        namedPools.clear();
-        namedStores.clear();
     }
 }

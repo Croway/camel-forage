@@ -1,7 +1,5 @@
 package io.kaoto.forage.memory.chat.infinispan;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
@@ -59,8 +57,6 @@ public class InfinispanMemoryBeanProvider implements ChatMemoryBeanProvider, Max
     private final ReentrantLock initLock = new ReentrantLock();
     private volatile RemoteCacheManager defaultCacheManager;
     private volatile PersistentInfinispanStore defaultStore;
-    private final Map<String, RemoteCacheManager> namedCacheManagers = new ConcurrentHashMap<>();
-    private final Map<String, PersistentInfinispanStore> namedStores = new ConcurrentHashMap<>();
 
     public InfinispanMemoryBeanProvider() {}
 
@@ -89,32 +85,20 @@ public class InfinispanMemoryBeanProvider implements ChatMemoryBeanProvider, Max
     }
 
     private PersistentInfinispanStore getOrCreateStore(String id) {
-        if (id == null) {
-            if (defaultStore != null) {
-                return defaultStore;
-            }
+        if (defaultStore == null) {
             initLock.lock();
             try {
-                if (defaultStore != null) {
-                    return defaultStore;
+                if (defaultStore == null) {
+                    InfinispanConfig config = new InfinispanConfig();
+                    defaultCacheManager = createCacheManager(config);
+                    RemoteCache<String, String> cache = getOrCreateCache(defaultCacheManager, config.cacheName());
+                    defaultStore = new PersistentInfinispanStore(cache);
                 }
-                InfinispanConfig config = new InfinispanConfig();
-                defaultCacheManager = createCacheManager(config);
-                RemoteCache<String, String> cache = getOrCreateCache(defaultCacheManager, config.cacheName());
-                defaultStore = new PersistentInfinispanStore(cache);
-                return defaultStore;
             } finally {
                 initLock.unlock();
             }
         }
-
-        return namedStores.computeIfAbsent(id, prefix -> {
-            InfinispanConfig config = new InfinispanConfig(prefix);
-            RemoteCacheManager cacheManager = createCacheManager(config);
-            namedCacheManagers.put(prefix, cacheManager);
-            RemoteCache<String, String> cache = getOrCreateCache(cacheManager, config.cacheName());
-            return new PersistentInfinispanStore(cache);
-        });
+        return defaultStore;
     }
 
     private RemoteCacheManager createCacheManager(InfinispanConfig config) {
@@ -152,17 +136,8 @@ public class InfinispanMemoryBeanProvider implements ChatMemoryBeanProvider, Max
 
     public void close() {
         if (defaultCacheManager != null) {
-            LOG.info("Closing default Infinispan cache manager for chat memory");
+            LOG.info("Closing Infinispan cache manager for chat memory");
             defaultCacheManager.close();
         }
-        for (Map.Entry<String, RemoteCacheManager> entry : namedCacheManagers.entrySet()) {
-            RemoteCacheManager manager = entry.getValue();
-            if (manager != null) {
-                LOG.info("Closing Infinispan cache manager for prefix '{}'", entry.getKey());
-                manager.close();
-            }
-        }
-        namedCacheManagers.clear();
-        namedStores.clear();
     }
 }
