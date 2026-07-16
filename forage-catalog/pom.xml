@@ -514,6 +514,12 @@
             <version>${project.version}</version>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>io.kaoto.forage</groupId>
+            <artifactId>forage-security-tls</artifactId>
+            <version>${project.version}</version>
+            <optional>true</optional>
+        </dependency>
 
         <!-- Route Policy Modules -->
         <dependency>

@@ -16,6 +16,7 @@
         <module>forage-security-shiro</module>
         <module>forage-security-spring</module>
         <module>forage-security-keycloak</module>
+        <module>forage-security-tls</module>
     </modules>
 
 </project>
