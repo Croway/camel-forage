@@ -25,6 +25,10 @@ class JmsModuleDescriptorTest {
         System.clearProperty("forage.jms.pool.block.if.full.timeout.millis");
         System.clearProperty("forage.jms.pool.idle.timeout.millis");
         System.clearProperty("forage.jms.pool.expiry.timeout.millis");
+        System.clearProperty("forage.jms.transaction.enabled");
+        System.clearProperty("forage.jms.transaction.object.store.type");
+        System.clearProperty("forage.jms.transaction.object.store.datasource");
+        System.clearProperty("forage.jms.transaction.object.store.table.prefix");
     }
 
     @Test
@@ -35,6 +39,27 @@ class JmsModuleDescriptorTest {
         // -1 (infinite sentinel) must not be divided by 1000 and must be passed through as-is
         assertThat(props.get("quarkus.pooled-jms.block-if-session-pool-is-full-timeout"))
                 .isEqualTo("-1");
+    }
+
+    @Test
+    void objectStoreJdbcPropertiesAreTranslated() {
+        System.setProperty("forage.jms.transaction.enabled", "true");
+        System.setProperty("forage.jms.transaction.object.store.type", "jdbc");
+        System.setProperty("forage.jms.transaction.object.store.datasource", "txlog");
+        System.setProperty("forage.jms.transaction.object.store.table.prefix", "custom_");
+
+        ConnectionFactoryConfig config = new ConnectionFactoryConfig();
+        Map<String, String> props = new JmsModuleDescriptor().translateProperties(null, config);
+
+        assertThat(props.get("quarkus.transaction-manager.object-store.type")).isEqualTo("jdbc");
+        assertThat(props.get("quarkus.transaction-manager.object-store.datasource"))
+                .isEqualTo("txlog");
+        assertThat(props.get("quarkus.transaction-manager.object-store.table-prefix"))
+                .isEqualTo("custom_");
+        assertThat(props.get("quarkus.transaction-manager.object-store.create-table"))
+                .isEqualTo("false");
+        assertThat(props.get("quarkus.transaction-manager.object-store.drop-table"))
+                .isEqualTo("false");
     }
 
     @Test
