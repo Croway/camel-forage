@@ -279,6 +279,27 @@ public final class AgentConfigEntries extends ConfigEntries {
             false,
             ConfigTag.COMMON);
 
+    // Guardrails
+    public static final ConfigModule GUARDRAILS_INPUT = ConfigModule.of(
+            AgentConfig.class,
+            "forage.agent.guardrails.input",
+            "Comma-separated list of input guardrail names (@ForageBean values, e.g., pii-detector,keyword-filter)",
+            "Input Guardrails",
+            null,
+            "string",
+            false,
+            ConfigTag.COMMON);
+
+    public static final ConfigModule GUARDRAILS_OUTPUT = ConfigModule.of(
+            AgentConfig.class,
+            "forage.agent.guardrails.output",
+            "Comma-separated list of output guardrail names (@ForageBean values, e.g., sensitive-data,output-length)",
+            "Output Guardrails",
+            null,
+            "string",
+            false,
+            ConfigTag.COMMON);
+
     // RAG
 
     // embedding model
@@ -384,6 +405,8 @@ public final class AgentConfigEntries extends ConfigEntries {
                 EMBEDDING_MODEL_TIMEOUT,
                 EMBEDDING_MODEL_MAX_RETRIES,
                 DEFAULT_RAG_MAX_RESULTS,
-                DEFAULT_RAG_MIN_SCORE);
+                DEFAULT_RAG_MIN_SCORE,
+                GUARDRAILS_INPUT,
+                GUARDRAILS_OUTPUT);
     }
 }

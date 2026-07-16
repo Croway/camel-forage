@@ -1,23 +1,26 @@
 package io.kaoto.forage.agent.factory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.component.langchain4j.agent.api.Agent;
-import org.apache.camel.component.langchain4j.agent.api.AgentConfiguration;
 import org.apache.camel.component.langchain4j.agent.api.AgentFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.ai.ChatMemoryBeanProvider;
 import io.kaoto.forage.core.ai.ModelProvider;
+import io.kaoto.forage.core.annotations.ForageBean;
 import io.kaoto.forage.core.common.ServiceLoaderHelper;
 import io.kaoto.forage.core.exceptions.RuntimeForageException;
+import io.kaoto.forage.core.guardrails.InputGuardrailProvider;
+import io.kaoto.forage.core.guardrails.OutputGuardrailProvider;
 import io.kaoto.forage.core.util.config.ConfigStore;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -176,14 +179,22 @@ public class MultiAgentFactory implements AgentFactory {
                 }
             }
 
-            AgentConfiguration agentConfiguration = new AgentConfiguration();
+            ForageAgentConfiguration agentConfiguration = new ForageAgentConfiguration();
             agentConfiguration.withChatModel(chatModel).withChatMemoryProvider(chatMemoryProvider);
 
-            final List<String> inputGuardrailsList = agentFactoryConfig.guardrailsInputClasses();
-            setGuardrail(inputGuardrailsList, agentConfiguration::withInputGuardrailClasses);
+            ClassLoader classLoader = camelContext.getApplicationContextClassLoader();
 
-            final List<String> outputGuardrailsList = agentFactoryConfig.guardrailsOutputClasses();
-            setGuardrail(outputGuardrailsList, agentConfiguration::withOutputGuardrailClasses);
+            List<InputGuardrail> inputGuardrails =
+                    loadInputGuardrails(agentFactoryConfig.guardrailsInput(), classLoader);
+            if (!inputGuardrails.isEmpty()) {
+                agentConfiguration.withInputGuardrails(inputGuardrails);
+            }
+
+            List<OutputGuardrail> outputGuardrails =
+                    loadOutputGuardrails(agentFactoryConfig.guardrailsOutput(), classLoader);
+            if (!outputGuardrails.isEmpty()) {
+                agentConfiguration.withOutputGuardrails(outputGuardrails);
+            }
 
             configurationAware.configure(agentConfiguration);
         }
@@ -191,29 +202,69 @@ public class MultiAgentFactory implements AgentFactory {
         return agent;
     }
 
-    /**
-     * The configuration comes as a list of classes in String format, but we need the list to be a list of Classes.
-     * @param classesList
-     * @param listConsumer
-     */
-    private void setGuardrail(List<String> classesList, Consumer<List<Class<?>>> listConsumer) {
-        if (classesList != null && !classesList.isEmpty()) {
-
-            final List<Class<?>> collect = classesList.stream()
-                    .map(strClassName -> {
-                        try {
-                            final ClassLoader applicationContextClassLoader =
-                                    camelContext.getApplicationContextClassLoader();
-                            return Class.forName(strClassName, true, applicationContextClassLoader);
-                        } catch (ClassNotFoundException e) {
-                            final String className = strClassName == null ? "null" : strClassName;
-                            throw new RuntimeForageException(
-                                    "The class named %s could not be loaded".formatted(className), e);
-                        }
-                    })
-                    .collect(Collectors.toList());
-
-            listConsumer.accept(collect);
+    private List<InputGuardrail> loadInputGuardrails(List<String> selectedNames, ClassLoader classLoader) {
+        if (selectedNames == null || selectedNames.isEmpty()) {
+            return List.of();
         }
+
+        ServiceLoader<InputGuardrailProvider> loader = ServiceLoader.load(InputGuardrailProvider.class, classLoader);
+        List<ServiceLoader.Provider<InputGuardrailProvider>> providers =
+                loader.stream().toList();
+
+        List<InputGuardrail> guardrails = new ArrayList<>();
+        for (String name : selectedNames) {
+            String trimmedName = name.trim();
+            InputGuardrailProvider matched = null;
+            for (ServiceLoader.Provider<InputGuardrailProvider> provider : providers) {
+                ForageBean annotation = provider.type().getAnnotation(ForageBean.class);
+                if (annotation != null && annotation.value().equals(trimmedName)) {
+                    matched = provider.get();
+                    break;
+                }
+            }
+            if (matched == null) {
+                throw new RuntimeForageException(
+                        "No input guardrail provider found for name '%s'".formatted(trimmedName));
+            }
+            LOG.info("Creating input guardrail '{}'", trimmedName);
+            InputGuardrail guardrail = matched.create(null);
+            if (guardrail != null) {
+                guardrails.add(guardrail);
+            }
+        }
+        return guardrails;
+    }
+
+    private List<OutputGuardrail> loadOutputGuardrails(List<String> selectedNames, ClassLoader classLoader) {
+        if (selectedNames == null || selectedNames.isEmpty()) {
+            return List.of();
+        }
+
+        ServiceLoader<OutputGuardrailProvider> loader = ServiceLoader.load(OutputGuardrailProvider.class, classLoader);
+        List<ServiceLoader.Provider<OutputGuardrailProvider>> providers =
+                loader.stream().toList();
+
+        List<OutputGuardrail> guardrails = new ArrayList<>();
+        for (String name : selectedNames) {
+            String trimmedName = name.trim();
+            OutputGuardrailProvider matched = null;
+            for (ServiceLoader.Provider<OutputGuardrailProvider> provider : providers) {
+                ForageBean annotation = provider.type().getAnnotation(ForageBean.class);
+                if (annotation != null && annotation.value().equals(trimmedName)) {
+                    matched = provider.get();
+                    break;
+                }
+            }
+            if (matched == null) {
+                throw new RuntimeForageException(
+                        "No output guardrail provider found for name '%s'".formatted(trimmedName));
+            }
+            LOG.info("Creating output guardrail '{}'", trimmedName);
+            OutputGuardrail guardrail = matched.create(null);
+            if (guardrail != null) {
+                guardrails.add(guardrail);
+            }
+        }
+        return guardrails;
     }
 }
