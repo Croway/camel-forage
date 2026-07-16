@@ -14,6 +14,7 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jms.artemis.ArtemisAutoConfiguration;
@@ -114,6 +115,7 @@ public class ForageConnectionFactoryAutoConfiguration implements DisposableBean 
      * Runs after all singletons are created but before the CamelContext starts.
      */
     @Bean
+    @ConditionalOnBean(CamelContext.class)
     SmartInitializingSingleton forageJmsComponentRegistrar(
             CamelContext camelContext, ConfigurableListableBeanFactory beanFactory, Environment environment) {
         return () -> {
