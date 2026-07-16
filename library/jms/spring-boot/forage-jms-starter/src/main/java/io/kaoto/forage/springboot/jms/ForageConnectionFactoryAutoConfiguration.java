@@ -4,10 +4,15 @@ import jakarta.jms.ConnectionFactory;
 
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.Set;
+import org.apache.camel.CamelContext;
+import org.apache.camel.component.jms.JmsComponent;
 import org.messaginghub.pooled.jms.JmsPoolConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.artemis.autoconfigure.ArtemisAutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -15,13 +20,17 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.transaction.jta.JtaTransactionManager;
 import io.kaoto.forage.core.annotations.FactoryType;
 import io.kaoto.forage.core.annotations.FactoryVariant;
 import io.kaoto.forage.core.annotations.ForageFactory;
 import io.kaoto.forage.core.jms.ConnectionFactoryProvider;
+import io.kaoto.forage.core.util.config.ConfigHelper;
 import io.kaoto.forage.jms.common.ConnectionFactoryConfig;
 import io.kaoto.forage.jms.common.JmsModuleDescriptor;
+import io.kaoto.forage.jms.common.transactions.JmsJtaTransactionSupport;
 import io.kaoto.forage.springboot.common.ForageSpringBootModuleAdapter;
+import io.kaoto.forage.springboot.common.SpringPropertyHelper;
 
 /**
  * Auto-configuration for Forage JMS ConnectionFactory creation using ServiceLoader discovery.
@@ -97,6 +106,42 @@ public class ForageConnectionFactoryAutoConfiguration implements DisposableBean 
                 .orElse("none");
         throw new IllegalStateException("No ConnectionFactoryProvider found for kind '" + kind + "' (expected "
                 + providerClassName + "). Available providers: " + available);
+    }
+
+    /**
+     * Registers per-broker {@link JmsComponent} instances so routes using
+     * {@code mq1:queue:...} get the correct ConnectionFactory and JTA scoping (#433).
+     * Runs after all singletons are created but before the CamelContext starts.
+     */
+    @Bean
+    SmartInitializingSingleton forageJmsComponentRegistrar(
+            CamelContext camelContext, ConfigurableListableBeanFactory beanFactory, Environment environment) {
+        return () -> {
+            Set<String> prefixes =
+                    SpringPropertyHelper.discoverPrefixes(environment, ConfigHelper.getNamedPropertyRegexp("jms"));
+            if (prefixes.isEmpty()) {
+                return;
+            }
+
+            JtaTransactionManager jtaTransactionManager = null;
+            try {
+                jtaTransactionManager = beanFactory.getBean(JtaTransactionManager.class);
+            } catch (Exception e) {
+                // no JtaTransactionManager — transactions are not enabled globally
+            }
+
+            for (String name : prefixes) {
+                ConnectionFactoryConfig cfConfig = new ConnectionFactoryConfig(name);
+                ConnectionFactory cf = beanFactory.getBean(name, ConnectionFactory.class);
+                JtaTransactionManager perBrokerTm = cfConfig.transactionEnabled() ? jtaTransactionManager : null;
+                JmsComponent component = JmsJtaTransactionSupport.createJmsComponent(cf, perBrokerTm);
+                camelContext.addComponent(name, component);
+                log.info(
+                        "Registered per-broker JmsComponent '{}' (transactions={})",
+                        name,
+                        cfConfig.transactionEnabled());
+            }
+        };
     }
 
     /**
