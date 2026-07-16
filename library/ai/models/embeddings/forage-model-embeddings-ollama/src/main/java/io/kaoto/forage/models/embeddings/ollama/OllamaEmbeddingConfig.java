@@ -34,7 +34,7 @@ import static io.kaoto.forage.models.embeddings.ollama.OllamaEmbeddingConfigEntr
  * @see io.kaoto.forage.core.util.config.ConfigModule
  * @since 1.0
  */
-public class OllamaEmbedddingConfig extends AbstractConfig {
+public class OllamaEmbeddingConfig extends AbstractConfig {
 
     /**
      * Creates an Ollama Embedding model instance.
@@ -57,11 +57,11 @@ public class OllamaEmbedddingConfig extends AbstractConfig {
      *
      * @since 1.0
      */
-    public OllamaEmbedddingConfig() {
+    public OllamaEmbeddingConfig() {
         this(null);
     }
 
-    public OllamaEmbedddingConfig(String prefix) {
+    public OllamaEmbeddingConfig(String prefix) {
         super(prefix, OllamaEmbeddingConfigEntries.class);
     }
 
@@ -120,7 +120,7 @@ public class OllamaEmbedddingConfig extends AbstractConfig {
      * @return the Ollama model name, never null
      */
     public String modelName() {
-        return get(MODEL_NAME).orElse("llama3");
+        return get(MODEL_NAME).orElse(MODEL_NAME.defaultValue());
     }
 
     /**

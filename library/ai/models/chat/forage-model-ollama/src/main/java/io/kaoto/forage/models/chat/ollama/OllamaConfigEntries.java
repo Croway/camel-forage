@@ -19,7 +19,7 @@ public final class OllamaConfigEntries extends ConfigEntries {
             "forage.ollama.model.name",
             "The Ollama model to use",
             "Model Name",
-            "llama3",
+            "llama3.2",
             "string",
             false,
             ConfigTag.COMMON);

@@ -3,17 +3,11 @@ package io.kaoto.forage.models.chat.huggingface;
 import io.kaoto.forage.core.util.config.AbstractConfig;
 
 import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.API_KEY;
-import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.DO_SAMPLE;
-import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.LOG_REQUESTS_AND_RESPONSES;
 import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.MAX_NEW_TOKENS;
-import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.MAX_RETRIES;
 import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.MODEL_ID;
-import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.REPETITION_PENALTY;
 import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.RETURN_FULL_TEXT;
 import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.TEMPERATURE;
 import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.TIMEOUT;
-import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.TOP_K;
-import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.TOP_P;
 import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.WAIT_FOR_MODEL;
 
 /**
@@ -33,15 +27,9 @@ import static io.kaoto.forage.models.chat.huggingface.HuggingFaceConfigEntries.W
  *   <li><strong>HUGGINGFACE_MODEL_ID</strong> - The HuggingFace model ID to use (e.g., microsoft/DialoGPT-medium)</li>
  *   <li><strong>HUGGINGFACE_TEMPERATURE</strong> - Temperature for response generation (0.0-2.0)</li>
  *   <li><strong>HUGGINGFACE_MAX_NEW_TOKENS</strong> - Maximum number of new tokens to generate</li>
- *   <li><strong>HUGGINGFACE_TOP_K</strong> - Top-k sampling parameter</li>
- *   <li><strong>HUGGINGFACE_TOP_P</strong> - Top-p (nucleus) sampling parameter</li>
- *   <li><strong>HUGGINGFACE_DO_SAMPLE</strong> - Whether to use sampling</li>
- *   <li><strong>HUGGINGFACE_REPETITION_PENALTY</strong> - Penalty for repeating tokens</li>
  *   <li><strong>HUGGINGFACE_RETURN_FULL_TEXT</strong> - Whether to return full text including input</li>
  *   <li><strong>HUGGINGFACE_WAIT_FOR_MODEL</strong> - Whether to wait for model to load</li>
  *   <li><strong>HUGGINGFACE_TIMEOUT</strong> - Request timeout in seconds</li>
- *   <li><strong>HUGGINGFACE_MAX_RETRIES</strong> - Maximum number of retry attempts</li>
- *   <li><strong>HUGGINGFACE_LOG_REQUESTS_AND_RESPONSES</strong> - Whether to log requests and responses</li>
  * </ul>
  *
  * <p><strong>Configuration Sources:</strong>
@@ -164,63 +152,6 @@ public class HuggingFaceConfig extends AbstractConfig {
     }
 
     /**
-     * Returns the top-k sampling parameter.
-     *
-     * <p>Limits the number of highest probability vocabulary tokens to keep for top-k filtering.
-     * Only the top k most likely tokens are considered for sampling.
-     *
-     * @return the top-k value, or null if not configured
-     */
-    public Integer topK() {
-        return get(TOP_K).map(Integer::parseInt).orElse(null);
-    }
-
-    /**
-     * Returns the top-p (nucleus sampling) probability threshold.
-     *
-     * <p>An alternative to top-k for controlling response diversity. The model considers
-     * only the most probable tokens whose cumulative probability exceeds the top-p value.
-     *
-     * <p><strong>Value Range:</strong> 0.0 to 1.0
-     *
-     * @return the top-p value, or null if not configured
-     */
-    public Double topP() {
-        return get(TOP_P).map(Double::parseDouble).orElse(null);
-    }
-
-    /**
-     * Returns whether to use sampling for text generation.
-     *
-     * <p>When set to false, uses greedy decoding (always selects the most probable token).
-     * When set to true, uses sampling with temperature, top-k, and top-p parameters.
-     *
-     * @return true if sampling is enabled, false if disabled, or null if not configured
-     */
-    public Boolean doSample() {
-        return get(DO_SAMPLE).map(Boolean::parseBoolean).orElse(null);
-    }
-
-    /**
-     * Returns the repetition penalty for discouraging token repetition.
-     *
-     * <p>Penalizes tokens that have already appeared in the sequence, discouraging
-     * the model from repeating the same phrases or words.
-     *
-     * <p><strong>Value Range:</strong> typically 1.0 to 2.0
-     * <ul>
-     *   <li><strong>1.0</strong> - No penalty (default)</li>
-     *   <li><strong>1.1-1.3</strong> - Moderate penalty</li>
-     *   <li><strong>2.0</strong> - Strong penalty against repetition</li>
-     * </ul>
-     *
-     * @return the repetition penalty value, or null if not configured
-     */
-    public Double repetitionPenalty() {
-        return get(REPETITION_PENALTY).map(Double::parseDouble).orElse(null);
-    }
-
-    /**
      * Returns whether to return the full text including the input prompt.
      *
      * <p>When set to true, the response includes both the input prompt and the generated text.
@@ -254,32 +185,5 @@ public class HuggingFaceConfig extends AbstractConfig {
      */
     public Integer timeoutSeconds() {
         return get(TIMEOUT).map(Integer::parseInt).orElse(null);
-    }
-
-    /**
-     * Returns the maximum number of retry attempts for failed requests.
-     *
-     * <p>When a request fails due to transient issues, this setting controls how many times
-     * to retry before giving up.
-     *
-     * @return the maximum retry attempts, or null if not configured
-     */
-    public Integer maxRetries() {
-        return get(MAX_RETRIES).map(Integer::parseInt).orElse(null);
-    }
-
-    /**
-     * Returns whether to log both request and response details.
-     *
-     * <p>When enabled, logs the details of both requests sent to and responses received
-     * from HuggingFace Inference API. Useful for debugging and monitoring.
-     *
-     * <p><strong>Security Note:</strong> Be cautious when enabling in production
-     * as this may log sensitive data including API keys and user content.
-     *
-     * @return true if request and response logging is enabled, false if disabled, or null if not configured
-     */
-    public Boolean logRequestsAndResponses() {
-        return get(LOG_REQUESTS_AND_RESPONSES).map(Boolean::parseBoolean).orElse(null);
     }
 }

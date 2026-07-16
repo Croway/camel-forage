@@ -19,9 +19,9 @@ public final class PgVectorConfigEntries extends ConfigEntries {
             "forage.pgvector.port",
             "PostgreSQL server port number",
             "Port",
-            null,
+            "5432",
             "integer",
-            true,
+            false,
             ConfigTag.COMMON);
     public static final ConfigModule USER = ConfigModule.of(
             PgVectorConfig.class,
