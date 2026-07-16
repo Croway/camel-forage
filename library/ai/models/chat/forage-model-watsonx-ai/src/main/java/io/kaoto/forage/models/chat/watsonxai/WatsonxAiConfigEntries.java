@@ -68,38 +68,11 @@ public final class WatsonxAiConfigEntries extends ConfigEntries {
             "double",
             false,
             ConfigTag.ADVANCED);
-    public static final ConfigModule TOP_K = ConfigModule.of(
-            WatsonxAiConfig.class,
-            "forage.watsonxai.top.k",
-            "Top-k sampling parameter",
-            "Top K",
-            null,
-            "integer",
-            false,
-            ConfigTag.ADVANCED);
     public static final ConfigModule RANDOM_SEED = ConfigModule.of(
             WatsonxAiConfig.class,
             "forage.watsonxai.random.seed",
             "Random seed for reproducible results",
             "Random Seed",
-            null,
-            "integer",
-            false,
-            ConfigTag.ADVANCED);
-    public static final ConfigModule REPETITION_PENALTY = ConfigModule.of(
-            WatsonxAiConfig.class,
-            "forage.watsonxai.repetition.penalty",
-            "Penalty for repetition (1.0-2.0)",
-            "Repetition Penalty",
-            null,
-            "double",
-            false,
-            ConfigTag.ADVANCED);
-    public static final ConfigModule MIN_NEW_TOKENS = ConfigModule.of(
-            WatsonxAiConfig.class,
-            "forage.watsonxai.min.new.tokens",
-            "Minimum number of new tokens in response",
-            "Min New Tokens",
             null,
             "integer",
             false,
@@ -111,24 +84,6 @@ public final class WatsonxAiConfigEntries extends ConfigEntries {
             "Stop Sequences",
             null,
             "string",
-            false,
-            ConfigTag.ADVANCED);
-    public static final ConfigModule TIMEOUT = ConfigModule.of(
-            WatsonxAiConfig.class,
-            "forage.watsonxai.timeout",
-            "Request timeout in seconds",
-            "Timeout",
-            null,
-            "integer",
-            false,
-            ConfigTag.ADVANCED);
-    public static final ConfigModule MAX_RETRIES = ConfigModule.of(
-            WatsonxAiConfig.class,
-            "forage.watsonxai.max.retries",
-            "Maximum number of retry attempts",
-            "Max Retries",
-            null,
-            "integer",
             false,
             ConfigTag.ADVANCED);
     public static final ConfigModule LOG_REQUESTS_AND_RESPONSES = ConfigModule.of(
@@ -151,13 +106,8 @@ public final class WatsonxAiConfigEntries extends ConfigEntries {
                 TEMPERATURE,
                 MAX_NEW_TOKENS,
                 TOP_P,
-                TOP_K,
                 RANDOM_SEED,
-                REPETITION_PENALTY,
-                MIN_NEW_TOKENS,
                 STOP_SEQUENCES,
-                TIMEOUT,
-                MAX_RETRIES,
                 LOG_REQUESTS_AND_RESPONSES);
     }
 }
