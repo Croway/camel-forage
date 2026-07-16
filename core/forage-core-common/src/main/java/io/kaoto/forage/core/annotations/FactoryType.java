@@ -23,7 +23,10 @@ public enum FactoryType {
 
     /** Factory that creates Spring RabbitMQ ConnectionFactory beans */
     SPRING_RABBITMQ_CONNECTION_FACTORY(
-            "org.springframework.amqp.rabbit.connection.ConnectionFactory", "forage-spring-rabbitmq");
+            "org.springframework.amqp.rabbit.connection.ConnectionFactory", "forage-spring-rabbitmq"),
+
+    /** Factory that creates SSLContextParameters beans for TLS */
+    SSL_CONTEXT_PARAMETERS("org.apache.camel.support.jsse.SSLContextParameters", "forage-security-tls");
 
     private final String displayName;
 
