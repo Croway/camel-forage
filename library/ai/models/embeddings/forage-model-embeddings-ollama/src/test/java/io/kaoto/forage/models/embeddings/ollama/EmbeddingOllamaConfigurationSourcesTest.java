@@ -31,7 +31,7 @@ class EmbeddingOllamaConfigurationSourcesTest {
     @Test
     @DisplayName("Should load from configuration file only")
     void shouldLoadFromConfigurationFileOnly() {
-        OllamaEmbedddingConfig config = new OllamaEmbedddingConfig();
+        OllamaEmbeddingConfig config = new OllamaEmbeddingConfig();
 
         assertThat(config.baseUrl()).isEqualTo("testUrl");
         assertThat(config.modelName()).isEqualTo("gnomic-embed-text");

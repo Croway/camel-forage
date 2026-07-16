@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaDefaultValueTests {
 
     private static final String DEFAULT_BASE_URL = "http://localhost:11434";
-    private static final String DEFAULT_MODEL_NAME = "llama3";
+    private static final String DEFAULT_MODEL_NAME = "llama3.2";
 
     @Test
     @DisplayName("Should return default base URL when no configuration provided")

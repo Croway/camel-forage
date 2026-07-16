@@ -26,12 +26,9 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Note: Anthropic integration will be available in future LangChain4J versions -->
-        <!-- For now, we use the core dependency and create a placeholder implementation -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>${langchain4j.version}</version>
+            <artifactId>langchain4j-anthropic</artifactId>
         </dependency>
     </dependencies>
 

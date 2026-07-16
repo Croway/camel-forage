@@ -6,7 +6,7 @@ import io.kaoto.forage.core.util.config.ConfigTag;
 
 public final class OllamaEmbeddingConfigEntries extends ConfigEntries {
     public static final ConfigModule BASE_URL = ConfigModule.of(
-            OllamaEmbedddingConfig.class,
+            OllamaEmbeddingConfig.class,
             "forage.ollama.embedding.model.base.url",
             "The base URL of the Ollama server",
             "Base URL",
@@ -15,16 +15,16 @@ public final class OllamaEmbeddingConfigEntries extends ConfigEntries {
             false,
             ConfigTag.COMMON);
     public static final ConfigModule MODEL_NAME = ConfigModule.of(
-            OllamaEmbedddingConfig.class,
+            OllamaEmbeddingConfig.class,
             "forage.ollama.embedding.model.name",
             "The Ollama model to use",
             "Model Name",
-            "llama3",
+            "nomic-embed-text",
             "string",
             false,
             ConfigTag.COMMON);
     public static final ConfigModule TIMEOUT = ConfigModule.of(
-            OllamaEmbedddingConfig.class,
+            OllamaEmbeddingConfig.class,
             "forage.ollama.embedding.model.timeout",
             "Used for the HttpClientBuilder that will be used to communicate with Ollama",
             "Timeout",
@@ -33,7 +33,7 @@ public final class OllamaEmbeddingConfigEntries extends ConfigEntries {
             false,
             ConfigTag.COMMON);
     public static final ConfigModule MAX_RETRIES = ConfigModule.of(
-            OllamaEmbedddingConfig.class,
+            OllamaEmbeddingConfig.class,
             "forage.ollama.embedding.model.max.retries",
             "Used for the HttpClientBuilder that will be used to communicate with Ollama",
             "Max retries",
@@ -42,7 +42,7 @@ public final class OllamaEmbeddingConfigEntries extends ConfigEntries {
             false,
             ConfigTag.COMMON);
     public static final ConfigModule LOG_REQUESTS = ConfigModule.of(
-            OllamaEmbedddingConfig.class,
+            OllamaEmbeddingConfig.class,
             "forage.ollama.embedding.model.log.requests",
             "Enable request logging",
             "Log Requests",
@@ -51,7 +51,7 @@ public final class OllamaEmbeddingConfigEntries extends ConfigEntries {
             false,
             ConfigTag.ADVANCED);
     public static final ConfigModule LOG_RESPONSES = ConfigModule.of(
-            OllamaEmbedddingConfig.class,
+            OllamaEmbeddingConfig.class,
             "forage.ollama.embedding.model.log.responses",
             "Enable response logging",
             "Log Responses",

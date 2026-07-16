@@ -121,6 +121,13 @@ public class TransactionConfiguration {
                             Arrays.stream(config.transactionExpiryScanners().split(","))
                                     .map(String::trim)
                                     .toList());
+            RecoveryEnvironmentBean recoveryEnvironmentBean =
+                    BeanPopulator.getDefaultInstance(RecoveryEnvironmentBean.class);
+            recoveryEnvironmentBean.setPeriodicRecoveryPeriod(config.transactionRecoveryPeriodSeconds());
+            recoveryEnvironmentBean.setRecoveryBackoffPeriod(config.transactionRecoveryBackoffSeconds());
+            // The recovery manager is driven in-process by ForageRecoveryService; never open the
+            // legacy recovery listener socket.
+            recoveryEnvironmentBean.setRecoveryListener(false);
             log.debug("Recovery configured successfully");
         } else {
             log.debug("Recovery disabled in configuration");

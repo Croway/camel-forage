@@ -53,9 +53,9 @@ import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
  * @since 1.0
  */
 @ForageBean(
-        value = "inMemoryStore",
+        value = "in-memory-store",
         components = {"camel-langchain4j-embeddings"},
-        description = "MariaDB with vector support")
+        description = "In-memory embedding store")
 public class InMemoryStoreProvider implements EmbeddingStoreProvider, EmbeddingModelAware {
     private static final Logger LOG = LoggerFactory.getLogger(InMemoryStoreProvider.class);
 
@@ -71,13 +71,18 @@ public class InMemoryStoreProvider implements EmbeddingStoreProvider, EmbeddingM
         final InMemoryStoreConfig config = new InMemoryStoreConfig(id);
 
         if (embeddingModel == null) {
-            LOG.trace("embeddingModel is mandatory for InMemoryStore creation");
+            LOG.error("embeddingModel is mandatory for InMemoryStore creation");
             return null;
         }
 
         String fileSource = config.fileSource();
-        Integer maxSize = config.maxSize();
-        Integer overlapSize = config.overlapSize();
+        if (fileSource == null) {
+            LOG.trace("InMemory embedding store is not created. The source file is not provided.");
+            return null;
+        }
+
+        int maxSize = config.maxSize() != null ? config.maxSize() : 300;
+        int overlapSize = config.overlapSize() != null ? config.overlapSize() : 30;
 
         LOG.trace(
                 "Creating InMemory embedding store from {} with configuration: maxSize={}, overlapSize={}",
@@ -88,7 +93,9 @@ public class InMemoryStoreProvider implements EmbeddingStoreProvider, EmbeddingM
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         try (InputStream stream = classLoader.getResourceAsStream(fileSource)) {
             if (stream == null) {
-                LOG.trace("InMemory embedding store is not created. The source file is not provided.");
+                LOG.warn(
+                        "InMemory embedding store is not created. The source file '{}' was not found on the classpath.",
+                        fileSource);
                 return null;
             }
 

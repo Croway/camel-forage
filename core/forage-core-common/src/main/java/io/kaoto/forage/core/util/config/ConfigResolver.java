@@ -12,11 +12,14 @@ import java.util.Set;
  *
  * <p>Implementations are registered with {@link ConfigStore#registerResolver(ConfigResolver)}
  * and are consulted in priority order (highest priority first) when resolving configuration values.
+ * Environment variables and system properties are checked by {@link ConfigStore} before the
+ * resolver chain, so resolvers only need to supply the configuration-file tier of the
+ * precedence contract.
  *
  * <p><strong>Built-in implementations:</strong>
  * <ul>
- *   <li>{@code DefaultConfigResolver} (priority 0) — resolves from environment variables,
- *       system properties, and properties files (plain Camel behavior)</li>
+ *   <li>{@code DefaultConfigResolver} (priority 0) — resolves from runtime-specific
+ *       configuration files (plain Camel, Spring Boot, Quarkus)</li>
  *   <li>{@code SpringConfigResolver} (priority 10) — wraps Spring {@code Environment.getProperty()},
  *       supporting profiles, YAML, placeholders, and Cloud Config</li>
  * </ul>

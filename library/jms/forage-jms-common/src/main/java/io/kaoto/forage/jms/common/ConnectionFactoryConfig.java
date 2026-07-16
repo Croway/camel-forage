@@ -30,7 +30,9 @@ import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACT
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_OBJECT_STORE_DIRECTORY;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_OBJECT_STORE_ID;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_OBJECT_STORE_TYPE;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_RECOVERY_BACKOFF_SECONDS;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_RECOVERY_MODULES;
+import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_RECOVERY_PERIOD_SECONDS;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_TIMEOUT_SECONDS;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.TRANSACTION_XA_RESOURCE_ORPHAN_FILTERS;
 import static io.kaoto.forage.jms.common.ConnectionFactoryConfigEntries.USERNAME;
@@ -186,6 +188,18 @@ public class ConnectionFactoryConfig extends AbstractConfig {
         return get(TRANSACTION_ENABLE_RECOVERY)
                 .map(Boolean::parseBoolean)
                 .orElse(Boolean.parseBoolean(TRANSACTION_ENABLE_RECOVERY.defaultValue()));
+    }
+
+    public int transactionRecoveryPeriodSeconds() {
+        return get(TRANSACTION_RECOVERY_PERIOD_SECONDS)
+                .map(Integer::parseInt)
+                .orElse(Integer.parseInt(TRANSACTION_RECOVERY_PERIOD_SECONDS.defaultValue()));
+    }
+
+    public int transactionRecoveryBackoffSeconds() {
+        return get(TRANSACTION_RECOVERY_BACKOFF_SECONDS)
+                .map(Integer::parseInt)
+                .orElse(Integer.parseInt(TRANSACTION_RECOVERY_BACKOFF_SECONDS.defaultValue()));
     }
 
     public String transactionRecoveryModules() {

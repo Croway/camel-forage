@@ -94,4 +94,30 @@ public final class PropertiesTemplateHelper {
         return createFromTemplate(
                 templateResource, Map.of(propertyPattern, Matcher.quoteReplacement(replacementValue)), afterAll);
     }
+
+    /**
+     * Copy a resource into the directory of an already-templated properties file, i.e. into the
+     * integration's working directory. Files passed to the run action as resources become Camel
+     * properties-component locations; files that must be picked up as camel-jbang run
+     * configuration (e.g. {@code application.properties} carrying runtime settings such as
+     * {@code quarkus.http.port}) have to sit in the working directory instead.
+     *
+     * @param anchor a temp-file resource previously returned by {@link #createFromTemplate}
+     * @param resource the resource to copy next to it (keeps its file name)
+     * @param afterAll cleanup callback to register temp file deletion
+     */
+    public static void copyIntoSameDirectory(Resource anchor, Resource resource, Consumer<AutoCloseable> afterAll) {
+        try {
+            Path targetFile = anchor.getFile()
+                    .toPath()
+                    .getParent()
+                    .resolve(resource.getFile().getName());
+            try (var inputStream = resource.getInputStream()) {
+                Files.copy(inputStream, targetFile);
+            }
+            afterAll.accept(() -> Files.deleteIfExists(targetFile));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to copy resource next to " + anchor.getLocation(), e);
+        }
+    }
 }

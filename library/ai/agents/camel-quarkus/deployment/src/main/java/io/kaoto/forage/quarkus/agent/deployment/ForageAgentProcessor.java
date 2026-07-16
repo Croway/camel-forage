@@ -14,6 +14,7 @@ import io.kaoto.forage.agent.AgentModuleDescriptor;
 import io.kaoto.forage.core.annotations.FactoryType;
 import io.kaoto.forage.core.annotations.FactoryVariant;
 import io.kaoto.forage.core.annotations.ForageFactory;
+import io.kaoto.forage.core.common.ForageQuarkusConfigSourceAdapter;
 import io.kaoto.forage.core.util.config.ConfigHelper;
 import io.kaoto.forage.core.util.config.ConfigStore;
 import io.kaoto.forage.quarkus.agent.ForageAgentRecorder;
@@ -48,6 +49,10 @@ public class ForageAgentProcessor {
         AgentConfig defaultConfig = DESCRIPTOR.createConfig(null);
         Set<String> prefixes = ConfigStore.getInstance()
                 .readPrefixes(defaultConfig, ConfigHelper.getNamedPropertyRegexp(DESCRIPTOR.modulePrefix()));
+
+        if (prefixes.isEmpty()) {
+            prefixes = ForageQuarkusConfigSourceAdapter.getDiscoveredPrefixes(DESCRIPTOR.modulePrefix());
+        }
 
         Map<String, AgentConfig> configs = prefixes.isEmpty()
                 ? Collections.singletonMap(DESCRIPTOR.defaultBeanName(), DESCRIPTOR.createConfig(null))

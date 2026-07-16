@@ -143,6 +143,28 @@ class PropertyFileLocatorTest {
     }
 
     @Test
+    void readPrefixesDoesNotInventPrefixesFromSimilarKeys() {
+        Properties props = new Properties();
+        // With unescaped dots and unanchored find(), "forage.(.+).jdbc..+" used to match
+        // "forage.foo.jdbcurl.x" and invent the prefix "foo"
+        props.setProperty("forage.foo.jdbcurl.x", "value");
+        props.setProperty("forage.ds1.jdbc.url", "jdbc:postgresql://localhost/db");
+
+        Set<String> prefixes = PropertyFileLocator.readPrefixes(props, ConfigHelper.getNamedPropertyRegexp("jdbc"));
+        assertThat(prefixes).containsExactly("ds1");
+    }
+
+    @Test
+    void readPrefixesDefaultRegexpMatchesOnlyExactModulePrefix() {
+        Properties props = new Properties();
+        props.setProperty("forage.jdbc.url", "jdbc:h2:mem:test");
+        props.setProperty("forage.jdbcx.url", "value");
+
+        Set<String> prefixes = PropertyFileLocator.readPrefixes(props, ConfigHelper.getDefaultPropertyRegexp("jdbc"));
+        assertThat(prefixes).containsExactly("jdbc");
+    }
+
+    @Test
     void readPrefixesReturnsEmptyForNoMatch() {
         Properties props = new Properties();
         props.setProperty("unrelated.key", "value");
@@ -161,10 +183,11 @@ class PropertyFileLocatorTest {
     @Test
     void builtInSourcesContainExpectedTypes() {
         List<PropertyFileSource> sources = PropertyFileLocator.getBuiltInSources();
-        assertThat(sources).hasSize(3);
+        assertThat(sources).hasSize(4);
         assertThat(sources.get(0)).isInstanceOf(WorkingDirectoryPropertyFileSource.class);
         assertThat(sources.get(1)).isInstanceOf(ConfigDirPropertyFileSource.class);
-        assertThat(sources.get(2)).isInstanceOf(ClassPathPropertyFileSource.class);
+        assertThat(sources.get(2)).isInstanceOf(HomeDirectoryPropertyFileSource.class);
+        assertThat(sources.get(3)).isInstanceOf(ClassPathPropertyFileSource.class);
     }
 
     @Test

@@ -31,6 +31,11 @@ class ForageTransactionManagementAutoConfigurationTest {
     }
 
     @Test
+    void recoveryShutdownBeanIsRegistered() {
+        contextRunner.run(ctx -> assertThat(ctx).hasSingleBean(ForageRecoveryShutdownBean.class));
+    }
+
+    @Test
     void userDefinedPolicyBeanIsNotOverridden() {
         SpringTransactionPolicy custom = new SpringTransactionPolicy();
         ApplicationContextRunner runnerWithOverride = new ApplicationContextRunner()

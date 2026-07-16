@@ -195,58 +195,6 @@ public final class AgentConfigEntries extends ConfigEntries {
             false,
             ConfigTag.COMMON);
 
-    // Redis memory
-    public static final ConfigModule MEMORY_REDIS_HOST = ConfigModule.of(
-            AgentConfig.class,
-            "forage.agent.memory.redis.host",
-            "Redis server hostname",
-            "Redis Host",
-            "localhost",
-            "string",
-            false,
-            ConfigTag.COMMON);
-
-    public static final ConfigModule MEMORY_REDIS_PORT = ConfigModule.of(
-            AgentConfig.class,
-            "forage.agent.memory.redis.port",
-            "Redis server port",
-            "Redis Port",
-            "6379",
-            "integer",
-            false,
-            ConfigTag.COMMON);
-
-    public static final ConfigModule MEMORY_REDIS_PASSWORD = ConfigModule.of(
-            AgentConfig.class,
-            "forage.agent.memory.redis.password",
-            "Redis authentication password",
-            "Redis Password",
-            null,
-            "password",
-            false,
-            ConfigTag.SECURITY);
-
-    // Infinispan memory
-    public static final ConfigModule MEMORY_INFINISPAN_SERVER_LIST = ConfigModule.of(
-            AgentConfig.class,
-            "forage.agent.memory.infinispan.server-list",
-            "Comma-separated list of Infinispan servers",
-            "Server List",
-            "localhost:11222",
-            "string",
-            false,
-            ConfigTag.COMMON);
-
-    public static final ConfigModule MEMORY_INFINISPAN_CACHE_NAME = ConfigModule.of(
-            AgentConfig.class,
-            "forage.agent.memory.infinispan.cache-name",
-            "Infinispan cache name for storing messages",
-            "Cache Name",
-            "chat-memory",
-            "string",
-            false,
-            ConfigTag.COMMON);
-
     // EMBEDDING STORE
 
     public static final ConfigModule EMBEDDING_STORE_KIND = ConfigModule.ofBeanName(
@@ -265,7 +213,7 @@ public final class AgentConfigEntries extends ConfigEntries {
             "File source",
             null,
             "string",
-            true,
+            false,
             ConfigTag.COMMON);
 
     public static final ConfigModule EMBEDDING_STORE_MAX_SIZE = ConfigModule.of(
@@ -379,11 +327,6 @@ public final class AgentConfigEntries extends ConfigEntries {
                 LOG_RESPONSES,
                 TIMEOUT,
                 MEMORY_MAX_MESSAGES,
-                MEMORY_REDIS_HOST,
-                MEMORY_REDIS_PORT,
-                MEMORY_REDIS_PASSWORD,
-                MEMORY_INFINISPAN_SERVER_LIST,
-                MEMORY_INFINISPAN_CACHE_NAME,
                 EMBEDDING_STORE_KIND,
                 EMBEDDING_STORE_FILE_SOURCE,
                 EMBEDDING_STORE_MAX_SIZE,

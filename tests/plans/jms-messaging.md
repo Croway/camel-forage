@@ -206,6 +206,10 @@ cat > "${PROJECT_DIR}/route.camel.yaml" <<'ROUTE'
         repeatCount: 3
         period: "5000"
       steps:
+        # sends must run inside a JTA transaction with XA: unenlisted sends on the
+        # XA pool are silently discarded by brokers such as IBM MQ (see #427)
+        - transacted:
+            ref: PROPAGATION_REQUIRED
         - setBody:
             simple:
               expression: "Transactional message ${exchangeProperty.CamelTimerCounter}"
@@ -227,7 +231,8 @@ cat > "${PROJECT_DIR}/route.camel.yaml" <<'ROUTE'
       parameters:
         destinationName: input.queue
         destinationType: queue
-        transacted: "true"
+        # transacted stays false with XA: the JTA transaction manager wired into the
+        # JMS component drives the transaction (see #427)
         cacheLevelName: CACHE_NONE
       steps:
         - transacted:

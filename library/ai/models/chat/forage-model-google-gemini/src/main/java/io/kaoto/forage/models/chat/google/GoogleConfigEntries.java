@@ -50,8 +50,44 @@ public final class GoogleConfigEntries extends ConfigEntries {
             "boolean",
             false,
             ConfigTag.ADVANCED);
+    public static final ConfigModule MAX_OUTPUT_TOKENS = ConfigModule.of(
+            GoogleConfig.class,
+            "forage.google.max.output.tokens",
+            "Maximum number of output tokens",
+            "Max Output Tokens",
+            null,
+            "integer",
+            false,
+            ConfigTag.ADVANCED);
+    public static final ConfigModule TOP_P = ConfigModule.of(
+            GoogleConfig.class,
+            "forage.google.top.p",
+            "Top-p (nucleus sampling) parameter (0.0-1.0)",
+            "Top P",
+            null,
+            "double",
+            false,
+            ConfigTag.ADVANCED);
+    public static final ConfigModule TOP_K = ConfigModule.of(
+            GoogleConfig.class,
+            "forage.google.top.k",
+            "Top-k sampling parameter",
+            "Top K",
+            null,
+            "integer",
+            false,
+            ConfigTag.ADVANCED);
 
     static {
-        initModules(GoogleConfigEntries.class, API_KEY, MODEL_NAME, TEMPERATURE, TIMEOUT, LOG_REQUESTS);
+        initModules(
+                GoogleConfigEntries.class,
+                API_KEY,
+                MODEL_NAME,
+                TEMPERATURE,
+                TIMEOUT,
+                LOG_REQUESTS,
+                MAX_OUTPUT_TOKENS,
+                TOP_P,
+                TOP_K);
     }
 }

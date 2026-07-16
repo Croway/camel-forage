@@ -115,13 +115,12 @@ public class AnthropicConfig extends AbstractConfig {
      *
      * <p><strong>Common Model Names:</strong>
      * <ul>
-     *   <li><strong>claude-3-haiku-20240307</strong> - Fast and efficient model (default)</li>
-     *   <li><strong>claude-3-sonnet-20240229</strong> - Balanced performance and capabilities</li>
-     *   <li><strong>claude-3-opus-20240229</strong> - Most capable model</li>
-     *   <li><strong>claude-3-5-sonnet-20241022</strong> - Latest Sonnet model</li>
+     *   <li><strong>claude-sonnet-4-20250514</strong> - Balanced performance and capabilities (default)</li>
+     *   <li><strong>claude-haiku-4-5-20251001</strong> - Fast and efficient model</li>
+     *   <li><strong>claude-opus-4-20250115</strong> - Most capable model</li>
      * </ul>
      *
-     * @return the model name, defaults to "claude-3-haiku-20240307" if not configured
+     * @return the model name, defaults to "claude-sonnet-4-20250514" if not configured
      */
     public String modelName() {
         return get(MODEL_NAME).orElse(MODEL_NAME.defaultValue());

@@ -37,36 +37,36 @@ public final class WeaviateConfigEntries extends ConfigEntries {
             "forage.weaviate.port",
             "Weaviate server port number",
             "Port",
-            null,
+            "8080",
             "integer",
-            true,
+            false,
             ConfigTag.COMMON);
     public static final ConfigModule USE_GRPC_FOR_INSERTS = ConfigModule.of(
             WeaviateConfig.class,
             "forage.weaviate.use.grpc.for.inserts",
             "Use gRPC protocol for insert operations",
             "Use gRPC for Inserts",
-            null,
+            "false",
             "boolean",
-            true,
+            false,
             ConfigTag.ADVANCED);
     public static final ConfigModule SECURED_GRPC = ConfigModule.of(
             WeaviateConfig.class,
             "forage.weaviate.secured.grpc",
             "Enable secured gRPC connections",
             "Secured gRPC",
-            null,
+            "false",
             "boolean",
-            true,
+            false,
             ConfigTag.SECURITY);
     public static final ConfigModule GRPC_PORT = ConfigModule.of(
             WeaviateConfig.class,
             "forage.weaviate.grpc.port",
             "gRPC server port number",
             "gRPC Port",
-            null,
+            "50051",
             "integer",
-            true,
+            false,
             ConfigTag.ADVANCED);
     public static final ConfigModule OBJECT_CLASS = ConfigModule.of(
             WeaviateConfig.class,

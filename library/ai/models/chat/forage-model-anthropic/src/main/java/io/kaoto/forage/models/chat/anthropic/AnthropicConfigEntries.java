@@ -17,9 +17,9 @@ public final class AnthropicConfigEntries extends ConfigEntries {
     public static final ConfigModule MODEL_NAME = ConfigModule.of(
             AnthropicConfig.class,
             "forage.anthropic.model.name",
-            "Claude model name (e.g., claude-3-haiku-20240307, claude-3-sonnet-20240229, claude-3-opus-20240229)",
+            "Claude model name (e.g., claude-sonnet-4-20250514, claude-haiku-4-5-20251001, claude-opus-4-20250115)",
             "Model Name",
-            "claude-3-haiku-20240307",
+            "claude-sonnet-4-20250514",
             "string",
             false,
             ConfigTag.COMMON);

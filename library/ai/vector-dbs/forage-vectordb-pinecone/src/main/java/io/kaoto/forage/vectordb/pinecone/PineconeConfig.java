@@ -2,10 +2,10 @@ package io.kaoto.forage.vectordb.pinecone;
 
 import org.openapitools.db_control.client.model.DeletionProtection;
 import io.kaoto.forage.core.util.config.AbstractConfig;
-import io.kaoto.forage.core.util.config.MissingConfigException;
 
 import static io.kaoto.forage.vectordb.pinecone.PineconeConfigEntries.API_KEY;
 import static io.kaoto.forage.vectordb.pinecone.PineconeConfigEntries.CLOUD;
+import static io.kaoto.forage.vectordb.pinecone.PineconeConfigEntries.CREATE_INDEX;
 import static io.kaoto.forage.vectordb.pinecone.PineconeConfigEntries.DELETION_PROTECTION;
 import static io.kaoto.forage.vectordb.pinecone.PineconeConfigEntries.DIMENSION;
 import static io.kaoto.forage.vectordb.pinecone.PineconeConfigEntries.INDEX;
@@ -44,18 +44,20 @@ public class PineconeConfig extends AbstractConfig {
         return get(METADATA_TEXT_KEY).orElse("text_segment");
     }
 
+    public boolean createIndex() {
+        return get(CREATE_INDEX).map(Boolean::parseBoolean).orElse(false);
+    }
+
     public Integer dimension() {
-        return get(DIMENSION)
-                .map(Integer::parseInt)
-                .orElseThrow(() -> new MissingConfigException("Missing Pinecone dimension"));
+        return get(DIMENSION).map(Integer::parseInt).orElse(null);
     }
 
     public String cloud() {
-        return getRequired(CLOUD, "Missing Pinecone cloud");
+        return get(CLOUD).orElse(null);
     }
 
     public String region() {
-        return getRequired(REGION, "Missing Pinecone region");
+        return get(REGION).orElse(null);
     }
 
     public DeletionProtection deletionProtection() {

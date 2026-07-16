@@ -1,7 +1,6 @@
 package io.kaoto.forage.vectordb.qdrant;
 
 import io.kaoto.forage.core.util.config.AbstractConfig;
-import io.kaoto.forage.core.util.config.MissingConfigException;
 
 import static io.kaoto.forage.vectordb.qdrant.QdrantConfigEntries.API_KEY;
 import static io.kaoto.forage.vectordb.qdrant.QdrantConfigEntries.COLLECTION_NAME;
@@ -34,7 +33,7 @@ public class QdrantConfig extends AbstractConfig {
     }
 
     public Integer port() {
-        return get(PORT).map(Integer::parseInt).orElseThrow(() -> new MissingConfigException("Missing Qdrant port"));
+        return get(PORT).map(Integer::parseInt).orElse(6334);
     }
 
     public Boolean useTls() {

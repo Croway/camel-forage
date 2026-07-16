@@ -39,6 +39,12 @@ public abstract class ForageTransactionManagementAutoConfiguration {
         return transactionManager;
     }
 
+    @ConditionalOnMissingBean
+    @Bean
+    public ForageRecoveryShutdownBean forageRecoveryShutdownBean() {
+        return new ForageRecoveryShutdownBean();
+    }
+
     @ConditionalOnMissingBean(name = "PROPAGATION_REQUIRED")
     @Bean("PROPAGATION_REQUIRED")
     public SpringTransactionPolicy propagationRequired(JtaTransactionManager jtaTransactionManager) {

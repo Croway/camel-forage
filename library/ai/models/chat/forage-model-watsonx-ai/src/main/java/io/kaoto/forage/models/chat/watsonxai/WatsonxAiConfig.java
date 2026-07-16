@@ -7,16 +7,11 @@ import io.kaoto.forage.core.util.config.AbstractConfig;
 import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.API_KEY;
 import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.LOG_REQUESTS_AND_RESPONSES;
 import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.MAX_NEW_TOKENS;
-import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.MAX_RETRIES;
-import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.MIN_NEW_TOKENS;
 import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.MODEL_NAME;
 import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.PROJECT_ID;
 import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.RANDOM_SEED;
-import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.REPETITION_PENALTY;
 import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.STOP_SEQUENCES;
 import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.TEMPERATURE;
-import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.TIMEOUT;
-import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.TOP_K;
 import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.TOP_P;
 import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.URL;
 
@@ -40,13 +35,10 @@ import static io.kaoto.forage.models.chat.watsonxai.WatsonxAiConfigEntries.URL;
  *   <li><strong>WATSONXAI_TEMPERATURE</strong> - Controls randomness (0.0-2.0)</li>
  *   <li><strong>WATSONXAI_MAX_NEW_TOKENS</strong> - Maximum new tokens in response</li>
  *   <li><strong>WATSONXAI_TOP_P</strong> - Nucleus sampling parameter (0.0-1.0)</li>
- *   <li><strong>WATSONXAI_TOP_K</strong> - Top-k sampling parameter</li>
  *   <li><strong>WATSONXAI_RANDOM_SEED</strong> - Random seed for reproducible results</li>
  *   <li><strong>WATSONXAI_REPETITION_PENALTY</strong> - Penalty for repetition (1.0-2.0)</li>
- *   <li><strong>WATSONXAI_MIN_NEW_TOKENS</strong> - Minimum new tokens in response</li>
  *   <li><strong>WATSONXAI_STOP_SEQUENCES</strong> - Stop sequences for response generation</li>
  *   <li><strong>WATSONXAI_TIMEOUT</strong> - Request timeout in seconds</li>
- *   <li><strong>WATSONXAI_MAX_RETRIES</strong> - Maximum retry attempts</li>
  *   <li><strong>WATSONXAI_LOG_REQUESTS_AND_RESPONSES</strong> - Enable request/response logging</li>
  * </ul>
  *
@@ -229,43 +221,12 @@ public class WatsonxAiConfig extends AbstractConfig {
     }
 
     /**
-     * Returns the top-k sampling parameter.
-     *
-     * <p>Limits the number of highest probability tokens to consider during generation.
-     *
-     * @return the top-k value, or null if not configured
-     */
-    public Integer topK() {
-        return get(TOP_K).map(Integer::parseInt).orElse(null);
-    }
-
-    /**
      * Returns the random seed for deterministic response generation.
      *
      * @return the random seed value, or null if not configured
      */
     public Integer randomSeed() {
         return get(RANDOM_SEED).map(Integer::parseInt).orElse(null);
-    }
-
-    /**
-     * Returns the repetition penalty for discouraging repetitive content.
-     *
-     * <p><strong>Value Range:</strong> 1.0 to 2.0
-     *
-     * @return the repetition penalty value, or null if not configured
-     */
-    public Double repetitionPenalty() {
-        return get(REPETITION_PENALTY).map(Double::parseDouble).orElse(null);
-    }
-
-    /**
-     * Returns the minimum number of new tokens for model responses.
-     *
-     * @return the minimum new tokens, or null if not configured
-     */
-    public Integer minNewTokens() {
-        return get(MIN_NEW_TOKENS).map(Integer::parseInt).orElse(null);
     }
 
     /**
@@ -282,24 +243,6 @@ public class WatsonxAiConfig extends AbstractConfig {
                         .filter(s -> !s.isEmpty())
                         .toList())
                 .orElse(null);
-    }
-
-    /**
-     * Returns the request timeout duration in seconds.
-     *
-     * @return the timeout in seconds, or null if not configured
-     */
-    public Integer timeoutSeconds() {
-        return get(TIMEOUT).map(Integer::parseInt).orElse(null);
-    }
-
-    /**
-     * Returns the maximum number of retry attempts for failed requests.
-     *
-     * @return the maximum retry attempts, or null if not configured
-     */
-    public Integer maxRetries() {
-        return get(MAX_RETRIES).map(Integer::parseInt).orElse(null);
     }
 
     /**

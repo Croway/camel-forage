@@ -15,10 +15,6 @@ import org.citrusframework.junit.jupiter.CitrusSupport;
 import org.citrusframework.spi.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.rabbitmq.RabbitMQContainer;
-import org.testcontainers.utility.DockerImageName;
 import io.kaoto.forage.integration.tests.DisableOnCamelMain;
 import io.kaoto.forage.integration.tests.DisableOnQuarkus;
 import io.kaoto.forage.integration.tests.ForageIntegrationTest;
@@ -50,7 +46,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>This test only runs with Spring Boot runtime, as actuator endpoints are Spring Boot specific.
  */
 @CitrusSupport
-@Testcontainers
 @ExtendWith({IntegrationTestSetupExtension.class, RuntimeConditionExtension.class})
 @DisableOnQuarkus(reason = "Actuator health and metrics endpoints are Spring Boot specific")
 @DisableOnCamelMain(reason = "Actuator health and metrics endpoints are Spring Boot specific")
@@ -58,10 +53,6 @@ public class SpringRabbitMQHealthMetricsTest implements ForageIntegrationTest {
     private static final Logger LOG = LoggerFactory.getLogger(SpringRabbitMQHealthMetricsTest.class);
 
     public static final String INTEGRATION_NAME = "spring-rabbitmq-health-metrics";
-
-    @Container
-    static RabbitMQContainer rabbitmq =
-            new RabbitMQContainer(DockerImageName.parse("rabbitmq:3.13-management")).withExposedPorts(5672, 15672);
 
     /** Random port for actuator endpoints, assigned in runBeforeAll */
     private static int actuatorPort;
@@ -80,7 +71,8 @@ public class SpringRabbitMQHealthMetricsTest implements ForageIntegrationTest {
                 classResource("forage-spring-rabbitmq.properties.template"),
                 Map.of(
                         "forage\\.rabbitmq\\.port=.*",
-                        Matcher.quoteReplacement("forage.rabbitmq.port=" + rabbitmq.getMappedPort(5672)),
+                        Matcher.quoteReplacement("forage.rabbitmq.port="
+                                + MessagingContainers.rabbitmq().getMappedPort(5672)),
                         "server\\.port=.*",
                         Matcher.quoteReplacement("server.port=" + actuatorPort)),
                 afterAll);

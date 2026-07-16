@@ -136,11 +136,11 @@ public class MilvusConfig extends AbstractConfig {
     }
 
     public String username() {
-        return get(USERNAME).orElse("");
+        return get(USERNAME).orElse(null);
     }
 
     public String password() {
-        return get(PASSWORD).orElse("");
+        return get(PASSWORD).orElse(null);
     }
 
     public ConsistencyLevelEnum consistencyLevel() {
@@ -158,7 +158,7 @@ public class MilvusConfig extends AbstractConfig {
     }
 
     public String databaseName() {
-        return getRequired(DATABASE_NAME, "Missing Milvus database name");
+        return get(DATABASE_NAME).orElse(null);
     }
 
     public String idFieldName() {
