@@ -78,11 +78,11 @@ public class DefaultRetrievalAugmentorProvider
         Double minScore = config.minScore();
 
         if (embeddingModel == null) {
-            LOG.trace("RAG is not configured, because no embedding model is provided");
+            LOG.error("RAG is not configured, because no embedding model is provided");
             return null;
         }
         if (embeddingStore == null) {
-            LOG.trace("RAG is not configured, because no embedding store is provided");
+            LOG.error("RAG is not configured, because no embedding store is provided");
             return null;
         }
 

@@ -109,6 +109,14 @@ public final class AgentCreator {
             // Only create embedding/RAG pipeline when embedding properties are configured
             if (config.hasEmbeddingConfig()) {
                 EmbeddingModel embeddingModel = createEmbeddingModel(config, modelKind, name, classLoader);
+                if (embeddingModel == null) {
+                    throw new IllegalStateException(
+                            "Embedding configuration is present for agent '%s' but no EmbeddingModelProvider was found for kind '%s'. "
+                                            .formatted(name, modelKind)
+                                    + "Add the corresponding forage embedding model dependency to the classpath "
+                                    + "(e.g. forage-model-embeddings-ollama, forage-model-embeddings-openai).");
+                }
+
                 EmbeddingStore<TextSegment> embeddingStore =
                         createEmbeddingStore(config, modelKind, name, classLoader, embeddingModel);
 
@@ -117,6 +125,12 @@ public final class AgentCreator {
 
                 if (retrievalAugmentor != null) {
                     agentConfiguration.withRetrievalAugmentor(retrievalAugmentor);
+                } else {
+                    LOG.error(
+                            "RAG pipeline could not be assembled for agent '{}': "
+                                    + "embedding model was created but retrieval augmentor is null. "
+                                    + "Ensure an EmbeddingStoreProvider and RetrievalAugmentorProvider are on the classpath.",
+                            name);
                 }
             }
 
@@ -268,7 +282,16 @@ public final class AgentCreator {
             }
         }
 
-        LOG.debug("No embedding model provider found for kind: {}", modelKind);
+        String availableKinds = providers.stream()
+                .map(p -> p.type().getAnnotation(ForageBean.class))
+                .filter(a -> a != null)
+                .map(ForageBean::value)
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("none");
+        LOG.error(
+                "No embedding model provider found for kind '{}'. Available embedding providers: {}",
+                modelKind,
+                availableKinds);
         return null;
     }
 
@@ -311,7 +334,7 @@ public final class AgentCreator {
             }
         }
 
-        LOG.debug("No embedding store model provider found for kind: {}", modelKind);
+        LOG.error("No embedding store provider found on the classpath for agent '{}'", agentName);
         return null;
     }
 
@@ -356,7 +379,7 @@ public final class AgentCreator {
             }
         }
 
-        LOG.debug("No retrieval augmentor provider found for kind: {}", modelKind);
+        LOG.error("No retrieval augmentor provider found on the classpath for agent '{}'", agentName);
         return null;
     }
 
