@@ -82,7 +82,7 @@ public final class MilvusConfigEntries extends ConfigEntries {
             "forage.milvus.username",
             "Username for authentication",
             "Username",
-            "",
+            null,
             "string",
             false,
             ConfigTag.SECURITY);
@@ -91,7 +91,7 @@ public final class MilvusConfigEntries extends ConfigEntries {
             "forage.milvus.password",
             "Password for authentication",
             "Password",
-            "",
+            null,
             "password",
             false,
             ConfigTag.SECURITY);
@@ -129,7 +129,7 @@ public final class MilvusConfigEntries extends ConfigEntries {
             "Database Name",
             null,
             "string",
-            true,
+            false,
             ConfigTag.COMMON);
     public static final ConfigModule ID_FIELD_NAME = ConfigModule.of(
             MilvusConfig.class,

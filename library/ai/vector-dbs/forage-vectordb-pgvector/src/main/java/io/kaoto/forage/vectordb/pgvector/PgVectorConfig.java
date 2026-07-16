@@ -37,7 +37,7 @@ public class PgVectorConfig extends AbstractConfig {
     }
 
     public Integer port() {
-        return get(PORT).map(Integer::parseInt).orElseThrow(() -> new MissingConfigException("Missing PGVector port"));
+        return get(PORT).map(Integer::parseInt).orElse(5432);
     }
 
     public String user() {

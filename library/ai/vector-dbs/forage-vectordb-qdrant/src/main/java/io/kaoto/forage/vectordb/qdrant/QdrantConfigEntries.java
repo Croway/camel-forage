@@ -28,9 +28,9 @@ public final class QdrantConfigEntries extends ConfigEntries {
             "forage.qdrant.port",
             "Qdrant server port number",
             "Port",
-            null,
+            "6334",
             "integer",
-            true,
+            false,
             ConfigTag.COMMON);
     public static final ConfigModule USE_TLS = ConfigModule.of(
             QdrantConfig.class,

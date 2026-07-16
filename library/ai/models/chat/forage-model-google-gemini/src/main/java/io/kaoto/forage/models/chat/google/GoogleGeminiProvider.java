@@ -38,6 +38,16 @@ public class GoogleGeminiProvider implements ModelProvider {
             builder.timeout(ofSeconds(timeout));
         }
 
+        if (config.maxOutputTokens() != null) {
+            builder.maxOutputTokens(config.maxOutputTokens());
+        }
+        if (config.topP() != null) {
+            builder.topP(config.topP());
+        }
+        if (config.topK() != null) {
+            builder.topK(config.topK());
+        }
+
         Boolean logRequests = config.logRequestsAndResponses();
         if (logRequests != null) {
             builder.logRequestsAndResponses(logRequests);
