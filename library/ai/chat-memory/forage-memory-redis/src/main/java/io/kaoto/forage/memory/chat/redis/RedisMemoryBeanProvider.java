@@ -108,30 +108,28 @@ public class RedisMemoryBeanProvider implements ChatMemoryBeanProvider, MaxMessa
                 config.port(),
                 config.database());
 
-        try {
-            JedisPoolConfig poolConfig = new JedisPoolConfig();
-            poolConfig.setMaxTotal(config.poolMaxTotal());
-            poolConfig.setMaxIdle(config.poolMaxIdle());
-            poolConfig.setMinIdle(config.poolMinIdle());
-            poolConfig.setTestOnBorrow(config.poolTestOnBorrow());
-            poolConfig.setTestOnReturn(config.poolTestOnReturn());
-            poolConfig.setTestWhileIdle(config.poolTestWhileIdle());
-            poolConfig.setMaxWait(Duration.ofMillis(config.poolMaxWaitMillis()));
+        JedisPoolConfig poolConfig = new JedisPoolConfig();
+        poolConfig.setMaxTotal(config.poolMaxTotal());
+        poolConfig.setMaxIdle(config.poolMaxIdle());
+        poolConfig.setMinIdle(config.poolMinIdle());
+        poolConfig.setTestOnBorrow(config.poolTestOnBorrow());
+        poolConfig.setTestOnReturn(config.poolTestOnReturn());
+        poolConfig.setTestWhileIdle(config.poolTestWhileIdle());
+        poolConfig.setMaxWait(Duration.ofMillis(config.poolMaxWaitMillis()));
 
-            JedisPool pool = new JedisPool(
-                    poolConfig, config.host(), config.port(), config.timeout(), config.password(), config.database());
+        JedisPool pool = new JedisPool(
+                poolConfig, config.host(), config.port(), config.timeout(), config.password(), config.database());
 
-            try (var jedis = pool.getResource()) {
-                jedis.ping();
-                LOG.info(
-                        "Successfully connected to Redis at {}:{}/{}", config.host(), config.port(), config.database());
-            }
-
-            return pool;
+        try (var jedis = pool.getResource()) {
+            jedis.ping();
+            LOG.info("Successfully connected to Redis at {}:{}/{}", config.host(), config.port(), config.database());
         } catch (JedisException e) {
+            pool.close();
             LOG.error("Failed to initialize Redis connection pool for chat memory", e);
             throw new RuntimeException("Failed to connect to Redis for chat memory storage", e);
         }
+
+        return pool;
     }
 
     public void close() {
