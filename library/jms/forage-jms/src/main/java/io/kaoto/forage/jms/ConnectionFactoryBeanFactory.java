@@ -186,8 +186,13 @@ public class ConnectionFactoryBeanFactory implements BeanFactory {
                 ServiceLoaderHelper.findProviderByClassName(providers, connectionFactoryProviderClass);
 
         if (connectionFactoryProvider == null) {
-            LOG.warn("ConnectionFactory {} has no provider for {}", name, connectionFactoryProviderClass);
-            return null;
+            String available = providers.stream()
+                    .map(p -> p.type().getName())
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("none");
+            throw new IllegalStateException(
+                    "No ConnectionFactoryProvider found for kind '%s' (expected %s). Available providers: %s"
+                            .formatted(connectionFactoryConfig.jmsKind(), connectionFactoryProviderClass, available));
         }
 
         return doCreateConnectionFactory(connectionFactoryProvider, name);

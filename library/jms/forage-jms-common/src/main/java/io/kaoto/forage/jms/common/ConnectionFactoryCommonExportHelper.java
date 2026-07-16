@@ -15,6 +15,11 @@ public class ConnectionFactoryCommonExportHelper {
     }
 
     public static String transformJmsKindIntoProviderClass(String jmsKind) {
-        return JMS_KIND_TO_PROVIDER_CLASS.getOrDefault(jmsKind.toLowerCase(), "io.kaoto.forage.jms.artemis.ArtemisJms");
+        String providerClass = JMS_KIND_TO_PROVIDER_CLASS.get(jmsKind.toLowerCase());
+        if (providerClass == null) {
+            throw new IllegalArgumentException(
+                    "Unknown JMS kind '%s'. Valid options: %s".formatted(jmsKind, JMS_KIND_TO_PROVIDER_CLASS.keySet()));
+        }
+        return providerClass;
     }
 }
