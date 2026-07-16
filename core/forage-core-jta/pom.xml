@@ -29,6 +29,17 @@
             <version>${jboss-transaction-spi.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>io.agroal</groupId>
+            <artifactId>agroal-api</artifactId>
+            <version>${agroal.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.agroal</groupId>
+            <artifactId>agroal-pool</artifactId>
+            <version>${agroal.version}</version>
+        </dependency>
+
         <!-- Needed at runtime by narayana-jta (declares it provided) -->
         <dependency>
             <groupId>org.jboss.logging</groupId>
