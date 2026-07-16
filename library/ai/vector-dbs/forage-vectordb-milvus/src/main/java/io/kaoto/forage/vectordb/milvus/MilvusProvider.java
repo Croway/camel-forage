@@ -76,6 +76,7 @@ public class MilvusProvider implements EmbeddingStoreProvider {
                 .consistencyLevel(config.consistencyLevel())
                 .retrieveEmbeddingsOnSearch(config.retrieveEmbeddingsOnSearch())
                 .autoFlushOnInsert(config.autoFlushOnInsert())
+                .databaseName(config.databaseName())
                 .build();
     }
 }

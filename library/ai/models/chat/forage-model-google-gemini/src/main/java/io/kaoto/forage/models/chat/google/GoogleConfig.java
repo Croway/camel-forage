@@ -4,9 +4,12 @@ import io.kaoto.forage.core.util.config.AbstractConfig;
 
 import static io.kaoto.forage.models.chat.google.GoogleConfigEntries.API_KEY;
 import static io.kaoto.forage.models.chat.google.GoogleConfigEntries.LOG_REQUESTS;
+import static io.kaoto.forage.models.chat.google.GoogleConfigEntries.MAX_OUTPUT_TOKENS;
 import static io.kaoto.forage.models.chat.google.GoogleConfigEntries.MODEL_NAME;
 import static io.kaoto.forage.models.chat.google.GoogleConfigEntries.TEMPERATURE;
 import static io.kaoto.forage.models.chat.google.GoogleConfigEntries.TIMEOUT;
+import static io.kaoto.forage.models.chat.google.GoogleConfigEntries.TOP_K;
+import static io.kaoto.forage.models.chat.google.GoogleConfigEntries.TOP_P;
 
 /**
  * Configuration class for Google Gemini AI model integration in the Forage framework.
@@ -155,5 +158,17 @@ public class GoogleConfig extends AbstractConfig {
 
     public Boolean logRequestsAndResponses() {
         return get(LOG_REQUESTS).map(Boolean::parseBoolean).orElse(null);
+    }
+
+    public Integer maxOutputTokens() {
+        return get(MAX_OUTPUT_TOKENS).map(Integer::parseInt).orElse(null);
+    }
+
+    public Double topP() {
+        return get(TOP_P).map(Double::parseDouble).orElse(null);
+    }
+
+    public Integer topK() {
+        return get(TOP_K).map(Integer::parseInt).orElse(null);
     }
 }

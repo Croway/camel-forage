@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import io.kaoto.forage.core.util.config.AbstractConfig;
-import io.kaoto.forage.core.util.config.MissingConfigException;
 
 import static io.kaoto.forage.vectordb.weaviate.WeaviateConfigEntries.API_KEY;
 import static io.kaoto.forage.vectordb.weaviate.WeaviateConfigEntries.AVOID_DUPS;
@@ -48,25 +47,19 @@ public class WeaviateConfig extends AbstractConfig {
     }
 
     public Integer port() {
-        return get(PORT).map(Integer::parseInt).orElseThrow(() -> new MissingConfigException("Missing Weaviate port"));
+        return get(PORT).map(Integer::parseInt).orElse(8080);
     }
 
     public Boolean useGrpcForInserts() {
-        return get(USE_GRPC_FOR_INSERTS)
-                .map(Boolean::parseBoolean)
-                .orElseThrow(() -> new MissingConfigException("Missing Weaviate use grpc for inserts"));
+        return get(USE_GRPC_FOR_INSERTS).map(Boolean::parseBoolean).orElse(false);
     }
 
     public Boolean securedGrpc() {
-        return get(SECURED_GRPC)
-                .map(Boolean::parseBoolean)
-                .orElseThrow(() -> new MissingConfigException("Missing Weaviate secured grpc"));
+        return get(SECURED_GRPC).map(Boolean::parseBoolean).orElse(false);
     }
 
     public Integer grpcPort() {
-        return get(GRPC_PORT)
-                .map(Integer::parseInt)
-                .orElseThrow(() -> new MissingConfigException("Missing Weaviate grpc port"));
+        return get(GRPC_PORT).map(Integer::parseInt).orElse(50051);
     }
 
     public String objectClass() {
