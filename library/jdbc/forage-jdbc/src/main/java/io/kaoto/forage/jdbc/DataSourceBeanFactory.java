@@ -264,8 +264,13 @@ public class DataSourceBeanFactory implements BeanFactory {
                 ServiceLoaderHelper.findProviderByClassName(providers, dataSourceProviderClass);
 
         if (dataSourceProvider == null) {
-            LOG.warn("DataSource {} has no provider for {}", name, dataSourceProviderClass);
-            return null;
+            String available = providers.stream()
+                    .map(p -> p.type().getName())
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("none");
+            throw new IllegalStateException(
+                    "No DataSourceProvider found for kind '%s' (expected %s). Available providers: %s"
+                            .formatted(dataSourceFactoryConfig.dbKind(), dataSourceProviderClass, available));
         }
 
         return doCreateDataSource(dataSourceProvider, name);

@@ -10,7 +10,7 @@ public final class DataSourceCommonExportHelper {
      *
      * <p>Examples:
      * <ul>
-     *     <li>postgresql -&gt; io.kaoto.forage.jdbc.postgres.PostgresJdbc</li>
+     *     <li>postgresql -&gt; io.kaoto.forage.jdbc.postgresql.PostgresqlJdbc</li>
      *     <li>mysql -&gt; io.kaoto.forage.jdbc.mysql.MysqlJdbc</li>
      * </ul>
      */
