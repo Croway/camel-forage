@@ -71,7 +71,7 @@ public class InMemoryStoreProvider implements EmbeddingStoreProvider, EmbeddingM
         final InMemoryStoreConfig config = new InMemoryStoreConfig(id);
 
         if (embeddingModel == null) {
-            LOG.trace("embeddingModel is mandatory for InMemoryStore creation");
+            LOG.error("embeddingModel is mandatory for InMemoryStore creation");
             return null;
         }
 
@@ -88,7 +88,9 @@ public class InMemoryStoreProvider implements EmbeddingStoreProvider, EmbeddingM
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         try (InputStream stream = classLoader.getResourceAsStream(fileSource)) {
             if (stream == null) {
-                LOG.trace("InMemory embedding store is not created. The source file is not provided.");
+                LOG.warn(
+                        "InMemory embedding store is not created. The source file '{}' was not found on the classpath.",
+                        fileSource);
                 return null;
             }
 

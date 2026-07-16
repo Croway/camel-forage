@@ -76,34 +76,29 @@ public class AgentBeanFactory implements BeanFactory {
     private void configureMultiAgent(Set<String> prefixes, ClassLoader cl) {
         for (String agentName : prefixes) {
             if (camelContext.getRegistry().lookupByNameAndType(agentName, Agent.class) == null) {
-                try {
-                    AgentConfig agentConfig = new AgentConfig(agentName);
-                    Agent agent = AgentCreator.createAgent(agentConfig, agentName, cl);
-                    if (agent != null) {
-                        camelContext.getRegistry().bind(agentName, agent);
-                        LOG.info("Registered Agent bean with name: {}", agentName);
-                    }
-                } catch (Exception e) {
-                    LOG.warn("Failed to create agent '{}': {}", agentName, e.getMessage());
-                    LOG.debug("Agent creation exception details", e);
+                AgentConfig agentConfig = new AgentConfig(agentName);
+                Agent agent = AgentCreator.createAgent(agentConfig, agentName, cl);
+                if (agent == null) {
+                    throw new IllegalStateException(
+                            "Failed to create agent '%s': AgentCreator returned null. ".formatted(agentName)
+                                    + "Check that the model kind, provider dependency, and configuration are correct.");
                 }
+                camelContext.getRegistry().bind(agentName, agent);
+                LOG.info("Registered Agent bean with name: {}", agentName);
             }
         }
     }
 
     private void configureDefaultAgent(ClassLoader cl) {
         if (camelContext.getRegistry().lookupByNameAndType(AgentCreator.DEFAULT_AGENT, Agent.class) == null) {
-            try {
-                AgentConfig agentConfig = new AgentConfig();
-                Agent agent = AgentCreator.createAgent(agentConfig, AgentCreator.DEFAULT_AGENT, cl);
-                if (agent != null) {
-                    camelContext.getRegistry().bind(AgentCreator.DEFAULT_AGENT, agent);
-                    LOG.info("Registered default Agent bean with name: {}", AgentCreator.DEFAULT_AGENT);
-                }
-            } catch (Exception e) {
-                LOG.warn("Failed to create default agent: {}", e.getMessage());
-                LOG.debug("Agent creation exception details", e);
+            AgentConfig agentConfig = new AgentConfig();
+            Agent agent = AgentCreator.createAgent(agentConfig, AgentCreator.DEFAULT_AGENT, cl);
+            if (agent == null) {
+                throw new IllegalStateException("Failed to create default agent: AgentCreator returned null. "
+                        + "Check that the model kind, provider dependency, and configuration are correct.");
             }
+            camelContext.getRegistry().bind(AgentCreator.DEFAULT_AGENT, agent);
+            LOG.info("Registered default Agent bean with name: {}", AgentCreator.DEFAULT_AGENT);
         }
     }
 
