@@ -205,4 +205,20 @@ public abstract class ChatMemoryBeanProviderTCK {
         assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo("User question");
         assertThat(((AiMessage) messages.get(1)).text()).isEqualTo("AI response");
     }
+
+    @Test
+    void shouldSupportNamedCreate() {
+        ChatMemoryBeanProvider factory = createChatMemoryFactory();
+
+        assertThatCode(() -> factory.create("test-prefix")).doesNotThrowAnyException();
+
+        ChatMemoryProvider provider = factory.create("test-prefix");
+        assertThat(provider).isNotNull();
+
+        ChatMemory memory = provider.get("named-test-id");
+        assertThat(memory).isNotNull();
+
+        memory.add(UserMessage.from("Hello from named create"));
+        assertThat(memory.messages()).hasSize(1);
+    }
 }

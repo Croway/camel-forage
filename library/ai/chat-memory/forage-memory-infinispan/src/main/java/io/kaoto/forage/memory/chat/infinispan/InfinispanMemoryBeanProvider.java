@@ -1,5 +1,6 @@
 package io.kaoto.forage.memory.chat.infinispan;
 
+import java.util.concurrent.locks.ReentrantLock;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
@@ -53,125 +54,91 @@ public class InfinispanMemoryBeanProvider implements ChatMemoryBeanProvider, Max
     private static final int DEFAULT_MAX_MESSAGES = 10;
     private volatile Integer maxMessagesOverride;
 
-    private static final InfinispanConfig CONFIG = new InfinispanConfig();
-    private static final RemoteCacheManager CACHE_MANAGER;
-    private static RemoteCache<String, String> CACHE;
-    private static final PersistentInfinispanStore INFINISPAN_STORE;
+    private final ReentrantLock initLock = new ReentrantLock();
+    private volatile RemoteCacheManager defaultCacheManager;
+    private volatile PersistentInfinispanStore defaultStore;
 
-    static {
-        LOG.info(
-                "Initializing Infinispan chat memory provider with servers: {}, cache: {}",
-                CONFIG.serverList(),
-                CONFIG.cacheName());
+    public InfinispanMemoryBeanProvider() {}
 
-        try {
-            // Initialize Infinispan cache manager with configuration from InfinispanConfig
-            final ConfigurationBuilder builder = CONFIG.toConfigurationBuilder();
-
-            CACHE_MANAGER = new RemoteCacheManager(builder.build());
-
-            // Start the cache manager
-            CACHE_MANAGER.start();
-
-            // Get or create the cache for chat messages
-            String cacheName = CONFIG.cacheName();
-            try {
-                // Try to get the named cache first
-                CACHE = CACHE_MANAGER.getCache(cacheName);
-                if (CACHE == null) {
-                    LOG.info("Cache '{}' not found, creating it with default template", cacheName);
-                    // Create cache using the default template
-                    CACHE_MANAGER.administration().createCache(cacheName, (String) null);
-                    CACHE = CACHE_MANAGER.getCache(cacheName);
-                }
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Failed to get or create named cache %s".formatted(cacheName), e);
-            }
-
-            // Test the connection by performing a simple operation
-            CACHE.size(); // This will throw an exception if connection fails
-            LOG.info(
-                    "Successfully connected to Infinispan cluster at {} with cache '{}'",
-                    CONFIG.serverList(),
-                    CONFIG.cacheName());
-
-            INFINISPAN_STORE = new PersistentInfinispanStore(CACHE);
-
-        } catch (Exception e) {
-            LOG.error("Failed to initialize Infinispan connection for chat memory", e);
-            throw new RuntimeException("Failed to connect to Infinispan for chat memory storage", e);
-        }
-    }
-
-    /**
-     * Creates a new Infinispan memory factory.
-     *
-     * <p>The factory uses the statically initialized Infinispan cache manager that was
-     * configured during class loading using the {@link InfinispanConfig} settings.
-     */
-    public InfinispanMemoryBeanProvider() {
-        // Cache manager and store are initialized statically
-    }
-
-    /** {@inheritDoc} */
     @Override
     public void withMaxMessages(int maxMessages) {
         this.maxMessagesOverride = maxMessages;
     }
 
-    /**
-     * Creates a new chat memory provider that uses Infinispan for persistent storage.
-     *
-     * <p>This method returns a {@link ChatMemoryProvider} that creates message window-based
-     * chat memory instances backed by Infinispan storage. Each memory instance can store up to
-     * the configured maximum number of messages per conversation.
-     *
-     * <p>The returned provider is thread-safe and can be used to create multiple chat
-     * memory instances for different conversations. All instances will share the same
-     * Infinispan cache for optimal performance and data consistency.
-     *
-     * <p><strong>Memory Lifecycle:</strong>
-     * The chat memories created by the returned provider will automatically persist
-     * messages to Infinispan and retrieve them on subsequent access. The message window
-     * will automatically manage the conversation size by removing oldest messages
-     * when the maximum is exceeded.
-     *
-     * @return a new chat memory provider backed by Infinispan storage, never {@code null}
-     * @throws RuntimeException if Infinispan connection cannot be established or configured
-     */
     @Override
     public ChatMemoryProvider create() {
+        return create(null);
+    }
+
+    @Override
+    public ChatMemoryProvider create(String id) {
+        PersistentInfinispanStore store = getOrCreateStore(id);
         int maxMessages = maxMessagesOverride != null ? maxMessagesOverride : DEFAULT_MAX_MESSAGES;
         return memoryId -> {
             LOG.debug("Creating message window chat memory for ID: {} with maxMessages={}", memoryId, maxMessages);
             return MessageWindowChatMemory.builder()
                     .id(memoryId)
                     .maxMessages(maxMessages)
-                    .chatMemoryStore(INFINISPAN_STORE)
+                    .chatMemoryStore(store)
                     .build();
         };
     }
 
-    @Override
-    public ChatMemoryProvider create(String id) {
-        throw new UnsupportedOperationException("Named chat memory stores are not yet supported for Infinispan");
+    private PersistentInfinispanStore getOrCreateStore(String id) {
+        if (defaultStore == null) {
+            initLock.lock();
+            try {
+                if (defaultStore == null) {
+                    InfinispanConfig config = new InfinispanConfig();
+                    defaultCacheManager = createCacheManager(config);
+                    RemoteCache<String, String> cache = getOrCreateCache(defaultCacheManager, config.cacheName());
+                    defaultStore = new PersistentInfinispanStore(cache);
+                }
+            } finally {
+                initLock.unlock();
+            }
+        }
+        return defaultStore;
     }
 
-    /**
-     * Closes the Infinispan cache manager and releases all associated resources.
-     *
-     * <p>This method should be called during application shutdown to ensure proper
-     * cleanup of Infinispan connections. After calling this method, the factory should
-     * not be used to create new memory providers.
-     *
-     * <p><strong>Note:</strong> This method is not automatically called and must be
-     * explicitly invoked by the application or container during shutdown. Since the
-     * cache manager is static, this affects all instances of this factory class.
-     */
-    public static void close() {
-        if (CACHE_MANAGER != null) {
+    private RemoteCacheManager createCacheManager(InfinispanConfig config) {
+        LOG.info(
+                "Initializing Infinispan chat memory provider with servers: {}, cache: {}",
+                config.serverList(),
+                config.cacheName());
+
+        final ConfigurationBuilder builder = config.toConfigurationBuilder();
+        RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());
+        try {
+            cacheManager.start();
+            LOG.info("Successfully connected to Infinispan cluster at {}", config.serverList());
+            return cacheManager;
+        } catch (Exception e) {
+            cacheManager.close();
+            LOG.error("Failed to initialize Infinispan connection for chat memory", e);
+            throw new RuntimeException("Failed to connect to Infinispan for chat memory storage", e);
+        }
+    }
+
+    private RemoteCache<String, String> getOrCreateCache(RemoteCacheManager cacheManager, String cacheName) {
+        try {
+            RemoteCache<String, String> cache = cacheManager.getCache(cacheName);
+            if (cache == null) {
+                LOG.info("Cache '{}' not found, creating it with default template", cacheName);
+                cacheManager.administration().createCache(cacheName, (String) null);
+                cache = cacheManager.getCache(cacheName);
+            }
+            cache.size();
+            return cache;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to get or create named cache %s".formatted(cacheName), e);
+        }
+    }
+
+    public void close() {
+        if (defaultCacheManager != null) {
             LOG.info("Closing Infinispan cache manager for chat memory");
-            CACHE_MANAGER.close();
+            defaultCacheManager.close();
         }
     }
 }

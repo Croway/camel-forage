@@ -71,43 +71,53 @@ public class MultiAgentFactory implements AgentFactory {
         return serviceLoader.stream().toList();
     }
 
-    public synchronized Agent createAgent(Exchange exchange, String agentId) throws Exception {
+    public Agent createAgent(Exchange exchange, String agentId) throws Exception {
+        if (agentId == null) {
+            throw AgentIdSelectorHelper.newUndefinedAgentException(config, exchange);
+        }
+
         if (LOG.isTraceEnabled()) {
             LOG.debug("Available agents: {}", agents);
         }
 
-        if (agents.containsKey(agentId)) {
+        AgentPair cached = agents.get(agentId);
+        if (cached != null) {
             LOG.debug("Reusing existing Agent for {}", agentId);
-            final AgentPair agentPair = agents.get(agentId);
-            return agentPair.agent;
+            return cached.agent;
         }
 
         final List<String> definedAgents = config.multiAgentNames();
 
-        if (definedAgents.contains(agentId)) {
-            LOG.info("Creating new Agent for {}", agentId);
-            AgentFactoryConfig aFactoryConfig = new AgentFactoryConfig(agentId);
-
-            LOG.info("Using factory {} for {}", aFactoryConfig.name(), agentId);
-
-            Agent agent = newAgent(aFactoryConfig, agentId);
-
-            LOG.info("Using agent {} for {}", agent, agentId);
-            agents.put(agentId, new AgentPair(aFactoryConfig, agent));
-
-            return agent;
+        if (!definedAgents.contains(agentId)) {
+            throw AgentIdSelectorHelper.newUndefinedAgentException(config, exchange);
         }
 
-        throw AgentIdSelectorHelper.newUndefinedAgentException(config, exchange);
+        AgentPair created = agents.computeIfAbsent(agentId, id -> {
+            LOG.info("Creating new Agent for {}", id);
+            AgentFactoryConfig aFactoryConfig = new AgentFactoryConfig(id);
+            LOG.info("Using factory {} for {}", aFactoryConfig.name(), id);
+
+            Agent agent = newAgent(aFactoryConfig, id);
+            if (agent == null) {
+                throw new RuntimeForageException(
+                        "Failed to create agent for '%s': no agent provider found for class '%s'"
+                                .formatted(id, aFactoryConfig.providerAgentClass()));
+            }
+
+            LOG.info("Using agent {} for {}", agent, id);
+            return new AgentPair(aFactoryConfig, agent);
+        });
+
+        return created.agent;
     }
 
-    public synchronized Agent createAgent(Exchange exchange) throws Exception {
+    public Agent createAgent(Exchange exchange) throws Exception {
         final String agentId = AgentIdSelectorHelper.select(config, exchange);
 
         return createAgent(exchange, agentId);
     }
 
-    private synchronized Agent newAgent(AgentFactoryConfig agentFactoryConfig, String name) {
+    private Agent newAgent(AgentFactoryConfig agentFactoryConfig, String name) {
         final String agentFactoryClass = agentFactoryConfig.providerAgentClass();
         LOG.info("Creating Agent of type {}", agentFactoryClass);
 
@@ -121,7 +131,7 @@ public class MultiAgentFactory implements AgentFactory {
             return null;
         }
 
-        return doCreateAgent(agentProvider, agentFactoryConfig);
+        return doCreateAgent(agentProvider, agentFactoryConfig, name);
     }
 
     private ModelProvider newModelProvider(AgentFactoryConfig agentFactoryConfig) {
@@ -154,25 +164,26 @@ public class MultiAgentFactory implements AgentFactory {
         return chatMemoryFactoryProvider.get();
     }
 
-    private Agent doCreateAgent(ServiceLoader.Provider<Agent> provider, AgentFactoryConfig agentFactoryConfig) {
+    private Agent doCreateAgent(
+            ServiceLoader.Provider<Agent> provider, AgentFactoryConfig agentFactoryConfig, String agentId) {
         final Agent agent = provider.get();
 
         if (agent instanceof ConfigurationAware configurationAware) {
-            LOG.trace("Creating the model");
+            LOG.trace("Creating the model for agent '{}'", agentId);
             ModelProvider modelProvider = newModelProvider(agentFactoryConfig);
             if (modelProvider == null) {
-                throw new UnsupportedOperationException("A model must be provided for using an agent");
+                throw new RuntimeForageException("A model must be provided for using agent '%s'".formatted(agentId));
             }
 
-            final ChatModel chatModel = modelProvider.create();
+            final ChatModel chatModel = modelProvider.create(agentId);
             final List<String> features = agentFactoryConfig.providerFeatures();
 
             ChatMemoryProvider chatMemoryProvider = null;
             if (features.contains(AgentFactoryConfigEntries.FEATURE_MEMORY)) {
-                LOG.trace("Creating the agent memory ");
+                LOG.trace("Creating memory for agent '{}'", agentId);
                 final ChatMemoryBeanProvider chatMemoryBeanProvider = newChatMemoryFactory(agentFactoryConfig);
                 if (chatMemoryBeanProvider != null) {
-                    chatMemoryProvider = chatMemoryBeanProvider.create();
+                    chatMemoryProvider = chatMemoryBeanProvider.create(agentId);
                 }
             }
 

@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
 class InfinispanMemoryTCKTest extends ChatMemoryBeanProviderTCK {
 
     private static final int INFINISPAN_PORT = 11222;
+    private static InfinispanMemoryBeanProvider provider;
 
     @Container
     static GenericContainer<?> infinispan = new GenericContainer<>(DockerImageName.parse("infinispan/server:15.1"))
@@ -44,11 +45,9 @@ class InfinispanMemoryTCKTest extends ChatMemoryBeanProviderTCK {
 
     @BeforeAll
     static void setUpInfinispan() {
-        // Configure Infinispan connection for the test
         String infinispanHost = infinispan.getHost();
         Integer infinispanPort = infinispan.getMappedPort(INFINISPAN_PORT);
 
-        // Set system properties for Infinispan configuration
         System.setProperty("forage.infinispan.server-list", infinispanHost + ":" + infinispanPort);
         System.setProperty("forage.infinispan.cache-name", "chat-memory");
         System.setProperty("forage.infinispan.username", "admin");
@@ -58,11 +57,16 @@ class InfinispanMemoryTCKTest extends ChatMemoryBeanProviderTCK {
         System.setProperty("forage.infinispan.connection-timeout", "60000");
         System.setProperty("forage.infinispan.socket-timeout", "60000");
         System.setProperty("forage.infinispan.max-retries", "3");
+
+        provider = new InfinispanMemoryBeanProvider();
     }
 
     @AfterAll
     static void tearDownInfinispan() {
-        // Clean up Infinispan configuration
+        if (provider != null) {
+            provider.close();
+        }
+
         System.clearProperty("forage.infinispan.server-list");
         System.clearProperty("forage.infinispan.cache-name");
         System.clearProperty("forage.infinispan.username");
@@ -72,14 +76,11 @@ class InfinispanMemoryTCKTest extends ChatMemoryBeanProviderTCK {
         System.clearProperty("forage.infinispan.connection-timeout");
         System.clearProperty("forage.infinispan.socket-timeout");
         System.clearProperty("forage.infinispan.max-retries");
-
-        // Close Infinispan cache manager
-        InfinispanMemoryBeanProvider.close();
     }
 
     @Override
     protected ChatMemoryBeanProvider createChatMemoryFactory() {
-        return new InfinispanMemoryBeanProvider();
+        return provider;
     }
 
     @Test

@@ -297,13 +297,19 @@ public final class AgentCreator {
 
     static EmbeddingStore<TextSegment> createEmbeddingStore(
             AgentConfig config, String modelKind, String agentName, ClassLoader classLoader, EmbeddingModel model) {
-        List<ServiceLoader.Provider<EmbeddingStoreProvider>> providers = findEmbeddingStoreProviders(classLoader);
+        if (model == null) {
+            LOG.debug("Skipping embedding store creation: embedding model is null");
+            return null;
+        }
 
-        if (!providers.isEmpty()) {
-            ServiceLoader.Provider<EmbeddingStoreProvider> provider = providers.get(0);
-            Class<? extends EmbeddingStoreProvider> providerClass = provider.type();
-            LOG.debug("Found embedding store provider for kind '{}': {}", modelKind, providerClass.getName());
-            EmbeddingStoreProvider storeProvider = provider.get();
+        List<ServiceLoader.Provider<EmbeddingStoreProvider>> providers = findEmbeddingStoreProviders(classLoader);
+        ServiceLoader.Provider<EmbeddingStoreProvider> selectedProvider =
+                selectProviderByForageBean(providers, config.embeddingStoreKind(), "embedding store");
+
+        if (selectedProvider != null) {
+            Class<? extends EmbeddingStoreProvider> providerClass = selectedProvider.type();
+            LOG.debug("Using embedding store provider: {}", providerClass.getName());
+            EmbeddingStoreProvider storeProvider = selectedProvider.get();
 
             String prefix = DEFAULT_AGENT.equals(agentName) ? null : agentName;
 
@@ -313,8 +319,6 @@ public final class AgentCreator {
 
             synchronized (CREATION_LOCK) {
                 Map<String, String> previousValues = new LinkedHashMap<>();
-                // Set calls run inside the try so partially-set properties are always restored
-                // even when an argument (e.g. a malformed max.size) throws.
                 try {
                     setSystemPropertyIfNotNull(
                             previousValues, prefix, "in.memory.store", "file.source", config.fileSource());
@@ -348,11 +352,13 @@ public final class AgentCreator {
         List<ServiceLoader.Provider<RetrievalAugmentorProvider>> providers =
                 findRetrievalAugmentorProviders(classLoader);
 
-        if (!providers.isEmpty()) {
-            ServiceLoader.Provider<RetrievalAugmentorProvider> provider = providers.get(0);
-            Class<? extends RetrievalAugmentorProvider> providerClass = provider.type();
-            LOG.debug("Found retrieval augmentor provider for kind '{}': {}", modelKind, providerClass.getName());
-            RetrievalAugmentorProvider retrievalAugmentorProvider = provider.get();
+        ServiceLoader.Provider<RetrievalAugmentorProvider> selectedProvider =
+                selectProviderByForageBean(providers, null, "retrieval augmentor");
+
+        if (selectedProvider != null) {
+            Class<? extends RetrievalAugmentorProvider> providerClass = selectedProvider.type();
+            LOG.debug("Using retrieval augmentor provider: {}", providerClass.getName());
+            RetrievalAugmentorProvider retrievalAugmentorProvider = selectedProvider.get();
 
             String prefix = DEFAULT_AGENT.equals(agentName) ? null : agentName;
 
@@ -365,8 +371,6 @@ public final class AgentCreator {
 
             synchronized (CREATION_LOCK) {
                 Map<String, String> previousValues = new LinkedHashMap<>();
-                // Set calls run inside the try so partially-set properties are always restored
-                // even when an argument (e.g. a malformed min.score) throws.
                 try {
                     setSystemPropertyIfNotNull(
                             previousValues, prefix, "rag", "max.results", config.defaultRagMaxResults());
@@ -532,6 +536,41 @@ public final class AgentCreator {
             case "dashscope" -> "dashscope";
             default -> modelKind.replace("-", ".");
         };
+    }
+
+    static <T> ServiceLoader.Provider<T> selectProviderByForageBean(
+            List<ServiceLoader.Provider<T>> providers, String desiredKind, String providerType) {
+        if (providers.isEmpty()) {
+            return null;
+        }
+
+        if (desiredKind != null) {
+            for (ServiceLoader.Provider<T> provider : providers) {
+                ForageBean annotation = provider.type().getAnnotation(ForageBean.class);
+                if (annotation != null && annotation.value().equals(desiredKind)) {
+                    return provider;
+                }
+            }
+            LOG.warn(
+                    "No {} provider found for kind '{}', available: {}",
+                    providerType,
+                    desiredKind,
+                    providers.stream()
+                            .map(p -> {
+                                ForageBean a = p.type().getAnnotation(ForageBean.class);
+                                return a != null ? a.value() : p.type().getName();
+                            })
+                            .toList());
+            return null;
+        }
+
+        if (providers.size() > 1) {
+            LOG.warn(
+                    "Multiple {} providers found on classpath without explicit kind configured; using first: {}",
+                    providerType,
+                    providers.get(0).type().getName());
+        }
+        return providers.get(0);
     }
 
     private static List<ServiceLoader.Provider<ModelProvider>> findModelProviders(ClassLoader classLoader) {
