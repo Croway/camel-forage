@@ -14,7 +14,7 @@ import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
  * Provider for creating Ollama embedding models with configurable parameters.
  *
  * <p>This provider creates instances of {@link OllamaEmbeddingModel} using configuration
- * values managed by {@link OllamaEmbedddingConfig}. The configuration supports environment
+ * values managed by {@link OllamaEmbeddingConfig}. The configuration supports environment
  * variables, system properties, and configuration files for flexible deployment.
  *
  * <p><strong>Configuration:</strong>
@@ -37,7 +37,7 @@ import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
  * ChatModel model = provider.newModel();
  * }</pre>
  *
- * @see OllamaEmbedddingConfig
+ * @see OllamaEmbeddingConfig
  * @see ModelProvider
  * @since 1.0
  */
@@ -60,7 +60,7 @@ public class OllamaEmbeddingProvider implements EmbeddingModelProvider {
      */
     @Override
     public EmbeddingModel create(String id) {
-        final OllamaEmbedddingConfig config = new OllamaEmbedddingConfig(id);
+        final OllamaEmbeddingConfig config = new OllamaEmbeddingConfig(id);
 
         String baseUrl = config.baseUrl();
         String modelName = config.modelName();

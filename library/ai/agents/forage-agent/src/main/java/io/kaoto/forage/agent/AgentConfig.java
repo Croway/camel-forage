@@ -25,13 +25,8 @@ import static io.kaoto.forage.agent.AgentConfigEntries.FEATURES;
 import static io.kaoto.forage.agent.AgentConfigEntries.LOG_REQUESTS;
 import static io.kaoto.forage.agent.AgentConfigEntries.LOG_RESPONSES;
 import static io.kaoto.forage.agent.AgentConfigEntries.MAX_TOKENS;
-import static io.kaoto.forage.agent.AgentConfigEntries.MEMORY_INFINISPAN_CACHE_NAME;
-import static io.kaoto.forage.agent.AgentConfigEntries.MEMORY_INFINISPAN_SERVER_LIST;
 import static io.kaoto.forage.agent.AgentConfigEntries.MEMORY_KIND;
 import static io.kaoto.forage.agent.AgentConfigEntries.MEMORY_MAX_MESSAGES;
-import static io.kaoto.forage.agent.AgentConfigEntries.MEMORY_REDIS_HOST;
-import static io.kaoto.forage.agent.AgentConfigEntries.MEMORY_REDIS_PASSWORD;
-import static io.kaoto.forage.agent.AgentConfigEntries.MEMORY_REDIS_PORT;
 import static io.kaoto.forage.agent.AgentConfigEntries.MODEL_KIND;
 import static io.kaoto.forage.agent.AgentConfigEntries.MODEL_NAME;
 import static io.kaoto.forage.agent.AgentConfigEntries.TEMPERATURE;
@@ -144,30 +139,6 @@ public class AgentConfig extends AbstractConfig {
 
     public Integer memoryMaxMessages() {
         return get(MEMORY_MAX_MESSAGES).map(Integer::parseInt).orElse(20);
-    }
-
-    // Redis memory
-
-    public String memoryRedisHost() {
-        return get(MEMORY_REDIS_HOST).orElse("localhost");
-    }
-
-    public Integer memoryRedisPort() {
-        return get(MEMORY_REDIS_PORT).map(Integer::parseInt).orElse(6379);
-    }
-
-    public String memoryRedisPassword() {
-        return get(MEMORY_REDIS_PASSWORD).orElse(null);
-    }
-
-    // Infinispan memory
-
-    public String memoryInfinispanServerList() {
-        return get(MEMORY_INFINISPAN_SERVER_LIST).orElse("localhost:11222");
-    }
-
-    public String memoryInfinispanCacheName() {
-        return get(MEMORY_INFINISPAN_CACHE_NAME).orElse("chat-memory");
     }
 
     // EmbeddingStore

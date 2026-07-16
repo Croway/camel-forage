@@ -45,7 +45,10 @@ public class HuggingFaceProvider implements ModelProvider {
             builder.waitForModel(config.waitForModel());
         }
 
-        // Configure connection and reliability settings
+        if (config.returnFullText() != null) {
+            builder.returnFullText(config.returnFullText());
+        }
+
         if (config.timeoutSeconds() != null) {
             builder.timeout(ofSeconds(config.timeoutSeconds()));
         }

@@ -82,11 +82,18 @@ public class WatsonxAiProvider implements ModelProvider {
             builder.topP(config.topP());
         }
 
+        if (config.maxNewTokens() != null) {
+            builder.maxOutputTokens(config.maxNewTokens());
+        }
+
         if (config.stopSequences() != null) {
             builder.stopSequences(config.stopSequences());
         }
 
-        // Configure logging settings
+        if (config.randomSeed() != null) {
+            builder.seed(config.randomSeed());
+        }
+
         if (config.logRequestsAndResponses() != null) {
             builder.logRequests(config.logRequestsAndResponses());
             builder.logResponses(config.logRequestsAndResponses());

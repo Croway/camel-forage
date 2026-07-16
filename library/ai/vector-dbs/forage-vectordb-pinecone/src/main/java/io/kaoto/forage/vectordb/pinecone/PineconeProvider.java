@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import io.kaoto.forage.core.ai.EmbeddingStoreProvider;
 import io.kaoto.forage.core.annotations.ForageBean;
 import dev.langchain4j.store.embedding.pinecone.PineconeEmbeddingStore;
+import dev.langchain4j.store.embedding.pinecone.PineconeServerlessIndexConfig;
 
 /**
  * Provider for creating Pinecone embedding stores within the Forage framework.
@@ -65,11 +66,21 @@ public class PineconeProvider implements EmbeddingStoreProvider {
 
         PineconeConfig config = new PineconeConfig(id);
 
+        PineconeServerlessIndexConfig indexConfig = null;
+        if (config.createIndex()) {
+            indexConfig = PineconeServerlessIndexConfig.builder()
+                    .dimension(config.dimension())
+                    .cloud(config.cloud())
+                    .region(config.region())
+                    .deletionProtection(config.deletionProtection())
+                    .build();
+        }
+
         return PineconeEmbeddingStore.builder()
                 .apiKey(config.apiKey())
                 .index(config.index())
                 .nameSpace(config.nameSpace())
-                .createIndex(null)
+                .createIndex(indexConfig)
                 .metadataTextKey(config.metadataTextKey())
                 .build();
     }

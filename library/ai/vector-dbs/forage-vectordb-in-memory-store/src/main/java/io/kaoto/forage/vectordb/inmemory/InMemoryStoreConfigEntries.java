@@ -12,7 +12,7 @@ public final class InMemoryStoreConfigEntries extends ConfigEntries {
             "File source",
             null,
             "string",
-            true,
+            false,
             ConfigTag.COMMON);
 
     public static final ConfigModule MAX_SIZE = ConfigModule.of(

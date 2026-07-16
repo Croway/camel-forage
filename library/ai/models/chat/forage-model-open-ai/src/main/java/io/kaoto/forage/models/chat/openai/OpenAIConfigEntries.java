@@ -19,7 +19,7 @@ public final class OpenAIConfigEntries extends ConfigEntries {
             "forage.openai.model.name",
             "The specific OpenAI model to use",
             "Model Name",
-            "gpt-3.5-turbo",
+            "gpt-4o-mini",
             "string",
             true,
             ConfigTag.COMMON);

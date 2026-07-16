@@ -71,29 +71,29 @@ public final class PineconeConfigEntries extends ConfigEntries {
     public static final ConfigModule DIMENSION = ConfigModule.of(
             PineconeConfig.class,
             "forage.pinecone.dimension",
-            "Vector dimension size",
+            "Vector dimension size (required when create.index is true)",
             "Dimension",
             null,
             "integer",
-            true,
+            false,
             ConfigTag.COMMON);
     public static final ConfigModule CLOUD = ConfigModule.of(
             PineconeConfig.class,
             "forage.pinecone.cloud",
-            "Cloud provider (e.g., aws, gcp, azure)",
+            "Cloud provider, e.g. aws, gcp, azure (required when create.index is true)",
             "Cloud",
             null,
             "string",
-            true,
+            false,
             ConfigTag.COMMON);
     public static final ConfigModule REGION = ConfigModule.of(
             PineconeConfig.class,
             "forage.pinecone.region",
-            "Cloud region for the index",
+            "Cloud region for the index (required when create.index is true)",
             "Region",
             null,
             "string",
-            true,
+            false,
             ConfigTag.COMMON);
     public static final ConfigModule DELETION_PROTECTION = ConfigModule.of(
             PineconeConfig.class,
