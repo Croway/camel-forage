@@ -52,24 +52,24 @@ public final class AgentFactoryConfigEntries extends ConfigEntries {
             "string",
             false,
             ConfigTag.ADVANCED);
-    public static final ConfigModule GUARDRAILS_INPUT_CLASSES = ConfigModule.of(
+    public static final ConfigModule GUARDRAILS_INPUT = ConfigModule.of(
             AgentFactoryConfig.class,
-            "forage.guardrails.input.classes",
-            "Comma-separated list of input guardrail class names",
+            "forage.guardrails.input",
+            "Comma-separated list of input guardrail names (@ForageBean values, e.g., pii-detector,keyword-filter)",
             "Input Guardrails",
             null,
             "string",
             false,
-            ConfigTag.ADVANCED);
-    public static final ConfigModule GUARDRAILS_OUTPUT_CLASSES = ConfigModule.of(
+            ConfigTag.COMMON);
+    public static final ConfigModule GUARDRAILS_OUTPUT = ConfigModule.of(
             AgentFactoryConfig.class,
-            "forage.guardrails.output.classes",
-            "Comma-separated list of output guardrail class names",
+            "forage.guardrails.output",
+            "Comma-separated list of output guardrail names (@ForageBean values, e.g., sensitive-data,output-length)",
             "Output Guardrails",
             null,
             "string",
             false,
-            ConfigTag.ADVANCED);
+            ConfigTag.COMMON);
 
     static {
         initModules(
@@ -78,7 +78,7 @@ public final class AgentFactoryConfigEntries extends ConfigEntries {
                 PROVIDER_FEATURES,
                 PROVIDER_FEATURES_MEMORY_FACTORY_CLASS,
                 PROVIDER_AGENT_CLASS,
-                GUARDRAILS_INPUT_CLASSES,
-                GUARDRAILS_OUTPUT_CLASSES);
+                GUARDRAILS_INPUT,
+                GUARDRAILS_OUTPUT);
     }
 }

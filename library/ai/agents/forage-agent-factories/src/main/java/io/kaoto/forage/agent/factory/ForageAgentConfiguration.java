@@ -1,4 +1,4 @@
-package io.kaoto.forage.agent;
+package io.kaoto.forage.agent.factory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,32 +23,15 @@ public class ForageAgentConfiguration extends AgentConfiguration {
         super();
     }
 
-    /**
-     * Gets the list of input guardrail instances.
-     *
-     * @return the list of input guardrail instances, or null if not set
-     */
     public List<InputGuardrail> getInputGuardrails() {
         return inputGuardrails;
     }
 
-    /**
-     * Sets the input guardrail instances.
-     *
-     * @param inputGuardrails the input guardrail instances
-     * @return this configuration for method chaining
-     */
     public ForageAgentConfiguration withInputGuardrails(List<InputGuardrail> inputGuardrails) {
         this.inputGuardrails = inputGuardrails;
         return this;
     }
 
-    /**
-     * Adds an input guardrail instance.
-     *
-     * @param inputGuardrail the input guardrail instance to add
-     * @return this configuration for method chaining
-     */
     public ForageAgentConfiguration withInputGuardrail(InputGuardrail inputGuardrail) {
         if (this.inputGuardrails == null) {
             this.inputGuardrails = new ArrayList<>();
@@ -57,32 +40,15 @@ public class ForageAgentConfiguration extends AgentConfiguration {
         return this;
     }
 
-    /**
-     * Gets the list of output guardrail instances.
-     *
-     * @return the list of output guardrail instances, or null if not set
-     */
     public List<OutputGuardrail> getOutputGuardrails() {
         return outputGuardrails;
     }
 
-    /**
-     * Sets the output guardrail instances.
-     *
-     * @param outputGuardrails the output guardrail instances
-     * @return this configuration for method chaining
-     */
     public ForageAgentConfiguration withOutputGuardrails(List<OutputGuardrail> outputGuardrails) {
         this.outputGuardrails = outputGuardrails;
         return this;
     }
 
-    /**
-     * Adds an output guardrail instance.
-     *
-     * @param outputGuardrail the output guardrail instance to add
-     * @return this configuration for method chaining
-     */
     public ForageAgentConfiguration withOutputGuardrail(OutputGuardrail outputGuardrail) {
         if (this.outputGuardrails == null) {
             this.outputGuardrails = new ArrayList<>();
@@ -91,20 +57,10 @@ public class ForageAgentConfiguration extends AgentConfiguration {
         return this;
     }
 
-    /**
-     * Checks if input guardrail instances are available.
-     *
-     * @return true if input guardrail instances are configured
-     */
     public boolean hasInputGuardrails() {
         return inputGuardrails != null && !inputGuardrails.isEmpty();
     }
 
-    /**
-     * Checks if output guardrail instances are available.
-     *
-     * @return true if output guardrail instances are configured
-     */
     public boolean hasOutputGuardrails() {
         return outputGuardrails != null && !outputGuardrails.isEmpty();
     }

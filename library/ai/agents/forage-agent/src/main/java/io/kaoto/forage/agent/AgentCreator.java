@@ -6,10 +6,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.camel.component.langchain4j.agent.api.Agent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.kaoto.forage.agent.factory.ConfigurationAware;
+import io.kaoto.forage.agent.factory.ForageAgentConfiguration;
 import io.kaoto.forage.core.ai.ChatMemoryBeanProvider;
 import io.kaoto.forage.core.ai.EmbeddingModelAware;
 import io.kaoto.forage.core.ai.EmbeddingModelProvider;
@@ -19,6 +21,7 @@ import io.kaoto.forage.core.ai.MaxMessagesAware;
 import io.kaoto.forage.core.ai.ModelProvider;
 import io.kaoto.forage.core.ai.RetrievalAugmentorProvider;
 import io.kaoto.forage.core.annotations.ForageBean;
+import io.kaoto.forage.core.exceptions.RuntimeForageException;
 import io.kaoto.forage.core.guardrails.InputGuardrailProvider;
 import io.kaoto.forage.core.guardrails.OutputGuardrailProvider;
 import io.kaoto.forage.core.util.config.ConfigHelper;
@@ -134,13 +137,13 @@ public final class AgentCreator {
                 }
             }
 
-            List<InputGuardrail> inputGuardrails = loadInputGuardrails(name, classLoader);
+            List<InputGuardrail> inputGuardrails = loadInputGuardrails(config, name, classLoader);
             if (!inputGuardrails.isEmpty()) {
                 agentConfiguration.withInputGuardrails(inputGuardrails);
                 LOG.info("Configured {} input guardrails for agent '{}'", inputGuardrails.size(), name);
             }
 
-            List<OutputGuardrail> outputGuardrails = loadOutputGuardrails(name, classLoader);
+            List<OutputGuardrail> outputGuardrails = loadOutputGuardrails(config, name, classLoader);
             if (!outputGuardrails.isEmpty()) {
                 agentConfiguration.withOutputGuardrails(outputGuardrails);
                 LOG.info("Configured {} output guardrails for agent '{}'", outputGuardrails.size(), name);
@@ -387,64 +390,83 @@ public final class AgentCreator {
         return null;
     }
 
-    static List<InputGuardrail> loadInputGuardrails(String agentName, ClassLoader classLoader) {
-        List<InputGuardrail> guardrails = new ArrayList<>();
+    static List<InputGuardrail> loadInputGuardrails(AgentConfig config, String agentName, ClassLoader classLoader) {
+        List<String> selectedNames = config.guardrailsInput();
+        if (selectedNames.isEmpty()) {
+            return List.of();
+        }
+
         ServiceLoader<InputGuardrailProvider> loader = ServiceLoader.load(InputGuardrailProvider.class, classLoader);
         List<ServiceLoader.Provider<InputGuardrailProvider>> providers =
                 loader.stream().toList();
+        String prefix = DEFAULT_AGENT.equals(agentName) ? null : agentName;
 
-        LOG.info("Found {} input guardrail providers for agent '{}'", providers.size(), agentName);
-
-        for (ServiceLoader.Provider<InputGuardrailProvider> provider : providers) {
-            try {
-                InputGuardrailProvider guardrailProvider = provider.get();
-                String prefix = DEFAULT_AGENT.equals(agentName) ? null : agentName;
-                LOG.info(
-                        "Creating guardrail from provider {} with prefix '{}'",
-                        provider.type().getName(),
-                        prefix);
-                InputGuardrail guardrail = guardrailProvider.create(prefix);
-                if (guardrail != null) {
-                    guardrails.add(guardrail);
-                    LOG.info("Loaded input guardrail: {}", guardrail.getClass().getName());
+        List<InputGuardrail> guardrails = new ArrayList<>();
+        for (String name : selectedNames) {
+            InputGuardrailProvider matched = null;
+            for (ServiceLoader.Provider<InputGuardrailProvider> provider : providers) {
+                ForageBean annotation = provider.type().getAnnotation(ForageBean.class);
+                if (annotation != null && annotation.value().equals(name)) {
+                    matched = provider.get();
+                    break;
                 }
-            } catch (Exception e) {
-                LOG.warn(
-                        "Skipping input guardrail provider {}: {}",
-                        provider.type().getName(),
-                        e.getMessage());
+            }
+            if (matched == null) {
+                throw new RuntimeForageException(
+                        "No input guardrail provider found for name '%s'. Available providers: %s"
+                                .formatted(name, describeProviders(providers)));
+            }
+            LOG.info("Creating input guardrail '{}' for agent '{}'", name, agentName);
+            InputGuardrail guardrail = matched.create(prefix);
+            if (guardrail != null) {
+                guardrails.add(guardrail);
             }
         }
-
-        LOG.info("Total input guardrails loaded: {}", guardrails.size());
         return guardrails;
     }
 
-    static List<OutputGuardrail> loadOutputGuardrails(String agentName, ClassLoader classLoader) {
-        List<OutputGuardrail> guardrails = new ArrayList<>();
+    static List<OutputGuardrail> loadOutputGuardrails(AgentConfig config, String agentName, ClassLoader classLoader) {
+        List<String> selectedNames = config.guardrailsOutput();
+        if (selectedNames.isEmpty()) {
+            return List.of();
+        }
+
         ServiceLoader<OutputGuardrailProvider> loader = ServiceLoader.load(OutputGuardrailProvider.class, classLoader);
         List<ServiceLoader.Provider<OutputGuardrailProvider>> providers =
                 loader.stream().toList();
+        String prefix = DEFAULT_AGENT.equals(agentName) ? null : agentName;
 
-        for (ServiceLoader.Provider<OutputGuardrailProvider> provider : providers) {
-            try {
-                OutputGuardrailProvider guardrailProvider = provider.get();
-                String prefix = DEFAULT_AGENT.equals(agentName) ? null : agentName;
-                OutputGuardrail guardrail = guardrailProvider.create(prefix);
-                if (guardrail != null) {
-                    guardrails.add(guardrail);
-                    LOG.debug(
-                            "Loaded output guardrail: {}", guardrail.getClass().getName());
+        List<OutputGuardrail> guardrails = new ArrayList<>();
+        for (String name : selectedNames) {
+            OutputGuardrailProvider matched = null;
+            for (ServiceLoader.Provider<OutputGuardrailProvider> provider : providers) {
+                ForageBean annotation = provider.type().getAnnotation(ForageBean.class);
+                if (annotation != null && annotation.value().equals(name)) {
+                    matched = provider.get();
+                    break;
                 }
-            } catch (Exception e) {
-                LOG.debug(
-                        "Skipping output guardrail provider {}: {}",
-                        provider.type().getName(),
-                        e.getMessage());
+            }
+            if (matched == null) {
+                throw new RuntimeForageException(
+                        "No output guardrail provider found for name '%s'. Available providers: %s"
+                                .formatted(name, describeProviders(providers)));
+            }
+            LOG.info("Creating output guardrail '{}' for agent '{}'", name, agentName);
+            OutputGuardrail guardrail = matched.create(prefix);
+            if (guardrail != null) {
+                guardrails.add(guardrail);
             }
         }
-
         return guardrails;
+    }
+
+    private static <T> String describeProviders(List<ServiceLoader.Provider<T>> providers) {
+        return providers.stream()
+                .map(p -> {
+                    ForageBean ann = p.type().getAnnotation(ForageBean.class);
+                    return ann != null ? ann.value() : p.type().getName();
+                })
+                .collect(Collectors.joining(", ", "[", "]"));
     }
 
     static Agent findAndCreateAgent(ClassLoader classLoader) {

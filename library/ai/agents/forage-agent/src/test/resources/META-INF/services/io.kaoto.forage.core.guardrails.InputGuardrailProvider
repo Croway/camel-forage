@@ -1,0 +1,2 @@
+io.kaoto.forage.agent.TestInputGuardrailProvider
+io.kaoto.forage.agent.FailingInputGuardrailProvider

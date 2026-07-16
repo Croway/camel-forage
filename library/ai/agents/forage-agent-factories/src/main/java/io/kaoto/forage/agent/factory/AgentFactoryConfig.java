@@ -4,8 +4,8 @@ import java.util.List;
 import io.kaoto.forage.core.util.config.AbstractConfig;
 import io.kaoto.forage.core.util.config.ConfigHelper;
 
-import static io.kaoto.forage.agent.factory.AgentFactoryConfigEntries.GUARDRAILS_INPUT_CLASSES;
-import static io.kaoto.forage.agent.factory.AgentFactoryConfigEntries.GUARDRAILS_OUTPUT_CLASSES;
+import static io.kaoto.forage.agent.factory.AgentFactoryConfigEntries.GUARDRAILS_INPUT;
+import static io.kaoto.forage.agent.factory.AgentFactoryConfigEntries.GUARDRAILS_OUTPUT;
 import static io.kaoto.forage.agent.factory.AgentFactoryConfigEntries.PROVIDER_AGENT_CLASS;
 import static io.kaoto.forage.agent.factory.AgentFactoryConfigEntries.PROVIDER_FEATURES;
 import static io.kaoto.forage.agent.factory.AgentFactoryConfigEntries.PROVIDER_FEATURES_MEMORY_FACTORY_CLASS;
@@ -52,11 +52,11 @@ public class AgentFactoryConfig extends AbstractConfig {
         return get(PROVIDER_AGENT_CLASS).orElse(null);
     }
 
-    public List<String> guardrailsInputClasses() {
-        return ConfigHelper.readAsList(GUARDRAILS_INPUT_CLASSES.asNamed(prefix()));
+    public List<String> guardrailsInput() {
+        return ConfigHelper.readAsList(GUARDRAILS_INPUT.asNamed(prefix()));
     }
 
-    public List<String> guardrailsOutputClasses() {
-        return ConfigHelper.readAsList(GUARDRAILS_OUTPUT_CLASSES.asNamed(prefix()));
+    public List<String> guardrailsOutput() {
+        return ConfigHelper.readAsList(GUARDRAILS_OUTPUT.asNamed(prefix()));
     }
 }
