@@ -20,8 +20,8 @@ gh workflow run release --ref main -f releaseVersion=1.6.0 -f nextDevelopmentVer
 # Previous LTS maintenance line
 gh workflow run release --ref camel-4.18.x -f releaseVersion=1.4.1 -f nextDevelopmentVersion=1.4.2
 
-# Latest (non-LTS) line, when active
-gh workflow run release --ref camel-latest -f releaseVersion=1.5.1 -f nextDevelopmentVersion=1.5.2
+# Latest (non-LTS) line, after Camel 4.23.0 and its Quarkus platform are available
+gh workflow run release --ref camel-latest -f releaseVersion=1.7.0 -f nextDevelopmentVersion=1.7.1
 ```
 
 Release `main` before the maintenance branches: every branch pushes its
