@@ -16,7 +16,7 @@ class TestSuiteHelper {
     }
 
     public static void beforeSuite(RuntimeType runtime, Logger log) {
-        if (runtime != RuntimeType.main) {
+        if (runtime != RuntimeType.MAIN) {
             System.setProperty(IntegrationTestSetupExtension.RUNTIME_PROPERTY, runtime.runtime());
         } else {
             System.clearProperty(IntegrationTestSetupExtension.RUNTIME_PROPERTY);

@@ -191,9 +191,9 @@ public class CatalogDrivenExportCustomizer implements ExportCustomizer {
 
     private static String mapRuntimeToVariant(RuntimeType runtime) {
         return switch (runtime) {
-            case main -> "base";
-            case springBoot -> "springboot";
-            case quarkus -> "quarkus";
+            case MAIN -> "base";
+            case SPRING_BOOT -> "springboot";
+            case QUARKUS -> "quarkus";
         };
     }
 
