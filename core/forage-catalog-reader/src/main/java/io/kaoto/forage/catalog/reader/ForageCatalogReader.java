@@ -51,6 +51,8 @@ public final class ForageCatalogReader {
     private final Map<String, String> configEntryToFactoryKey;
     // Maps config entry names to the names of the beans that declare them
     private final Map<String, Set<String>> configEntryToBeanNames;
+    // Maps bean names to the name they are registered under when configured without an instance name
+    private final Map<String, String> beanNameToDefaultBeanName;
 
     private ForageCatalogReader(ForageCatalog catalog) {
         this.catalog = catalog;
@@ -63,6 +65,7 @@ public final class ForageCatalogReader {
         this.beanNameToGav = new HashMap<>();
         this.configEntryToFactoryKey = new HashMap<>();
         this.configEntryToBeanNames = new HashMap<>();
+        this.beanNameToDefaultBeanName = new HashMap<>();
         parseCatalog();
     }
 
@@ -163,7 +166,8 @@ public final class ForageCatalogReader {
                         propertiesFile,
                         prefixPropertyName,
                         factoryTypeKey,
-                        configEntries);
+                        configEntries,
+                        factory.getDefaultBeanName());
                 factoryMetadataByKey.put(factoryTypeKey, metadata);
                 for (ConfigEntry entry : configEntries) {
                     configEntryToFactoryKey.putIfAbsent(entry.getName(), factoryTypeKey);
@@ -187,6 +191,10 @@ public final class ForageCatalogReader {
                                 if (beanName != null && !beanName.isEmpty()) {
                                     beanNameToFactoryKey.put(beanName.toLowerCase(), factoryTypeKey);
                                     beanNameToFeature.put(beanName.toLowerCase(), featureName);
+                                    if (bean.getDefaultBeanName() != null) {
+                                        beanNameToDefaultBeanName.put(
+                                                beanName.toLowerCase(), bean.getDefaultBeanName());
+                                    }
 
                                     // Store bean GAV (multiple beans may share a name across features)
                                     String beanGav = bean.getGav();
@@ -457,6 +465,20 @@ public final class ForageCatalogReader {
     public record ConfigEntryOwner(String factoryTypeKey, String beanName) {}
 
     /**
+     * Gets the name a bean is registered under when it is configured without an instance name,
+     * when the bean declares one (e.g. "keycloak" -> "keycloakPolicy").
+     *
+     * @param beanName the bean name (e.g., "keycloak")
+     * @return Optional containing the default bean name if declared
+     */
+    public Optional<String> getBeanDefaultBeanName(String beanName) {
+        if (beanName == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(beanNameToDefaultBeanName.get(beanName.toLowerCase()));
+    }
+
+    /**
      * Gets the feature category for a given bean name.
      * Feature categories are defined in beansByFeature (e.g., "Chat Model", "Memory").
      *
@@ -662,7 +684,8 @@ public final class ForageCatalogReader {
             String propertiesFileName,
             String prefixPropertyName,
             String factoryTypeKey,
-            List<ConfigEntry> configEntries) {
+            List<ConfigEntry> configEntries,
+            String defaultBeanName) {
 
         /**
          * Gets the short name property key (without forage prefix) for the instance name.

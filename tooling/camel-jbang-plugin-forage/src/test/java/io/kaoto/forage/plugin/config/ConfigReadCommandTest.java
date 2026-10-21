@@ -412,6 +412,41 @@ class ConfigReadCommandTest {
     }
 
     @Test
+    void testDefaultBeanNamesMatchRuntime() throws Exception {
+        String propertiesContent =
+                """
+                forage.tls.keystore.path=/tmp/keystore.p12
+                forage.rabbitmq.host=localhost
+                forage.shiro.ini.resource.path=classpath:shiro.ini
+                forage.jdbc.db.kind=h2
+                """;
+
+        File propsFile = new File(tempDir, "application.properties");
+        try (FileWriter writer = new FileWriter(propsFile)) {
+            writer.write(propertiesContent);
+        }
+
+        ConfigReadCommand command = new ConfigReadCommand(new CamelJBangMain().withPrinter(printer));
+        setField(command, "directory", tempDir);
+        setField(command, "strategy", "application");
+
+        assertThat(command.doCall()).isEqualTo(0);
+
+        JsonNode result = OBJECT_MAPPER.readTree(printer.getOutput());
+        java.util.Map<String, String> namesByJavaType = new java.util.HashMap<>();
+        for (JsonNode bean : result.get("beans")) {
+            namesByJavaType.put(bean.get("javaType").asText(), bean.get("name").asText());
+        }
+
+        assertThat(namesByJavaType)
+                .containsEntry("org.apache.camel.support.jsse.SSLContextParameters", "sslContextParameters")
+                .containsEntry(
+                        "org.springframework.amqp.rabbit.connection.ConnectionFactory", "rabbitConnectionFactory")
+                .containsEntry("javax.sql.DataSource", "dataSource")
+                .containsValue("shiroPolicy");
+    }
+
+    @Test
     void testReadConfigWithNoPropertiesFiles() throws Exception {
         // Create an empty temp directory (no properties files)
         ConfigReadCommand command = new ConfigReadCommand(new CamelJBangMain().withPrinter(printer));

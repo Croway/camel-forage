@@ -18,6 +18,9 @@ public class ForageBean {
     @JsonProperty("description")
     private String description;
 
+    @JsonProperty("defaultBeanName")
+    private String defaultBeanName;
+
     @JsonProperty("className")
     private String className;
 
@@ -51,6 +54,14 @@ public class ForageBean {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDefaultBeanName() {
+        return defaultBeanName;
+    }
+
+    public void setDefaultBeanName(String defaultBeanName) {
+        this.defaultBeanName = defaultBeanName;
     }
 
     public String getDescription() {
