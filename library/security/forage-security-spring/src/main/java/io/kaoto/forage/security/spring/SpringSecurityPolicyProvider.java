@@ -31,7 +31,6 @@ import io.kaoto.forage.core.security.SecurityPolicyProvider;
  */
 @ForageBean(
         value = "spring-security",
-        defaultBeanName = "springSecurityPolicy",
         components = {"camel-spring-security"},
         feature = "Security Policy",
         description = "Spring Security authorization policy")

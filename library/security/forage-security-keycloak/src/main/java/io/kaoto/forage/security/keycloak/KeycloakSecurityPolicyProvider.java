@@ -36,7 +36,6 @@ import io.kaoto.forage.core.security.SecurityPolicyProvider;
  */
 @ForageBean(
         value = "keycloak",
-        defaultBeanName = "keycloakPolicy",
         components = {"camel-keycloak"},
         feature = "Security Policy",
         description = "Keycloak security authorization policy")
