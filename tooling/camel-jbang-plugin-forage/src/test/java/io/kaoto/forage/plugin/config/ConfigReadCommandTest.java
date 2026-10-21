@@ -365,6 +365,7 @@ class ConfigReadCommandTest {
                 forage.multi.agent.names=first,second
                 forage.google.api.key=secret
                 forage.memory.message-window.max.messages=10
+                forage.keycloak.server.url=http://localhost:8180
                 """;
 
         File propsFile = new File(tempDir, "application.properties");
@@ -406,7 +407,7 @@ class ConfigReadCommandTest {
         assertThat(beansByName).doesNotContainKeys("multi", "memory");
 
         // forage.google.* is the Gemini chat model, not the web search factory
-        assertThat(kinds).contains("google-gemini", "message-window");
+        assertThat(kinds).contains("google-gemini", "message-window", "keycloak");
         assertThat(javaTypes).doesNotContain("dev.langchain4j.web.search.WebSearchEngine");
     }
 
