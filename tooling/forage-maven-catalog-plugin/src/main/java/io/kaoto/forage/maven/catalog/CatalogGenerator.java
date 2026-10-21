@@ -264,6 +264,12 @@ public class CatalogGenerator {
             }
             setVariantByPlatform(catalogFactory.getVariants(), platform, variant);
 
+            // The catalog factory is created from whichever variant is scanned first, so take the
+            // default bean name from any variant that declares it
+            if (catalogFactory.getDefaultBeanName() == null && scannedFactory.getDefaultBeanName() != null) {
+                catalogFactory.setDefaultBeanName(scannedFactory.getDefaultBeanName());
+            }
+
             // Copy conditional beans if present, resolving versions in runtimeDependencies
             if (scannedFactory.getConditionalBeans() != null
                     && !scannedFactory.getConditionalBeans().isEmpty()) {

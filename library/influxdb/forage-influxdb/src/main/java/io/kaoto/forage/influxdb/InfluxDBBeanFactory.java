@@ -13,6 +13,7 @@ import io.kaoto.forage.core.common.AbstractClientBeanFactory;
         components = {"camel-influxdb"},
         description = "Creates InfluxDB 1 client beans",
         type = FactoryType.INFLUXDB_CLIENT,
+        defaultBeanName = "influxdb",
         autowired = true,
         configClass = InfluxDBConfig.class)
 public class InfluxDBBeanFactory extends AbstractClientBeanFactory<InfluxDB> {

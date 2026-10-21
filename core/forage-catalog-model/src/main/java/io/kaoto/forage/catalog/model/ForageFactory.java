@@ -26,6 +26,9 @@ public class ForageFactory {
     @JsonProperty("autowired")
     private boolean autowired;
 
+    @JsonProperty("defaultBeanName")
+    private String defaultBeanName;
+
     @JsonProperty("propertiesFile")
     private String propertiesFile;
 
@@ -71,6 +74,14 @@ public class ForageFactory {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getDefaultBeanName() {
+        return defaultBeanName;
+    }
+
+    public void setDefaultBeanName(String defaultBeanName) {
+        this.defaultBeanName = defaultBeanName;
     }
 
     public List<String> getComponents() {

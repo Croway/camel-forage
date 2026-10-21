@@ -380,10 +380,17 @@ public class ConfigReadCommand extends CamelCommand {
             return instance.instanceName;
         }
 
-        // Use default bean name derived from the catalog's factoryType
+        // Some beans register under their own name (e.g. one security policy per provider)
+        Optional<String> beanDefaultName = catalog.getBeanDefaultBeanName(instance.beanType);
+        if (beanDefaultName.isPresent()) {
+            return beanDefaultName.get();
+        }
+
+        // Use the default bean name declared by the factory, or derive one from its factoryType
         Optional<ForageCatalogReader.FactoryMetadata> metadataOpt = catalog.getFactoryMetadata(instance.factoryType);
         if (metadataOpt.isPresent()) {
-            return deriveDefaultBeanName(metadataOpt.get());
+            String declaredName = metadataOpt.get().defaultBeanName();
+            return declaredName != null ? declaredName : deriveDefaultBeanName(metadataOpt.get());
         }
 
         // Fallback to factory type key

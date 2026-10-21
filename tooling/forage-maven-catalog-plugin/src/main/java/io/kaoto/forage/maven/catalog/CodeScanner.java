@@ -49,6 +49,7 @@ import com.github.javaparser.ast.stmt.ReturnStmt;
 public class CodeScanner {
     private static final Set<String> SKIP_DIRS = Set.of("target", ".git", "node_modules", ".idea", ".vscode");
     private static final String ATTR_DESCRIPTION = "description";
+    private static final String ATTR_DEFAULT_BEAN_NAME = "defaultBeanName";
     private static final String ATTR_RUNTIME_DEPS = "runtimeDependencies";
 
     private final Log log;
@@ -358,6 +359,7 @@ public class CodeScanner {
         if (!data.getConditionalBeans().isEmpty()) {
             factory.setConditionalBeans(data.getConditionalBeans());
         }
+        factory.setDefaultBeanName(data.getDefaultBeanName());
         factory.setVariant(data.getVariant());
         factory.setConfigClassName(data.getConfigClassName());
         if (!data.getRuntimeDependencies().isEmpty()) {
@@ -391,6 +393,12 @@ public class CodeScanner {
                 case "autowired" -> {
                     if (value instanceof BooleanLiteralExpr booleanLiteral) {
                         data.setAutowired(booleanLiteral.getValue());
+                    }
+                }
+                case ATTR_DEFAULT_BEAN_NAME -> {
+                    if (value instanceof StringLiteralExpr stringLiteral
+                            && !stringLiteral.asString().isEmpty()) {
+                        data.setDefaultBeanName(stringLiteral.asString());
                     }
                 }
                 case "conditionalBeans" -> data.setConditionalBeans(extractConditionalBeanGroupArray(value));
@@ -554,6 +562,7 @@ public class CodeScanner {
         List<String> components = new ArrayList<>();
         String description = "";
         String feature = "";
+        String defaultBeanName = null;
         String configClassName = null;
         List<String> runtimeDeps = null;
         List<String> repositories = null;
@@ -585,6 +594,12 @@ public class CodeScanner {
                             feature = stringLiteral.asString();
                         }
                     }
+                    case ATTR_DEFAULT_BEAN_NAME -> {
+                        if (value instanceof StringLiteralExpr stringLiteral
+                                && !stringLiteral.asString().isEmpty()) {
+                            defaultBeanName = stringLiteral.asString();
+                        }
+                    }
                     case "configClass" -> configClassName = extractClassValue(value, cu);
                     case ATTR_RUNTIME_DEPS ->
                         runtimeDeps = extractStringArrayValue(value, "@ForageBean 'runtimeDependencies'");
@@ -599,6 +614,7 @@ public class CodeScanner {
 
         ScannedBean bean = new ScannedBean(name, components, description, className, feature);
         bean.setConfigClassName(configClassName);
+        bean.setDefaultBeanName(defaultBeanName);
         if (runtimeDeps != null && !runtimeDeps.isEmpty()) {
             bean.setRuntimeDependencies(ScannedBean.parseVariantDependencies(runtimeDeps));
         }
