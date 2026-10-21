@@ -197,7 +197,7 @@ public class DataSourceFactoryConfig extends AbstractConfig {
     }
 
     public String aggregationRepositoryName() {
-        return get(AGGREGATION_REPOSITORY_NAME).orElse(null);
+        return get(AGGREGATION_REPOSITORY_NAME).filter(name -> !name.isBlank()).orElse(null);
     }
 
     public String aggregationRepositoryHeadersToStore() {
@@ -247,7 +247,9 @@ public class DataSourceFactoryConfig extends AbstractConfig {
     }
 
     public String idempotentRepositoryTableName() {
-        return get(IDEMPOTENT_REPOSITORY_TABLE_NAME).orElse(ForageJdbcMessageIdRepository.DEFAULT_TABLENAME);
+        return get(IDEMPOTENT_REPOSITORY_TABLE_NAME)
+                .filter(name -> !name.isBlank())
+                .orElse(ForageJdbcMessageIdRepository.DEFAULT_TABLENAME);
     }
 
     public boolean enableIdempotentRepositoryTableCreate() {
