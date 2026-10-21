@@ -520,6 +520,7 @@ mvn clean verify -f integration-tests/mymodule -Dit.test=MyModuleTest
 
 ### Module Descriptor (for Spring Boot / Quarkus)
 - [ ] `XxxModuleDescriptor implements ForageModuleDescriptor<C, P>`
+- [ ] `defaultBeanName` on the base `@ForageFactory`, matching `XxxModuleDescriptor#defaultBeanName()` (used by `camel forage config read`), and a matching entry in `forage-catalog`'s `DefaultBeanNamesTest`
 
 ### Spring Boot
 - [ ] `@AutoConfiguration` class with `@ForageFactory(variant = SPRING_BOOT)`

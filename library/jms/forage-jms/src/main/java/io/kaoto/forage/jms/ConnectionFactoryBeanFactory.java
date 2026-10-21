@@ -36,6 +36,7 @@ import io.kaoto.forage.jms.common.transactions.JmsJtaTransactionSupport;
         components = {"camel-jms"},
         description = "Creates JMS ConnectionFactory beans for message broker integration with transaction support",
         type = FactoryType.CONNECTION_FACTORY,
+        defaultBeanName = "connectionFactory",
         autowired = true,
         configClass = ConnectionFactoryConfig.class,
         conditionalBeans = {

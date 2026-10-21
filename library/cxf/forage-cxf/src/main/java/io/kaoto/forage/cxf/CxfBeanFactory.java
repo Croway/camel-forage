@@ -22,6 +22,7 @@ import io.kaoto.forage.cxf.common.CxfConfig;
         components = {"camel-cxf"},
         description = "Creates CXF SOAP endpoint beans for web service integration",
         type = FactoryType.CXF_ENDPOINT,
+        defaultBeanName = "cxfEndpoint",
         autowired = true,
         configClass = CxfConfig.class)
 public class CxfBeanFactory implements BeanFactory {

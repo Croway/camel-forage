@@ -355,6 +355,95 @@ class ConfigReadCommandTest {
     }
 
     @Test
+    void testPropertyKeysAreParsedLikeTheRuntime() throws Exception {
+        String propertiesContent =
+                """
+                forage.postgresql.jdbc.db.kind=postgresql
+                forage.postgresql.jdbc.url=jdbc:postgresql://localhost:5432/orders
+                forage.my.ds.jdbc.db.kind=h2
+                forage.my.ds.jdbc.url=jdbc:h2:mem:test
+                forage.multi.agent.names=first,second
+                forage.google.api.key=secret
+                forage.memory.message-window.max.messages=10
+                """;
+
+        File propsFile = new File(tempDir, "application.properties");
+        try (FileWriter writer = new FileWriter(propsFile)) {
+            writer.write(propertiesContent);
+        }
+
+        ConfigReadCommand command = new ConfigReadCommand(new CamelJBangMain().withPrinter(printer));
+        setField(command, "directory", tempDir);
+        setField(command, "strategy", "application");
+
+        assertThat(command.doCall()).isEqualTo(0);
+
+        JsonNode result = OBJECT_MAPPER.readTree(printer.getOutput());
+        java.util.Map<String, JsonNode> beansByName = new java.util.HashMap<>();
+        java.util.List<String> kinds = new java.util.ArrayList<>();
+        java.util.List<String> javaTypes = new java.util.ArrayList<>();
+        for (JsonNode bean : result.get("beans")) {
+            beansByName.put(bean.get("name").asText(), bean);
+            if (bean.has("kind")) {
+                kinds.add(bean.get("kind").asText());
+            }
+            javaTypes.add(bean.get("javaType").asText());
+        }
+
+        // An instance named like a provider is an instance, not the provider kind
+        JsonNode postgresql = beansByName.get("postgresql");
+        assertThat(postgresql).as("DataSource named 'postgresql'").isNotNull();
+        assertThat(postgresql.get("javaType").asText()).isEqualTo("javax.sql.DataSource");
+        assertThat(postgresql.get("configuration").get("url").asText())
+                .isEqualTo("jdbc:postgresql://localhost:5432/orders");
+
+        // Instance names can contain dots
+        JsonNode dotted = beansByName.get("my.ds");
+        assertThat(dotted).as("DataSource named 'my.ds'").isNotNull();
+        assertThat(dotted.get("configuration").get("url").asText()).isEqualTo("jdbc:h2:mem:test");
+
+        // Multi-segment config entries belong to the default instance
+        assertThat(beansByName).doesNotContainKeys("multi", "memory");
+
+        // forage.google.* is the Gemini chat model, not the web search factory
+        assertThat(kinds).contains("google-gemini", "message-window");
+        assertThat(javaTypes).doesNotContain("dev.langchain4j.web.search.WebSearchEngine");
+    }
+
+    @Test
+    void testDefaultBeanNamesMatchRuntime() throws Exception {
+        String propertiesContent =
+                """
+                forage.tls.keystore.path=/tmp/keystore.p12
+                forage.rabbitmq.host=localhost
+                forage.jdbc.db.kind=h2
+                """;
+
+        File propsFile = new File(tempDir, "application.properties");
+        try (FileWriter writer = new FileWriter(propsFile)) {
+            writer.write(propertiesContent);
+        }
+
+        ConfigReadCommand command = new ConfigReadCommand(new CamelJBangMain().withPrinter(printer));
+        setField(command, "directory", tempDir);
+        setField(command, "strategy", "application");
+
+        assertThat(command.doCall()).isEqualTo(0);
+
+        JsonNode result = OBJECT_MAPPER.readTree(printer.getOutput());
+        java.util.Map<String, String> namesByJavaType = new java.util.HashMap<>();
+        for (JsonNode bean : result.get("beans")) {
+            namesByJavaType.put(bean.get("javaType").asText(), bean.get("name").asText());
+        }
+
+        assertThat(namesByJavaType)
+                .containsEntry("org.apache.camel.support.jsse.SSLContextParameters", "sslContextParameters")
+                .containsEntry(
+                        "org.springframework.amqp.rabbit.connection.ConnectionFactory", "rabbitConnectionFactory")
+                .containsEntry("javax.sql.DataSource", "dataSource");
+    }
+
+    @Test
     void testReadConfigWithNoPropertiesFiles() throws Exception {
         // Create an empty temp directory (no properties files)
         ConfigReadCommand command = new ConfigReadCommand(new CamelJBangMain().withPrinter(printer));
