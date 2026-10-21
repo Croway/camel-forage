@@ -263,12 +263,7 @@ public class CatalogGenerator {
                         resolveGavVersions(scannedFactory.getRuntimeDependencies(), projectProperties));
             }
             setVariantByPlatform(catalogFactory.getVariants(), platform, variant);
-
-            // The catalog factory is created from whichever variant is scanned first, so take the
-            // default bean name from any variant that declares it
-            if (catalogFactory.getDefaultBeanName() == null && scannedFactory.getDefaultBeanName() != null) {
-                catalogFactory.setDefaultBeanName(scannedFactory.getDefaultBeanName());
-            }
+            mergeDefaultBeanName(catalogFactory, scannedFactory);
 
             // Copy conditional beans if present, resolving versions in runtimeDependencies
             if (scannedFactory.getConditionalBeans() != null
@@ -285,6 +280,16 @@ public class CatalogGenerator {
                                 .toList();
                 catalogFactory.setConditionalBeans(resolved);
             }
+        }
+    }
+
+    /**
+     * The catalog factory is created from whichever variant is scanned first, so take the
+     * default bean name from any variant that declares it.
+     */
+    private static void mergeDefaultBeanName(ForageFactory catalogFactory, ScannedFactory scannedFactory) {
+        if (catalogFactory.getDefaultBeanName() == null && scannedFactory.getDefaultBeanName() != null) {
+            catalogFactory.setDefaultBeanName(scannedFactory.getDefaultBeanName());
         }
     }
 
