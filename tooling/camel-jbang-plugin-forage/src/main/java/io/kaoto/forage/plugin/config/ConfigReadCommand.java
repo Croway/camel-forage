@@ -20,6 +20,7 @@ import org.apache.camel.dsl.jbang.core.commands.CamelCommand;
 import org.apache.camel.dsl.jbang.core.commands.CamelJBangMain;
 import io.kaoto.forage.catalog.model.ConditionalBeanGroup;
 import io.kaoto.forage.catalog.model.ConditionalBeanInfo;
+import io.kaoto.forage.catalog.model.ConfigEntry;
 import io.kaoto.forage.catalog.reader.ForageCatalogReader;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,6 +42,8 @@ public class ConfigReadCommand extends CamelCommand {
 
     // Properties that indicate the bean kind/type
     private static final Set<String> KIND_PROPERTIES = Set.of("db.kind", "kind");
+
+    private static final String FORAGE_PROPERTIES_PREFIX = "forage.";
 
     @CommandLine.Option(
             names = {"--dir", "-d"},
@@ -418,22 +421,13 @@ public class ConfigReadCommand extends CamelCommand {
             // Check if the config entry that enables this conditional bean is set to true
             String configEntry = condBeanGroup.getConfigEntry();
             if (configEntry != null) {
-                // The configEntry is like "jdbc.transaction.enabled" but instance.properties
-                // has keys without the factory prefix (e.g., "transaction.enabled")
-                // Strip the factory type prefix if present
-                String propertyKey = configEntry;
-                String factoryPrefix = instance.factoryType + ".";
-                if (configEntry.startsWith(factoryPrefix)) {
-                    propertyKey = configEntry.substring(factoryPrefix.length());
-                }
-                String configValue = instance.properties.get(propertyKey);
+                String configValue = instance.properties.get(toInstancePropertyKey(configEntry, instance));
                 if (!"true".equalsIgnoreCase(configValue)) {
                     continue; // This conditional bean group is not enabled
                 }
             }
 
             // Add all beans from this conditional bean definition
-            String factoryPrefix = instance.factoryType + ".";
             List<ConditionalBeanInfo> beanInfos = condBeanGroup.getBeans();
             if (beanInfos == null) {
                 continue;
@@ -444,13 +438,11 @@ public class ConfigReadCommand extends CamelCommand {
                     // Fixed bean name
                     beanName = catalogBean.getName();
                 } else if (catalogBean.getNameFromConfig() != null) {
-                    // Bean name comes from a config property
-                    // Strip factory prefix if present (e.g., "jdbc.name" -> "name")
-                    String nameConfigKey = catalogBean.getNameFromConfig();
-                    if (nameConfigKey.startsWith(factoryPrefix)) {
-                        nameConfigKey = nameConfigKey.substring(factoryPrefix.length());
+                    // Bean name comes from a config property, falling back to the config entry default
+                    beanName = resolveNameFromConfig(catalogBean.getNameFromConfig(), instance);
+                    if (beanName == null) {
+                        continue; // No configured name and no default: the runtime does not register the bean
                     }
-                    beanName = instance.properties.getOrDefault(nameConfigKey, nameConfigKey);
                 } else {
                     beanName = condBeanGroup.getId();
                 }
@@ -461,6 +453,40 @@ public class ConfigReadCommand extends CamelCommand {
         }
 
         return conditionalBeans;
+    }
+
+    /**
+     * Converts a catalog config key (e.g., "forage.jdbc.transaction.enabled") into the key used in
+     * instance.properties, which has both the forage prefix and the factory prefix stripped
+     * (e.g., "transaction.enabled").
+     */
+    private String toInstancePropertyKey(String configKey, InstanceProperties instance) {
+        String factoryPrefix = FORAGE_PROPERTIES_PREFIX + instance.factoryType + ".";
+        if (configKey.startsWith(factoryPrefix)) {
+            return configKey.substring(factoryPrefix.length());
+        }
+        return configKey;
+    }
+
+    /**
+     * Resolves a conditional bean name from the config entry it references, using the configured
+     * value or else the config entry default from the catalog. Returns null when neither is set.
+     */
+    private String resolveNameFromConfig(String nameConfigKey, InstanceProperties instance) {
+        String configured = instance.properties.get(toInstancePropertyKey(nameConfigKey, instance));
+        if (configured != null && !configured.isBlank()) {
+            return configured;
+        }
+        return catalog
+                .getFactoryMetadata(instance.factoryType)
+                .map(ForageCatalogReader.FactoryMetadata::configEntries)
+                .stream()
+                .flatMap(List::stream)
+                .filter(entry -> nameConfigKey.equals(entry.getName()))
+                .map(ConfigEntry::getDefaultValue)
+                .filter(defaultValue -> defaultValue != null && !defaultValue.isBlank())
+                .findFirst()
+                .orElse(null);
     }
 
     private int outputResult(List<BeanInfo> beans, String message) throws JsonProcessingException {

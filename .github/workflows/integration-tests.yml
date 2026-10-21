@@ -11,6 +11,18 @@ name: Integration Tests
 on:
   workflow_call:
 
+# WORKAROUND for CAMEL-25921 (https://issues.apache.org/jira/browse/CAMEL-25921).
+# Remove this env block once the Camel version used by Forage (camel.version) ships the fix.
+#
+# Maven 3.10 (Resolver 2.0.23+) records artifact provenance in the local repository as
+# "<id>-<url hash>". The resolver embedded in Camel JBang only understands the legacy
+# "<id>" entries, so with a local repository written by Maven 3.10 it treats cached
+# artifacts as missing: offline-first plugin resolution silently drops the Forage
+# plugin's dependencies (NoClassDefFoundError on plugin load), and older Camel versions
+# re-download everything. Keep the legacy ID-only tracking for the shared local repository.
+env:
+  MAVEN_ARGS: -Daether.system.trackingRepositoryKeyFunction=nid
+
 jobs:
   build:
     runs-on: ubuntu-latest
