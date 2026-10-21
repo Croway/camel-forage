@@ -53,6 +53,7 @@ class ConfigReadCommandTest {
                 forage.myPG.jdbc.password=test
                 forage.myPG.jdbc.transaction.enabled=true
                 forage.myPG.jdbc.aggregation.repository.enabled=true
+                forage.myPG.jdbc.aggregation.repository.name=myAggRepo
                 forage.myPG.jdbc.idempotent.repository.enabled=true
                 """;
 
@@ -279,6 +280,78 @@ class ConfigReadCommandTest {
         assertThat(foundJms)
                 .as("Should NOT find JMS bean when filtering by jdbc")
                 .isFalse();
+    }
+
+    @Test
+    void testConditionalBeanNameFromConfig() throws Exception {
+        String propertiesContent =
+                """
+                forage.myDB.jdbc.db.kind=postgresql
+                forage.myDB.jdbc.url=jdbc:postgresql://localhost:5432/test
+                forage.myDB.jdbc.transaction.enabled=true
+                forage.myDB.jdbc.aggregation.repository.enabled=true
+                forage.myDB.jdbc.aggregation.repository.name=orderAggRepo
+                forage.myDB.jdbc.idempotent.repository.enabled=true
+                forage.myDB.jdbc.idempotent.repository.table.name=ORDER_IDEMPOTENT
+                """;
+
+        JsonNode conditionalBeans = readConditionalBeans(propertiesContent, "myDB");
+
+        assertThat(conditionalBeanName(conditionalBeans, "JdbcAggregationRepository"))
+                .isEqualTo("orderAggRepo");
+        assertThat(conditionalBeanName(conditionalBeans, "JdbcMessageIdRepository"))
+                .isEqualTo("ORDER_IDEMPOTENT");
+    }
+
+    @Test
+    void testConditionalBeanNameFromConfigUnset() throws Exception {
+        String propertiesContent =
+                """
+                forage.myDB.jdbc.db.kind=postgresql
+                forage.myDB.jdbc.url=jdbc:postgresql://localhost:5432/test
+                forage.myDB.jdbc.transaction.enabled=true
+                forage.myDB.jdbc.aggregation.repository.enabled=true
+                forage.myDB.jdbc.idempotent.repository.enabled=true
+                """;
+
+        JsonNode conditionalBeans = readConditionalBeans(propertiesContent, "myDB");
+
+        assertThat(conditionalBeanName(conditionalBeans, "JdbcAggregationRepository"))
+                .as("Aggregation repository has no default name, so it is not registered")
+                .isNull();
+        assertThat(conditionalBeanName(conditionalBeans, "JdbcMessageIdRepository"))
+                .as("Idempotent repository falls back to the default table name")
+                .isEqualTo("CAMEL_MESSAGEPROCESSED");
+    }
+
+    private JsonNode readConditionalBeans(String propertiesContent, String beanName) throws Exception {
+        File propsFile = new File(tempDir, "application.properties");
+        try (FileWriter writer = new FileWriter(propsFile)) {
+            writer.write(propertiesContent);
+        }
+
+        ConfigReadCommand command = new ConfigReadCommand(new CamelJBangMain().withPrinter(printer));
+        setField(command, "directory", tempDir);
+        setField(command, "strategy", "application");
+
+        assertThat(command.doCall()).isEqualTo(0);
+
+        JsonNode result = OBJECT_MAPPER.readTree(printer.getOutput());
+        for (JsonNode bean : result.get("beans")) {
+            if (beanName.equals(bean.get("name").asText())) {
+                return bean.get("conditionalBeans");
+            }
+        }
+        throw new AssertionError("Bean '" + beanName + "' not found in output: " + result);
+    }
+
+    private static String conditionalBeanName(JsonNode conditionalBeans, String javaTypeSuffix) {
+        for (JsonNode condBean : conditionalBeans) {
+            if (condBean.get("javaType").asText().endsWith(javaTypeSuffix)) {
+                return condBean.get("name").asText();
+            }
+        }
+        return null;
     }
 
     @Test
