@@ -386,7 +386,7 @@ public final class DataSourceFactoryConfigEntries extends ConfigEntries {
             "forage.jdbc.idempotent.repository.table.name",
             "Table name for idempotent repository",
             "Idempotent Table Name",
-            null,
+            "CAMEL_MESSAGEPROCESSED",
             "string",
             false,
             ConfigTag.COMMON);
