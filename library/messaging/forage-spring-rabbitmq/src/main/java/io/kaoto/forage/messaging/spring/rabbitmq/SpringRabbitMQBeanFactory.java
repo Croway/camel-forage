@@ -20,6 +20,7 @@ import io.kaoto.forage.messaging.spring.rabbitmq.common.SpringRabbitMQConstants;
         components = {"camel-spring-rabbitmq"},
         description = "Creates Spring RabbitMQ CachingConnectionFactory beans for AMQP messaging",
         type = FactoryType.SPRING_RABBITMQ_CONNECTION_FACTORY,
+        defaultBeanName = "rabbitConnectionFactory",
         autowired = true,
         configClass = SpringRabbitMQConfig.class)
 public class SpringRabbitMQBeanFactory implements BeanFactory {
