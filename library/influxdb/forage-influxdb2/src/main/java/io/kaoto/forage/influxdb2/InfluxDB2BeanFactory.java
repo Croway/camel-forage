@@ -13,6 +13,7 @@ import com.influxdb.client.InfluxDBClient;
         components = {"camel-influxdb2"},
         description = "Creates InfluxDB 2 client beans",
         type = FactoryType.INFLUXDB2_CLIENT,
+        defaultBeanName = "influxdb2",
         autowired = true,
         configClass = InfluxDB2Config.class)
 public class InfluxDB2BeanFactory extends AbstractClientBeanFactory<InfluxDBClient> {

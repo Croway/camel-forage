@@ -21,6 +21,7 @@ import io.kaoto.forage.core.util.config.ConfigStore;
         components = {},
         description = "Creates SSLContextParameters beans for TLS/SSL configuration",
         type = FactoryType.SSL_CONTEXT_PARAMETERS,
+        defaultBeanName = "sslContextParameters",
         autowired = true,
         configClass = TlsConfig.class)
 public class TlsBeanFactory implements BeanFactory {

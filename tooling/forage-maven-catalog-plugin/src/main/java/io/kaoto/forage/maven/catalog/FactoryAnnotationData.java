@@ -11,6 +11,7 @@ public class FactoryAnnotationData {
     private String description = "";
     private String factoryType = "";
     private boolean autowired = false;
+    private String defaultBeanName = null;
     private List<ConditionalBeanGroup> conditionalBeans = new ArrayList<>();
     private String variant = "BASE";
     private String configClassName = null;
@@ -54,6 +55,14 @@ public class FactoryAnnotationData {
 
     public void setAutowired(boolean autowired) {
         this.autowired = autowired;
+    }
+
+    public String getDefaultBeanName() {
+        return defaultBeanName;
+    }
+
+    public void setDefaultBeanName(String defaultBeanName) {
+        this.defaultBeanName = defaultBeanName;
     }
 
     public List<ConditionalBeanGroup> getConditionalBeans() {

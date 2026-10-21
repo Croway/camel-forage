@@ -56,6 +56,15 @@ public @interface ForageFactory {
     boolean autowired() default false;
 
     /**
+     * The name under which this factory registers its default (unnamed) bean in the Camel registry.
+     * It must match the runtime (e.g. {@code ForageModuleDescriptor#defaultBeanName()}) and is used by
+     * tooling such as {@code camel forage config read}. When empty, tooling derives a name from the factory type.
+     *
+     * @return the default bean name
+     */
+    String defaultBeanName() default "";
+
+    /**
      * Conditional beans that are automatically registered when certain config entries are enabled.
      * Used by the catalog generator to inform UI wizards about beans created based on configuration.
      *

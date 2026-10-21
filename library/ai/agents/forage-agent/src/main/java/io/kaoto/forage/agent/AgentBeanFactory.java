@@ -39,6 +39,7 @@ import io.kaoto.forage.core.util.config.ConfigStore;
         description =
                 "Creates AI agents with configurable chat models and memory providers for LangChain4j integration",
         type = FactoryType.AGENT,
+        defaultBeanName = "agent",
         autowired = true,
         configClass = AgentConfig.class)
 public class AgentBeanFactory implements BeanFactory {
