@@ -58,6 +58,14 @@ public class ScannedBean {
         return bean.getName();
     }
 
+    public String getDefaultBeanName() {
+        return bean.getDefaultBeanName();
+    }
+
+    public void setDefaultBeanName(String defaultBeanName) {
+        bean.setDefaultBeanName(defaultBeanName);
+    }
+
     public void setName(String name) {
         bean.setName(name);
     }
@@ -154,6 +162,7 @@ public class ScannedBean {
         ForageBean catalogBean = new ForageBean();
         catalogBean.setName(bean.getName());
         catalogBean.setDescription(bean.getDescription());
+        catalogBean.setDefaultBeanName(bean.getDefaultBeanName());
         catalogBean.setClassName(bean.getClassName());
         catalogBean.setGav(gav);
         catalogBean.setRuntimeDependencies(runtimeDependencies);

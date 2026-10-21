@@ -48,6 +48,15 @@ public @interface ForageBean {
     String feature() default "";
 
     /**
+     * The name under which this bean is registered when it is configured without an instance name, when it
+     * differs from the factory's {@link ForageFactory#defaultBeanName()} (e.g. one bean per security provider).
+     * Used by tooling such as {@code camel forage config read}.
+     *
+     * @return the default bean name
+     */
+    String defaultBeanName() default "";
+
+    /**
      * The Config class that defines the properties file name for this bean.
      * The Config class's name() method returns the base name used for the properties file.
      * If not specified (defaults to Config.class), no properties file will be associated.

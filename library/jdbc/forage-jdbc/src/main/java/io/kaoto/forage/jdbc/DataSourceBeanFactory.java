@@ -38,6 +38,7 @@ import io.kaoto.forage.jdbc.common.idempotent.ForageJdbcMessageIdRepository;
         description =
                 "Creates JDBC DataSource connections for database operations with transaction and repository support",
         type = FactoryType.DATA_SOURCE,
+        defaultBeanName = "dataSource",
         autowired = true,
         configClass = DataSourceFactoryConfig.class,
         conditionalBeans = {

@@ -234,4 +234,33 @@ class ForageCatalogReaderTest {
         Optional<String> version = reader.getRuntimeVersion(null);
         assertThat(version).isEmpty();
     }
+
+    @Test
+    void testFindConfigEntryOwnerForFactoryEntry() {
+        Optional<ForageCatalogReader.ConfigEntryOwner> owner = reader.findConfigEntryOwner("forage.jdbc.url");
+        assertThat(owner).isPresent();
+        assertThat(owner.get().factoryTypeKey()).isEqualTo("jdbc");
+        assertThat(owner.get().beanName()).isNull();
+    }
+
+    @Test
+    void testFindConfigEntryOwnerForBeanEntry() {
+        Optional<ForageCatalogReader.ConfigEntryOwner> owner = reader.findConfigEntryOwner("forage.postgresql.url");
+        assertThat(owner).isPresent();
+        assertThat(owner.get().factoryTypeKey()).isEqualTo("jdbc");
+        assertThat(owner.get().beanName()).isEqualTo("postgresql");
+    }
+
+    @Test
+    void testFindConfigEntryOwnerUnknown() {
+        assertThat(reader.findConfigEntryOwner("forage.myDs.jdbc.url")).isEmpty();
+        assertThat(reader.findConfigEntryOwner("forage.jdbc.unknown")).isEmpty();
+    }
+
+    @Test
+    void testFindBeanPropertyPrefix() {
+        assertThat(reader.findBeanPropertyPrefix("postgresql", "postgresql.url"))
+                .hasValue("postgresql");
+        assertThat(reader.findBeanPropertyPrefix("postgresql", "jdbc.url")).isEmpty();
+    }
 }

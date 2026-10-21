@@ -95,6 +95,14 @@ public class ScannedFactory {
         factory.setAutowired(autowired);
     }
 
+    public String getDefaultBeanName() {
+        return factory.getDefaultBeanName();
+    }
+
+    public void setDefaultBeanName(String defaultBeanName) {
+        factory.setDefaultBeanName(defaultBeanName);
+    }
+
     public List<ConditionalBeanGroup> getConditionalBeans() {
         return factory.getConditionalBeans();
     }
