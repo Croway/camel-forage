@@ -221,8 +221,16 @@ public class ConfigReadCommand extends CamelCommand {
      * - "ollama.model.name" -> factoryType=multi, beanType=ollama, instanceName=null, propertyName=model.name
      * - "test.ollama.model.name" -> factoryType=multi, beanType=ollama, instanceName=test, propertyName=model.name
      * - "myMemory.infinispan.server-list" -> factoryType=multi, beanType=infinispan, instanceName=myMemory
+     * - "postgresql.jdbc.url" -> factoryType=jdbc, instanceName=postgresql, propertyName=url
+     * - "my.ds.jdbc.url" -> factoryType=jdbc, instanceName=my.ds, propertyName=url
      */
     private ParsedProperty parsePropertyKey(String key) {
+        ParsedProperty fromConfigEntries = parseUsingConfigEntries(key);
+        if (fromConfigEntries != null) {
+            return fromConfigEntries;
+        }
+
+        // Fall back to segment heuristics for keys that match no catalog config entry (e.g., typos)
         String[] parts = key.split("\\.", 2);
         if (parts.length < 2) {
             return null;
@@ -266,6 +274,57 @@ public class ConfigReadCommand extends CamelCommand {
         // Try to match using the catalog's property prefix mapping
         Optional<String> factoryTypeOpt = catalog.findFactoryTypeKeyForPropertyPrefix(firstPart);
         return factoryTypeOpt.map(s -> new ParsedProperty(s, null, null, key)).orElse(null);
+    }
+
+    /**
+     * Parses a property key the way the runtime resolves it: "forage.&lt;instance&gt;.&lt;config entry&gt;",
+     * where the instance name is optional and may contain dots. Tries the shortest instance name first,
+     * so a key that is itself a config entry belongs to the default instance.
+     *
+     * @return the parsed property, or null when no suffix of the key is a catalog config entry
+     */
+    private ParsedProperty parseUsingConfigEntries(String key) {
+        String instanceName = null;
+        String entryKey = key;
+        while (true) {
+            Optional<ForageCatalogReader.ConfigEntryOwner> owner =
+                    catalog.findConfigEntryOwner(FORAGE_PROPERTIES_PREFIX + entryKey);
+            if (owner.isPresent()) {
+                return toParsedProperty(instanceName, entryKey, owner.get());
+            }
+            int dot = entryKey.indexOf('.');
+            if (dot < 0) {
+                return null;
+            }
+            String segment = entryKey.substring(0, dot);
+            instanceName = instanceName == null ? segment : instanceName + "." + segment;
+            entryKey = entryKey.substring(dot + 1);
+        }
+    }
+
+    private ParsedProperty toParsedProperty(
+            String instanceName, String entryKey, ForageCatalogReader.ConfigEntryOwner owner) {
+        String factoryTypeKey = owner.factoryTypeKey();
+        String factoryPrefix = factoryTypeKey + ".";
+        // Factory-level property (e.g., "jdbc.url", "jms.artemis.reconnect.attempts"), unless the
+        // factory key is really a bean prefix (e.g., the security policy factory keyed as "keycloak")
+        if (entryKey.startsWith(factoryPrefix)
+                && catalog.findBeanNameForPropertyPrefix(factoryTypeKey).isEmpty()) {
+            return new ParsedProperty(factoryTypeKey, instanceName, null, entryKey.substring(factoryPrefix.length()));
+        }
+        // Bean property (e.g., "ollama.model.name", "azure.openai.api.key")
+        if (owner.beanName() != null) {
+            Optional<String> beanPrefix = catalog.findBeanPropertyPrefix(owner.beanName(), entryKey);
+            if (beanPrefix.isPresent()) {
+                return new ParsedProperty(
+                        factoryTypeKey,
+                        instanceName,
+                        owner.beanName(),
+                        entryKey.substring(beanPrefix.get().length() + 1));
+            }
+        }
+        // Factory property outside the factory namespace (e.g., "multi.agent.names", "guardrail.*")
+        return new ParsedProperty(factoryTypeKey, instanceName, null, entryKey);
     }
 
     /**
