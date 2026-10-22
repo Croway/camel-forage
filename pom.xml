@@ -4,7 +4,7 @@
 
     <groupId>io.kaoto.forage</groupId>
     <artifactId>forage</artifactId>
-    <version>1.6.3-SNAPSHOT</version>
+    <version>1.6.2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Forage</name>
     <url>https://github.com/KaotoIO/forage</url>
@@ -37,7 +37,7 @@
         <junit-jupiter.version>6.0.3</junit-jupiter.version>
         <log4j.version>2.26.1</log4j.version>
         <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
-        <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
+        <central-publishing-maven-plugin.version>0.12.0</central-publishing-maven-plugin.version>
         <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
 
         <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
