@@ -30,19 +30,19 @@ Add the desired modules to your project. For example, to use the default agent f
 <dependency>
     <groupId>io.kaoto.forage</groupId>
     <artifactId>forage-model-open-ai</artifactId>
-    <version>1.6.0</version>
+    <version>1.6.2</version>
 </dependency>
 <!--This component provides support for the message window chat memory -->
 <dependency>
     <groupId>io.kaoto.forage</groupId>
     <artifactId>forage-memory-message-window</artifactId>
-    <version>1.6.0</version>
+    <version>1.6.2</version>
 </dependency>
 <!--This component adds the composable agent implementation (pulls in agent factories transitively) -->
 <dependency>
     <groupId>io.kaoto.forage</groupId>
     <artifactId>forage-agent</artifactId>
-    <version>1.6.0</version>
+    <version>1.6.2</version>
 </dependency>
 ```
 
@@ -154,12 +154,12 @@ camel infra run postgres
 <dependency>
     <groupId>io.kaoto.forage</groupId>
     <artifactId>forage-jdbc</artifactId>
-    <version>1.6.0</version>
+    <version>1.6.2</version>
 </dependency>
 <dependency>
     <groupId>io.kaoto.forage</groupId>
     <artifactId>forage-jdbc-postgresql</artifactId>
-    <version>1.6.0</version>
+    <version>1.6.2</version>
 </dependency>
 ```
 
@@ -292,8 +292,8 @@ public class MyRoutes extends RouteBuilder {
 ## Requirements
 
 - Java 17+
-- Apache Camel 4.22.0+
-- LangChain4j 1.13.0+
+- Apache Camel 4.22.2+
+- LangChain4j 1.18.1+
 
 ## Contributing
 
