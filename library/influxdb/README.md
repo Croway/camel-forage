@@ -9,7 +9,7 @@ or system properties.
 | InfluxDB 2 | `forage-influxdb2` | `forage-influxdb2-starter` | Not supported |
 
 All artifacts use group ID `io.kaoto.forage` and the same version as Forage.
-Camel Quarkus 3.39.0 provides an InfluxDB 1 extension, but no InfluxDB 2
+Camel Quarkus 3.40.0 provides an InfluxDB 1 extension, but no InfluxDB 2
 extension. This change does not add v2 Quarkus support.
 
 HTTP endpoints remain supported for local development. HTTP does not encrypt
