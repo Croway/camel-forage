@@ -208,10 +208,10 @@ Install or reinstall the plugin:
     camel plugin add forage --gav io.kaoto.forage:camel-jbang-plugin-forage:{{ forage_version }}
     ```
 
-=== "Camel Latest ({{ camel_latest_version }})"
+=== "Camel Previous LTS ({{ camel_previous_lts_version }})"
 
     ```bash
-    camel plugin add forage --gav io.kaoto.forage:camel-jbang-plugin-forage:{{ forage_latest_version }}
+    camel plugin add forage --gav io.kaoto.forage:camel-jbang-plugin-forage:{{ forage_previous_lts_version }}
     ```
 
 Verify installation:
