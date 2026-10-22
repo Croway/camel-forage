@@ -49,7 +49,7 @@ public class InfluxDBTest implements ForageIntegrationTest {
     @Test
     @CitrusTest
     void writesPointToDatabase(ForageTestCaseRunner runner) {
-        runner.then(camel().jbang().verify().integration(NAME).waitForLogMessage("InfluxDB 1 point sent"));
+        runner.then(camel().cli().verify().integration(NAME).waitForLogMessage("InfluxDB 1 point sent"));
         HttpClient client = HttpClient.newHttpClient();
         await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
             HttpRequest request = HttpRequest.newBuilder(

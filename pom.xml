@@ -27,7 +27,7 @@
         <quarkiverse-cxf.version>3.39.1</quarkiverse-cxf.version>
         <wiremock.version>3.13.0</wiremock.version>
         <commons-io.version>2.21.0</commons-io.version>
-        <citrus.version>4.10.1</citrus.version>
+        <citrus.version>5.0.2</citrus.version>
         <groovy.version>5.0.5</groovy.version>
         <ibmmq-client.version>9.4.5.0</ibmmq-client.version>
 

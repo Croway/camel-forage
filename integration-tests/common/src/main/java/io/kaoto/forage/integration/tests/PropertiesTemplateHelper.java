@@ -60,7 +60,7 @@ public final class PropertiesTemplateHelper {
             }
 
             // Extract filename from template (remove .template suffix)
-            String templateFileName = templateResource.getFile().getName();
+            String templateFileName = templateResource.file().getName();
             String propertiesFileName = templateFileName.replace(".template", "");
 
             // Write to temp directory with proper name. Restrict permissions to the owner
@@ -87,7 +87,7 @@ public final class PropertiesTemplateHelper {
 
         } catch (IOException e) {
             throw new UncheckedIOException(
-                    "Failed to prepare properties from template: " + templateResource.getLocation(), e);
+                    "Failed to prepare properties from template: " + templateResource.location(), e);
         }
     }
 
@@ -122,16 +122,14 @@ public final class PropertiesTemplateHelper {
      */
     public static void copyIntoSameDirectory(Resource anchor, Resource resource, Consumer<AutoCloseable> afterAll) {
         try {
-            Path targetFile = anchor.getFile()
-                    .toPath()
-                    .getParent()
-                    .resolve(resource.getFile().getName());
+            Path targetFile =
+                    anchor.file().toPath().getParent().resolve(resource.file().getName());
             try (var inputStream = resource.getInputStream()) {
                 Files.copy(inputStream, targetFile);
             }
             afterAll.accept(() -> Files.deleteIfExists(targetFile));
         } catch (IOException e) {
-            throw new UncheckedIOException("Failed to copy resource next to " + anchor.getLocation(), e);
+            throw new UncheckedIOException("Failed to copy resource next to " + anchor.location(), e);
         }
     }
 }
