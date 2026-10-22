@@ -11,7 +11,7 @@
     <description>A plugin extension for Apache Camel that provides opinionated bean factories</description>
 
     <properties>
-        <camel.version>4.18.4</camel.version>
+        <camel.version>4.18.5</camel.version>
         <langchain4j.version>1.11.0</langchain4j.version>
         <langchain4j-beta.version>1.11.0-beta19</langchain4j-beta.version>
         <langchain4j-community.version>1.11.0-beta19</langchain4j-community.version>
@@ -21,11 +21,11 @@
         <aws-sdk.version>2.44.4</aws-sdk.version>
         <azure.identity.version>1.18.2</azure.identity.version>
         <azure.messaging.eventhubs.version>5.21.4</azure.messaging.eventhubs.version>
-        <camel-quarkus.version>3.33.2</camel-quarkus.version>
+        <camel-quarkus.version>3.33.3</camel-quarkus.version>
         <cxf.version>4.1.5</cxf.version>
-        <quarkiverse-cxf.version>3.33.8</quarkiverse-cxf.version>
-        <wiremock.version>3.13.0</wiremock.version>
-        <commons-io.version>2.18.0</commons-io.version>
+        <quarkiverse-cxf.version>3.33.12</quarkiverse-cxf.version>
+        <wiremock.version>3.13.2</wiremock.version>
+        <commons-io.version>2.21.0</commons-io.version>
         <citrus.version>4.10.1</citrus.version>
         <groovy.version>5.0.5</groovy.version>
         <ibmmq-client.version>9.4.5.0</ibmmq-client.version>
@@ -59,7 +59,7 @@
         <pooled-jms.version>3.2.2</pooled-jms.version>
         <postgresql.version>42.7.10</postgresql.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <quarkus.version>3.33.2.1</quarkus.version>
+        <quarkus.version>3.33.4.1</quarkus.version>
         <quarkus-artemis-jms.version>3.13.0</quarkus-artemis-jms.version>
         <quarkus-pooled-jms.version>2.10.0</quarkus-pooled-jms.version>
         <slf4j.version>2.0.18</slf4j.version>
