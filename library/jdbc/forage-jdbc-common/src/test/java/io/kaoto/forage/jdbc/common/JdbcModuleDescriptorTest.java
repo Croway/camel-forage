@@ -60,4 +60,19 @@ class JdbcModuleDescriptorTest {
             System.clearProperty("forage.jdbc.transaction.enabled");
         }
     }
+
+    @Test
+    void createTablePropertyIsTranslated() {
+        System.setProperty("forage.jdbc.transaction.enabled", "true");
+        try {
+            DataSourceFactoryConfig config = new DataSourceFactoryConfig();
+            Map<String, String> props = new JdbcModuleDescriptor().translateProperties(null, config);
+
+            assertThat(props).containsKey("quarkus.transaction-manager.object-store.create-table");
+            assertThat(props.get("quarkus.transaction-manager.object-store.create-table"))
+                    .isEqualTo("false");
+        } finally {
+            System.clearProperty("forage.jdbc.transaction.enabled");
+        }
+    }
 }
