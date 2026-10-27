@@ -72,14 +72,17 @@ jobs:
           case "$BRANCH" in
             main)
               DOC_KEY=forage_version
+              CAMEL_DOC_KEY=camel_lts_version
               DOC_LABEL="LTS"
               ;;
             camel-4.18.x)
               DOC_KEY=forage_previous_lts_version
+              CAMEL_DOC_KEY=camel_previous_lts_version
               DOC_LABEL="previous LTS"
               ;;
             camel-latest)
               DOC_KEY=forage_latest_version
+              CAMEL_DOC_KEY=camel_latest_version
               DOC_LABEL="latest"
               ;;
             *)
@@ -93,9 +96,22 @@ jobs:
           git checkout -- .
           git status --short
 
-          if [ "$BRANCH" = "main" ]; then
+          # Pair the Forage version with the Camel version it was released against
+          CAMEL_VERSION=$(git show "v${VERSION}:pom.xml" | sed -n 's:.*<camel.version>\(.*\)</camel.version>.*:\1:p' | head -1)
+          if [ -z "${CAMEL_VERSION}" ]; then
+            echo "Could not read camel.version from tag v${VERSION}"
+            exit 1
+          fi
+          echo "Forage ${VERSION} is released against Camel ${CAMEL_VERSION}"
+
+          update_versions() {
             sed -i "s/${DOC_KEY}: \".*\"/${DOC_KEY}: \"${VERSION}\"/" website/mkdocs.yml
+            sed -i "s/${CAMEL_DOC_KEY}: \".*\"/${CAMEL_DOC_KEY}: \"${CAMEL_VERSION}\"/" website/mkdocs.yml
             git add website/mkdocs.yml
+          }
+
+          if [ "$BRANCH" = "main" ]; then
+            update_versions
             if ! git diff --cached --quiet; then
               git commit -m "docs: update ${DOC_LABEL} version to ${VERSION}"
               git push "${SSH_REMOTE}" HEAD:main
@@ -106,8 +122,7 @@ jobs:
             git fetch origin main
             git worktree add --detach "${RUNNER_TEMP}/docs-main" origin/main
             pushd "${RUNNER_TEMP}/docs-main"
-            sed -i "s/${DOC_KEY}: \".*\"/${DOC_KEY}: \"${VERSION}\"/" website/mkdocs.yml
-            git add website/mkdocs.yml
+            update_versions
             if ! git diff --cached --quiet; then
               git commit -m "docs: update ${DOC_LABEL} version to ${VERSION}"
               git push "${SSH_REMOTE}" HEAD:main
