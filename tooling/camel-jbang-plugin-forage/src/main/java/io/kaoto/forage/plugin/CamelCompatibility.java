@@ -26,6 +26,9 @@ public final class CamelCompatibility {
      * Prints a warning to stderr, at most once per JVM, when the running Camel CLI is outside the supported range.
      * Never fails: an unknown CLI version or a missing range skips the check.
      */
+    // java:S106: a logger would hide the warning (the Camel CLI turns logging off) and stdout carries command output
+    // such as the JSON of `camel forage config read`, so the warning goes to stderr
+    @SuppressWarnings("java:S106")
     public static void warnIfIncompatible() {
         if (WARNED.get()) {
             return;
@@ -66,7 +69,19 @@ public final class CamelCompatibility {
      * Minimal Maven version range with a single interval, e.g. {@code [4.23.0,4.24.0)}, {@code [4.18.0,)} or
      * {@code [4.22.2]}.
      */
-    record VersionRange(int[] lower, boolean lowerInclusive, int[] upper, boolean upperInclusive) {
+    static final class VersionRange {
+
+        private final int[] lower;
+        private final boolean lowerInclusive;
+        private final int[] upper;
+        private final boolean upperInclusive;
+
+        private VersionRange(int[] lower, boolean lowerInclusive, int[] upper, boolean upperInclusive) {
+            this.lower = lower;
+            this.lowerInclusive = lowerInclusive;
+            this.upper = upper;
+            this.upperInclusive = upperInclusive;
+        }
 
         static VersionRange parse(String spec) {
             String s = spec.trim();
