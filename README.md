@@ -292,8 +292,8 @@ public class MyRoutes extends RouteBuilder {
 ## Requirements
 
 - Java 17+
-- Apache Camel 4.22.2+
-- LangChain4j 1.18.1+
+- Apache Camel 4.23.0+
+- LangChain4j 1.21.0+
 
 ## Contributing
 
