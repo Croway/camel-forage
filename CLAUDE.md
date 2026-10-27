@@ -29,6 +29,11 @@ maintenance branch (via a fresh branch off `main`, not a rename), `main` is upgr
 in place to track the new LTS, and `camel-latest` is re-evaluated against whatever
 Camel considers "latest" at that point.
 
+When changing `camel.version` to a new Camel minor, also update the literal
+`camel.jbang.plugin.camel-versions` range in `tooling/camel-jbang-plugin-forage/pom.xml`
+(e.g. `[4.23.0,4.24.0)`). The plugin warns when the running Camel CLI is outside it, and
+`CamelCompatibilityTest` fails the build if `camel.version` is not inside it.
+
 ### Backporting
 
 When making changes (features, bug fixes, etc.), **always investigate whether the change needs backporting** to the other active branch(es):
