@@ -16,7 +16,8 @@ public enum RuntimeType {
         return switch (value) {
             case "springboot", "spring-boot", "camel-spring-boot" -> SPRING_BOOT;
             case "quarkus", "camel-quarkus" -> QUARKUS;
-            case "main", "camel-main" -> MAIN;
+            // Camel 4.23+ "camel run" defaults to the in-process jbang runtime, which uses main's dependencies
+            case "main", "camel-main", "jbang", "camel-jbang" -> MAIN;
             default -> throw new IllegalArgumentException("Unsupported runtime " + value);
         };
     }
