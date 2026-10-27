@@ -48,6 +48,19 @@ public final class ExportHelper {
     }
 
     /**
+     * Gets the Maven version range of the Camel CLI versions this plugin supports, from the versions.properties file.
+     * (which is populated during buildtime)
+     *
+     * @return the supported Camel version range, e.g. {@code [4.23.0,4.24.0)}
+     */
+    public static String getSupportedCamelVersions() {
+        return getString(
+                "camel.jbang.plugin.camel-versions",
+                ResourceType.VERSIONS,
+                "Could not determine supported camel versions from properties file.");
+    }
+
+    /**
      * Gets the project version from the versions.properties file. (which is populated during buildtime)
      *
      * @return the project version

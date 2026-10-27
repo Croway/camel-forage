@@ -13,6 +13,12 @@
     <name>Forage :: Tooling :: Camel JBang Plugin</name>
     <description>Forage Camel JBang plugin</description>
 
+    <properties>
+        <!-- Camel CLI versions this plugin release supports, as a Maven version range. Keep it a literal value: it is read
+             from the published POM, where computed properties are not available. Update it with camel.version. -->
+        <camel.jbang.plugin.camel-versions>[4.23.0,4.24.0)</camel.jbang.plugin.camel-versions>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.camel</groupId>
